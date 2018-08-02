@@ -8,11 +8,6 @@ variables:
   VERSION_FILE: $PKG_DIR/version.json
 
 before_script:
-  - /bin/sh -c | \
-    apk update && apk add openssl \
-    mkdir -p /etc/docker/certs.d/$CI_REGISTRY \
-    wget -O - http://portal.g2-inc.com/sites/default/files/all.crt --insecure | openssl x509 -inform der > /etc/docker/certs.d/$CI_REGISTRY/ca.crt || exit \
-    dockerd-entrypoint.sh || exit
   - yum -y install wget rsync
   - if [ ! -f /tmp/jq ]; then wget $JQ_LINUX64 -qO /tmp/jq; chmod 755 /tmp/jq; fi
   # Configure Version file
