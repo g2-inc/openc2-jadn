@@ -159,6 +159,7 @@ class Codec:
                 for f in t[S_FLD].values():
                     if f[S_FDEF][FNAME] == '*':
                         t = self.symtab[f[S_FDEF][FTYPE]][S_TDEF]
+                        # TODO: FIX ASSERT!!!!!!
                         assert(t[TTYPE] == 'Choice')
                         f[S_FNAMES] = [c[FNAME] for c in t[FIELDS]]
 

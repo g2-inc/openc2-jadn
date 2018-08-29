@@ -25,6 +25,7 @@ jadn_schema = {
             "additionalProperties": False,
             "properties": {
                 "description": {"type": "string"},
+                "patch": {"type": "string"},
                 "module": {"type": "string"},
                 "title": {"type": "string"},
                 "version": {"type": "string"},
