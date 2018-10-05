@@ -1,4 +1,4 @@
-image: gitlab.labs.g2-inc.net:4567/screamingbunny/docker/plus:alpine-python3
+image: gitlab.labs.g2-inc.net:4567/screamingbunny/docker/plus:centos-python
 
 variables:
   GIT_SSL_NO_VERIFY: "true"
@@ -9,7 +9,7 @@ variables:
   VERSION_FILE: $PKG_DIR/version.json
 
 before_script:
-  - apk add --no-cache build-base libxml2 libxml2-dev rsync wget
+  - yum -y install wget rsync
   - if [ ! -f /tmp/jq ]; then wget $JQ_LINUX64 -qO /tmp/jq; chmod 755 /tmp/jq; fi
   # Configure Version file
   - echo "$(/tmp/jq --arg NUM ${CI_PIPELINE_ID} '.version.pipe_number=$NUM' $VERSION_FILE)" > $VERSION_FILE
@@ -17,7 +17,7 @@ before_script:
   - echo "$(/tmp/jq --arg DATE $(date +%Y-%m-%d) '.version.date=$DATE' $VERSION_FILE)" > $VERSION_FILE
   - echo "$(/tmp/jq --arg PKG ${PKG_NAME} '.pkg_name=$PKG' $VERSION_FILE)" > $VERSION_FILE
   # Configure Python Env
-  - pip3 install -r $PKG_DIR/requirements.txt
+  - pip install -r $PKG_DIR/requirements.txt
   - rsync -avz --delete ./jadn/libs/* ./$PKG_DIR/$PKG_NAME
 
 # Copy and edit this stage for Unit/Code Testing
@@ -26,7 +26,7 @@ Translate-Schemas:
 
   script:
     - cd jadn
-    - python3 schema-translators.py
+    - python schema-translators.py
     - mv ./schema_gen_test/openc2-* ../
 
   artifacts:
@@ -41,7 +41,7 @@ Build-Wheel:
 
   script:
     - cd $PKG_DIR
-    - pip3 wheel . -w ./dist
+    - pip wheel . -w ./dist
     - mv ./dist/*.whl ../
 
   artifacts:
