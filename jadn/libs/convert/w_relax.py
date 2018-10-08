@@ -9,9 +9,11 @@ from ..codec.codec_utils import fopts_s2d, topts_s2d
 from ..utils import toStr, Utils
 
 primitives = [str, int, float]
+str_type = basestring
 
 if sys.version_info.major < 3:
     primitives.append(unicode)
+    str_type = (str, bytes, unicode)
 
 
 class JADNtoRelaxNG(object):
@@ -196,6 +198,8 @@ class JADNtoRelaxNG(object):
         return elm
 
     def _formatComment(self, msg, **kargs):
+        if isinstance(msg, str_type):
+            msg = re.sub(r'([\w\d])--([\w\d])', r'\1 - \2', msg)
 
         elm = '<!--'
         if msg not in ['', None, ' ']:
