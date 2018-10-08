@@ -282,7 +282,7 @@ class JADNtoThrift(object):
                 idn=self.indent,
                 num='1',
                 choice='optional',
-                type=self.formatStr(field_opts['rtype']),
+                type=self.formatStr(field_opts.get('rtype', 'string')),
                 name='item',
                 com=itm[3],
                 opts=json.dumps(opts)
