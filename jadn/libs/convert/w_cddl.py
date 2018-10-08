@@ -277,8 +277,8 @@ class JADNtoCDDL(object):
         field_opts = topts_s2d(itm[2])
 
         field_type = '[{min}*{max} {type}]'.format(
-            min=field_opts['min'],
-            max=field_opts['max'],
+            min=field_opts.get('min', ''),
+            max=field_opts.get('max', ''),
             type=self.formatStr(field_opts['rtype'])
         )
 
@@ -298,8 +298,8 @@ class JADNtoCDDL(object):
         field_opts = topts_s2d(itm[2])
 
         field_type = '[{min}*{max} {type}]'.format(
-            min=field_opts['min'],
-            max=field_opts['max'],
+            min=field_opts.get('min', ''),
+            max=field_opts.get('max', ''),
             type=self.formatStr(field_opts['rtype'])
         )
 
