@@ -279,7 +279,7 @@ class JADNtoCDDL(object):
         field_type = '[{min}*{max} {type}]'.format(
             min=field_opts.get('min', ''),
             max=field_opts.get('max', ''),
-            type=self.formatStr(field_opts['rtype'])
+            type=self.formatStr(field_opts.get('rtype', 'string'))
         )
 
         return '\n{name} = {type} {com}\n'.format(
@@ -300,7 +300,7 @@ class JADNtoCDDL(object):
         field_type = '[{min}*{max} {type}]'.format(
             min=field_opts.get('min', ''),
             max=field_opts.get('max', ''),
-            type=self.formatStr(field_opts['rtype'])
+            type=self.formatStr(field_opts.get('rtype', 'string'))
         )
 
         return '\n{name} = {type} {com}\n'.format(
