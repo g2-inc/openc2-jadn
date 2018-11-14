@@ -1,0 +1,238 @@
+/*
+module:        oasis-open.org/openc2/v1.0/openc2-lang
+patch:         wd09
+title:         OpenC2 Language Objects
+description:   Datatypes that define the content of OpenC2 commands and
+               responses.
+imports:       slpf: oasis-open.org/openc2/v1.0/ap-slpf
+               jadn: oasis-open.org/openc2/v1.0/jadn
+exports:       OpenC2-Command, OpenC2-Response, Message-Type, Status-Code, Request-Id, Date-Time
+*/
+
+Message ::= ARRAY {    -- Example structure that lists message elements
+    msg_type      [1] Message-Type,    -- message element
+    content_type  [2] STRING,    -- message element
+    content       [3] NULL,    -- message element
+    status        [4] Status-Code OPTIONAL,    -- message element
+    request_id    [5] Request-Id OPTIONAL,    -- message element
+    to            [6] STRING OPTIONAL,    -- message element %{'max': 0}
+    from          [7] STRING OPTIONAL,    -- message element
+    created       [8] Date-Time OPTIONAL     -- message element
+}
+
+OpenC2-Command ::= RECORD {
+    action       Action,    -- The task or activity to be performed (i.e., the 'verb').
+    target       Target,    -- The object of the action. The action is performed on the target.
+    args         Args OPTIONAL,    -- Additional information that applies to the command.
+    actuator     Actuator OPTIONAL     -- The subject of the action. The actuator executes the action on the target.
+}
+
+Action ::= ENUMERATED {
+    scan         (1),    -- Systematic examination of some aspect of the entity or its environment in order to obtain information.
+    locate       (2),    -- Find an object physically, logically, functionally, or by organization.
+    query        (3),    -- Initiate a request for information.
+    deny         (6),    -- Prevent a certain event or action from completion, such as preventing a flow from reaching a destination or preventing access.
+    contain      (7),    -- Isolate a file, process, or entity so that it cannot modify or access assets or processes.
+    allow        (8),    -- Permit access to or execution of a target.
+    start        (9),    -- Initiate a process, application, system, or activity.
+    stop         (10),    -- Halt a system or end an activity.
+    restart      (11),    -- Stop then start a system or activity.
+    cancel       (14),    -- Invalidate a previously issued action.
+    set          (15),    -- Change a value, configuration, or state of a managed entity.
+    update       (16),    -- Instruct a component to retrieve, install, process, and operate in accordance with a software update, reconfiguration, or other update.
+    redirect     (18),    -- Change the flow of traffic to a destination other than its original destination.
+    create       (19),    -- Add a new entity of a known type (e.g., data, files, directories).
+    delete       (20),    -- Remove an entity (e.g., data, files, flows.
+    detonate     (22),    -- Execute and observe the behavior of a target (e.g., file, hyperlink) in an isolated environment.
+    restore      (23),    -- Return a system to a previously known state.
+    copy         (28),    -- Duplicate a file or data flow.
+    investigate  (30),    -- Task the recipient to aggregate and report information as it pertains to a security event or incident.
+    remediate    (32)     -- Task the recipient to eliminate a vulnerability or attack point.
+}
+
+Target ::= CHOICE {    -- OpenC2 Target datatypes
+    artifact       [1] Artifact,    -- An array of bytes representing a file-like object or a link to that object.
+    command        [2] Request-Id,    -- A reference to a previously issued OpenC2 command.
+    device         [3] Device,    -- The properties of a hardware device.
+    domain_name    [7] Domain-Name,    -- A network domain name.
+    email_addr     [8] Email-Addr,    -- A single email address.
+    features       [16] Features,    -- A set of items used with the query action to determine an actuator's capabilities
+    file           [10] File,    -- Properties of a file.
+    ip_addr        [11] IP-Addr,    -- The representation of one or more IP addresses (either version 4 or version 6).
+    ip_connection  [15] IP-Connection,    -- A network connection that originates from a source and is addressed to a destination.
+    mac_addr       [13] MAC-Addr,    -- A single Media Access Control (MAC) address.
+    process        [17] Process,    -- Common properties of an instance of a computer program as executed on an operating system.
+    properties     [25] Properties,    -- Data attribute associated with an actuator
+    uri            [19] URI,    -- A uniform resource identifier (URI).
+    extension      [1000] PE-Target,    -- Targets defined in a Private Enterprise extension profile
+    extension_unr  [1001] Unr-Target,    -- Targets defined in an unregistered extension profile
+    slpf           [1024] slpf:Target     -- Targets defined in the Stateless Packet Filter Profile
+}
+
+Actuator ::= CHOICE {
+    extension      [1000] PE-Specifiers,    -- Specifiers defined in a Private Enterprise extension profile.
+    extension_unr  [1001] Unr-Specifiers     -- Specifiers defined in an unregistered extension profile.
+}
+
+Args ::= MAP {
+    start_time          [1] Date-Time OPTIONAL,    -- The specific date/time to initiate the action
+    stop_time           [2] Date-Time OPTIONAL,    -- The specific date/time to terminate the action
+    duration            [3] Duration OPTIONAL,    -- The length of time for an action to be in effect
+    response_requested  [4] Response-Type OPTIONAL,    -- The type of response required for the action
+    extension           [1000] PE-Args OPTIONAL,    -- Command arguments defined in a Private Enterprise extension profile
+    extension_unr       [1001] Unr-Args OPTIONAL     -- Command arguments defined in an unregistered extension profile
+}
+
+OpenC2-Response ::= MAP {
+    status         [1] Status-Code OPTIONAL,    -- An integer status code (Duplicates message status code)
+    status_text    [2] STRING OPTIONAL,    -- A free-form human-readable description of the response status
+    strings        [3] STRING OPTIONAL,    -- Generic set of string values %{'max': 0}
+    ints           [4] INTEGER OPTIONAL,    -- Generic set of integer values %{'max': 0}
+    kvps           [5] KVP OPTIONAL,    -- Generic set of key:value pairs %{'max': 0}
+    versions       [6] Version OPTIONAL,    -- Supported OpenC2 Language versions %{'max': 0}
+    profiles       [7] jadn:Uname OPTIONAL,    -- List of profiles supported by this actuator %{'max': 0}
+    schema         [8] jadn:Schema OPTIONAL,    -- Syntax of the OpenC2 language elements supported by this actuator
+    pairs          [9] Action-Targets OPTIONAL,    -- List of targets applicable to each supported action %{'max': 0}
+    rate_limit     [10] REAL OPTIONAL,    -- Maximum number of requests per minute supported by design or policy
+    extension      [1000] PE-Results OPTIONAL,    -- Response data defined in a Private Enterprise extension profile
+    extension_unr  [1001] Unr-Results OPTIONAL     -- Response data defined in an unregistered extension profile
+}
+
+Status-Code ::= ENUMERATED.ID {
+    Processing           (102),    -- an interim response used to inform the client that the server has accepted the request but not yet completed it.
+    OK                   (200),    -- the request has succeeded.
+    Moved Permanently    (301),    -- The target resource has been assigned a new permanent URI
+    Bad Request          (400),    -- the consumer cannot process the request due to something that is perceived to be a client error (e.g., malformed request syntax.)
+    Unauthorized         (401),    -- the request lacks valid authentication credentials for the target resources or authorization has been refused for the submitted credentials.
+    Forbidden            (403),    -- the consumer understood the request but refuses to authorize it.
+    Not Found            (404),    -- the consumer has not found anything matching the request.
+    Internal Error       (500),    -- the consumer encountered an unexpected condition that prevented it from fulfilling the request.
+    Not Implemented      (501),    -- the consumer does not support the functionality required to fulfill the request.
+    Service Unavailable  (503)     -- the consumer is currently unable to handle the request due to a temporary overloading or maintenance.
+}
+
+PE-Target ::= CHOICE.ID {
+    Example      [32473] 32473:Target     -- Targets defined in the Example Inc. extension profile
+}
+
+PE-Specifiers ::= CHOICE.ID {
+    Example      [32473] 32473:Specifiers     -- Actuator Specifiers defined in the Example Inc. extension profile
+}
+
+PE-Args ::= MAP.ID {
+    Example      [32473] 32473:Args     -- Command Arguments defined in the Example Inc. extension profile
+}
+
+PE-Results ::= MAP.ID {
+    Example      [32473] 32473:Results     -- Results defined in the Example Inc. extension profile
+}
+
+Artifact ::= RECORD {
+    mime_type    STRING OPTIONAL,    -- Permitted values specified in the IANA Media Types registry
+    payload      Payload OPTIONAL,    -- choice of literal content or URL to obtain content
+    hashes       Hashes OPTIONAL     -- Specifies a dictionary of hashes for the contents of the payload
+}
+
+Device ::= MAP {
+    hostname     [1] Hostname,    -- A hostname that can be used to connect to this device over a network
+    description  [2] STRING OPTIONAL,    -- A human-readable description of the purpose, relevance, and/or properties of the device
+    device_id    [3] STRING OPTIONAL     -- An identifier that refers to this device within an inventory or management system
+}
+
+Domain-Name ::= STRING (CONSTRAINED BY {hostname})    -- RFC 1034, section 3.5
+
+Email-Addr ::= STRING (CONSTRAINED BY {email})    -- Email address, RFC 5322, section 3.4.1
+
+Features ::= ARRAY_OF(Feature)    -- A target used to query Actuator for its supported capabilities
+
+File ::= MAP {
+    name         [1] STRING OPTIONAL,    -- The name of the file as defined in the file system
+    path         [2] STRING OPTIONAL,    -- The absolute path to the location of the file in the file system
+    hashes       [3] Hashes OPTIONAL     -- One or more cryptographic hash codes of the file contents
+}
+
+IP-Addr ::= BINARY (CONSTRAINED BY {ip-addr})    -- 32 bit IPv4 address or 128 bit IPv6 address
+
+IP-Connection ::= RECORD {    -- 5-tuple that specifies a tcp/ip connection
+    src_addr     IP-Addr OPTIONAL,    -- source address
+    src_port     Port OPTIONAL,    -- source TCP/UDP port number
+    dst_addr     IP-Addr OPTIONAL,    -- destination address
+    dst_port     Port OPTIONAL,    -- destination TCP/UDP port number
+    protocol     L4-Protocol OPTIONAL     -- Protocol (IPv4) / Next Header (IPv6)
+}
+
+MAC-Addr ::= BINARY    -- Media Access Code / Extended Unique Identifier - 48 or 64 bit address
+
+Process ::= MAP {
+    pid           [1] INTEGER OPTIONAL,    -- Process ID of the process
+    name          [2] STRING OPTIONAL,    -- Name of the process
+    cwd           [3] STRING OPTIONAL,    -- Current working directory of the process
+    executable    [4] File OPTIONAL,    -- Executable that was executed to start the process
+    parent        [5] Process OPTIONAL,    -- Process that spawned this one
+    command_line  [6] STRING OPTIONAL     -- The full command line invocation used to start this process, including all arguments
+}
+
+Properties ::= ARRAY_OF(String)    -- A list of names that uniquely identify properties of an actuator
+
+URI ::= STRING (CONSTRAINED BY {uri})    -- Uniform Resource Identifier
+
+Message-Type ::= ENUMERATED {
+    notification  (0),    -- A message that does not solicit a response
+    request       (1),    -- A message for which a response is requested
+    response      (2)     -- A message containing a response to a request
+}
+
+Request-Id ::= BINARY    -- A value of up to 128 bits that uniquely identifies a particular command
+
+Date-Time ::= INTEGER    -- Milliseconds since 00:00:00 UTC, 1 January 1970.
+
+Duration ::= INTEGER    -- Milliseconds
+
+Hashes ::= MAP {    -- Cryptographic Hash values
+    md5          [1] BINARY OPTIONAL,    -- MD5 hash as defined in RFC3121
+    sha1         [4] BINARY OPTIONAL,    -- SHA1 hash as defined in RFC3174
+    sha256       [6] BINARY OPTIONAL     -- SHA256 as defined in RFC6234
+}
+
+Hostname ::= STRING    -- A legal Internet host name as specified in RFC 1123
+
+L4-Protocol ::= ENUMERATED {    -- protocol (IPv4) or next header (IPv6) field - any IANA value, RFC 5237
+    icmp         (1),    -- Internet Control Message Protocol - RFC 792
+    tcp          (6),    -- Transmission Control Protocol - RFC 793-
+    udp          (17),    -- User Datagram Protocol - RFC 768
+    sctp         (132)     -- Stream Control Transmission Protocol - RFC 4960
+}
+
+Payload ::= CHOICE {
+    bin          [1] BINARY,    -- Specifies the data contained in the artifact.
+    url          [2] URI     -- MUST be a valid URL that resolves to the un-encoded content
+}
+
+Port ::= INTEGER (0..65535)    -- Transport Protocol Port Number, RFC 6335
+
+Feature ::= ENUMERATED {    -- Results to be included in response to query features command
+    versions     (1),    -- List of OpenC2 language versions supported by this actuator
+    profiles     (2),    -- List of profiles supported by this actuator
+    schema       (3),    -- Definition of the command syntax supported by this actuator
+    pairs        (4),    -- List of supported actions and applicable targets
+    rate_limit   (5)     -- Maximum number of supported requests per minute
+}
+
+Response-Type ::= ENUMERATED {
+    none         (0),    -- No response
+    ack          (1),    -- Respond when command received
+    status       (2),    -- Respond with progress toward command completion
+    complete     (3)     -- Respond when all aspects of command completed
+}
+
+Version ::= STRING    -- Major.Minor version number
+
+KVP ::= ARRAY {
+    key          [1] STRING,    -- name of this item
+    value        [2] STRING     -- string value of this item
+}
+
+Action-Targets ::= ARRAY {
+    action       [1] Action,    -- An action supported by this actuator
+    targets      [2] Target.*     -- List of targets applicable to this action %{'max': 0}
+}

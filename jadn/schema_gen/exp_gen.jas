@@ -1,0 +1,66 @@
+/*
+module:        oasis-open.org/openc2/oc2ls/v1.0/experimental
+patch:         0
+title:         Experimental Schema Features
+description:   Profile used to test schema features not used in existing
+               language or profiles
+exports:       Target, Specifiers, Args, Results
+*/
+
+Target ::= CHOICE {    -- New targets
+    hashes         [1] Hashes,    -- Hash values serialized as hex
+    ipv4_addr_s    [2] IPv4-String,    -- IPv4 address as type-specific string (dotted-decimal): '192.168.0.254'
+    ipv4_addr_x    [3] IPv4-Hex,    -- IPv4 address serialized as hex: 'C0A800FE'
+    ipv4_addr_b64  [4] IPv4-Base64url,    -- IPv4 address serialized as Base64-url: 'wKgA_g'
+    ipv6_addr_s    [5] IPv6-String,    -- IPv6 address as type-specific string (colon-hex): ''
+    ipv6_addr_x    [6] IPv6-Hex,    -- IPv6 address serialized as hex: ''
+    ipv6_addr_b64  [7] IPv6-Base64url     -- IPv6 address serialized as Base64-url: ''
+}
+
+Hashes ::= MAP {    -- Cryptographic Hash values
+    md5          [1] Bin-128 OPTIONAL,    -- MD5 hash as defined in RFC3121
+    sha1         [4] Bin-160 OPTIONAL,    -- SHA1 hash as defined in RFC3174
+    sha256       [6] Bin-256 OPTIONAL     -- SHA256 as defined in RFC6234
+}
+
+Bin-128 ::= BINARY (Size (16..16))    -- 128 bit value, hex display
+
+Bin-160 ::= BINARY (Size (20..20))    -- 160 bit value, hex display
+
+Bin-256 ::= BINARY (Size (32..32))    -- 256 bit value, hex display
+
+IPv4-Hex ::= BINARY.x (Size (4..4))    -- Value must be 32 bits [4..4].  Value displayed in hex (Binary.x)
+
+IPv4-Base64url ::= BINARY (CONSTRAINED BY {ipv4})    -- Value must be 32 bits (ipv4).  Value displayed in base64url (Binary) default
+
+IPv4-String ::= BINARY.s:ipv4 (CONSTRAINED BY {ipv4})    -- Value must be 32 bits (ipv4).  Value displayed in ipv4 dotted-decimal (Binary.s:ipv4)
+
+IPv6-Hex ::= BINARY.x (CONSTRAINED BY {ipv6})    -- Value must be 128 bits (ipv6).  Value displayed in hex (Binary.x)
+
+IPv6-Base64url ::= BINARY (Size (16..16))    -- Value must be 128 bits [16..16].  Value displayed in base64url (Binary) default
+
+IPv6-String ::= BINARY.s:ipv6 (Size (16..16))    -- Value must be 128 bits [16..16].  Value displayed in ipv6 colon-hex (Binary.s:ipv6)
+
+Args ::= MAP {    -- Experimental command arguments
+}
+
+Specifiers ::= MAP {    -- Experimental actuator specifiers
+}
+
+Results ::= MAP {    -- Experimental results
+    knps         [1] KNP OPTIONAL,    -- Generic set of key:number pairs. %{'max': 0}
+    battery      [42] Battery-Properties OPTIONAL     -- Set of properties defined for an energy storage device
+}
+
+KNP ::= ARRAY {
+    key          [1] STRING,    -- name of this item
+    value        [2] REAL     -- numeric value of this item
+}
+
+Battery-Properties ::= MAP {
+    voltage       [7] INTEGER OPTIONAL,    -- Battery output voltage (millivolts)
+    charge        [18] Percentage OPTIONAL,    -- State of charge (percent)
+    manufacturer  [26] STRING OPTIONAL     -- Product name for this device
+}
+
+Percentage ::= REAL (0..100)    -- Real number in the range 0.0-100.0

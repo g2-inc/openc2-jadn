@@ -79,6 +79,7 @@ def topts_s2d(ostr):
 
     tval = {
         "compact": lambda x: True,
+        "cvt": lambda x: x,
         "min": lambda x: int(x),
         "max": lambda x: int(x),
         "rtype": lambda x: x,
@@ -120,10 +121,16 @@ def fopts_s2d(ostr):
             raise ValueError('Unknown field option: %s' % o)
     return opts
 
+
+def basetype(tt):                   # Return base type of derived subtypes
+    return tt.rsplit(sep='.')[0]    # Strip off subtype (e.g., .ID)
+
+
 def cardinality(min, max):
     if min == 1 and max == 1:
         return '1'
     return str(min) + '..' + ('n' if max == 0 else str(max))
+
 
 def opts_d2s(opts):     # TODO: Refactor to use TYPE_OPTIONS / FIELD_OPTIONS as above
     """
@@ -131,7 +138,6 @@ def opts_d2s(opts):     # TODO: Refactor to use TYPE_OPTIONS / FIELD_OPTIONS as 
     """
     ostr = []
     for k, v in opts.items():
-        print(k, v)
         if k == "optional" and v:
             ostr.append("?")
         elif k == "atfield":

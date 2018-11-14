@@ -1,0 +1,50 @@
+{
+ "meta": {
+  "module": "oasis-open.org/openc2/oc2ls/v1.0/experimental",
+  "patch": "0",
+  "title": "Experimental Schema Features",
+  "description": "Profile used to test schema features not used in existing language or profiles",
+  "exports": ["Target", "Specifiers", "Args", "Results"]
+ },
+ "types": [
+  ["Target", "Choice", [], "", [
+    [1, "hashes", "Hashes", [], ""],
+    [2, "ipv4_addr_s", "IPv4-String", [], ""],
+    [3, "ipv4_addr_x", "IPv4-Hex", [], ""],
+    [4, "ipv4_addr_b64", "IPv4-Base64url", [], ""],
+    [5, "ipv6_addr_s", "IPv6-String", [], ""],
+    [6, "ipv6_addr_x", "IPv6-Hex", [], ""],
+    [7, "ipv6_addr_b64", "IPv6-Base64url", [], ""]
+  ]],
+  ["Hashes", "Map", [], "", [
+    [1, "md5", "Bin-128", ["[0"], ""],
+    [4, "sha1", "Bin-160", ["[0"], ""],
+    [6, "sha256", "Bin-256", ["[0"], ""]
+  ]],
+  ["Bin-128", "Binary.x", ["[16", "]16"], ""],
+  ["Bin-160", "Binary.x", ["[20", "]20"], ""],
+  ["Bin-256", "Binary.x", ["[32", "]32"], ""],
+  ["IPv4-Hex", "Binary", ["[4", "]4", ".x"], ""],
+  ["IPv4-Base64url", "Binary", ["@ipv4"], ""],
+  ["IPv4-String", "Binary", ["@ipv4", ".ipv4"], ""],
+  ["IPv6-Hex", "Binary", ["@ipv6", ".x"], ""],
+  ["IPv6-Base64url", "Binary", ["[16", "]16"], ""],
+  ["IPv6-String", "Binary", ["[16", "]16", ".ipv6"], ""],
+  ["Args", "Map", [], "", []],
+  ["Specifiers", "Map", [], "", []],
+  ["Results", "Map", [], "", [
+    [1, "knps", "KNP", ["[0", "]0"], ""],
+    [42, "battery", "Battery-Properties", ["[0"], ""]
+  ]],
+  ["KNP", "Array", [], "", [
+    [1, "key", "String", [], ""],
+    [2, "value", "Number", [], ""]
+  ]],
+  ["Battery-Properties", "Map", [], "", [
+    [7, "voltage", "Integer", ["[0"], ""],
+    [18, "charge", "Percentage", ["[0"], ""],
+    [26, "manufacturer", "String", ["[0"], ""]
+  ]],
+  ["Percentage", "Number", ["[0", "]100"], ""]
+ ]
+}

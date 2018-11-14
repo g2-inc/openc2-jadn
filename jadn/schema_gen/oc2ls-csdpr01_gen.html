@@ -1,0 +1,236 @@
+<!-- Generated from schema\oc2ls-csdpr01.jadn, Tue Nov 13 15:22:53 2018-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="theme.css">
+<title>oasis-open.org/openc2/v1.0/openc2-lang v.wd09</title>
+</head>
+<body>
+<h2>Schema</h2>
+<table>
+<tr><td class="h">title:</td><td class="s">OpenC2 Language Objects</td></tr>
+<tr><td class="h">module:</td><td class="s">oasis-open.org/openc2/v1.0/openc2-lang</td></tr>
+<tr><td class="h">patch:</td><td class="s">wd09</td></tr>
+<tr><td class="h">description:</td><td class="s">Datatypes that define the content of OpenC2 commands and responses.</td></tr>
+<tr><td class="h">exports:</td><td class="s">OpenC2-Command, OpenC2-Response, Message-Type, Status-Code, Request-Id, Date-Time</td></tr>
+<tr><td class="h">imports:</td><td class="s"><span class="b">slpf</span>:&nbsp;oasis-open.org/openc2/v1.0/ap-slpf<br>
+<span class="b">jadn</span>:&nbsp;oasis-open.org/openc2/v1.0/jadn</td></tr>
+</table>
+<table><caption>Message (Array)</caption><tr><th class="n">ID</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="s">Message-Type</td><td class="n">1</td><td class="d">msg_type -- message element</td></tr>
+<tr><td class="n">2</td><td class="s">String</td><td class="n">1</td><td class="d">content_type -- message element</td></tr>
+<tr><td class="n">3</td><td class="s">Null</td><td class="n">1</td><td class="d">content -- message element</td></tr>
+<tr><td class="n">4</td><td class="s">Status-Code</td><td class="n">0..1</td><td class="d">status -- message element</td></tr>
+<tr><td class="n">5</td><td class="s">Request-Id</td><td class="n">0..1</td><td class="d">request_id -- message element</td></tr>
+<tr><td class="n">6</td><td class="s">String</td><td class="n">0..n</td><td class="d">to -- message element</td></tr>
+<tr><td class="n">7</td><td class="s">String</td><td class="n">0..1</td><td class="d">from -- message element</td></tr>
+<tr><td class="n">8</td><td class="s">Date-Time</td><td class="n">0..1</td><td class="d">created -- message element</td></tr>
+</table>
+<table><caption>OpenC2-Command (Record)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">action</td><td class="s">Action</td><td class="n">1</td><td class="d">The task or activity to be performed (i.e., the 'verb').</td></tr>
+<tr><td class="n">2</td><td class="b">target</td><td class="s">Target</td><td class="n">1</td><td class="d">The object of the action. The action is performed on the target.</td></tr>
+<tr><td class="n">3</td><td class="b">args</td><td class="s">Args</td><td class="n">0..1</td><td class="d">Additional information that applies to the command.</td></tr>
+<tr><td class="n">4</td><td class="b">actuator</td><td class="s">Actuator</td><td class="n">0..1</td><td class="d">The subject of the action. The actuator executes the action on the target.</td></tr>
+</table>
+<table><caption>Action (Enumerated)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">scan</td><td class="d">Systematic examination of some aspect of the entity or its environment in order to obtain information.</td></tr>
+<tr><td class="n">2</td><td class="b">locate</td><td class="d">Find an object physically, logically, functionally, or by organization.</td></tr>
+<tr><td class="n">3</td><td class="b">query</td><td class="d">Initiate a request for information.</td></tr>
+<tr><td class="n">6</td><td class="b">deny</td><td class="d">Prevent a certain event or action from completion, such as preventing a flow from reaching a destination or preventing access.</td></tr>
+<tr><td class="n">7</td><td class="b">contain</td><td class="d">Isolate a file, process, or entity so that it cannot modify or access assets or processes.</td></tr>
+<tr><td class="n">8</td><td class="b">allow</td><td class="d">Permit access to or execution of a target.</td></tr>
+<tr><td class="n">9</td><td class="b">start</td><td class="d">Initiate a process, application, system, or activity.</td></tr>
+<tr><td class="n">10</td><td class="b">stop</td><td class="d">Halt a system or end an activity.</td></tr>
+<tr><td class="n">11</td><td class="b">restart</td><td class="d">Stop then start a system or activity.</td></tr>
+<tr><td class="n">14</td><td class="b">cancel</td><td class="d">Invalidate a previously issued action.</td></tr>
+<tr><td class="n">15</td><td class="b">set</td><td class="d">Change a value, configuration, or state of a managed entity.</td></tr>
+<tr><td class="n">16</td><td class="b">update</td><td class="d">Instruct a component to retrieve, install, process, and operate in accordance with a software update, reconfiguration, or other update.</td></tr>
+<tr><td class="n">18</td><td class="b">redirect</td><td class="d">Change the flow of traffic to a destination other than its original destination.</td></tr>
+<tr><td class="n">19</td><td class="b">create</td><td class="d">Add a new entity of a known type (e.g., data, files, directories).</td></tr>
+<tr><td class="n">20</td><td class="b">delete</td><td class="d">Remove an entity (e.g., data, files, flows.</td></tr>
+<tr><td class="n">22</td><td class="b">detonate</td><td class="d">Execute and observe the behavior of a target (e.g., file, hyperlink) in an isolated environment.</td></tr>
+<tr><td class="n">23</td><td class="b">restore</td><td class="d">Return a system to a previously known state.</td></tr>
+<tr><td class="n">28</td><td class="b">copy</td><td class="d">Duplicate a file or data flow.</td></tr>
+<tr><td class="n">30</td><td class="b">investigate</td><td class="d">Task the recipient to aggregate and report information as it pertains to a security event or incident.</td></tr>
+<tr><td class="n">32</td><td class="b">remediate</td><td class="d">Task the recipient to eliminate a vulnerability or attack point.</td></tr>
+</table>
+<table><caption>Target (Choice)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">artifact</td><td class="s">Artifact</td><td class="n">1</td><td class="d">An array of bytes representing a file-like object or a link to that object.</td></tr>
+<tr><td class="n">2</td><td class="b">command</td><td class="s">Request-Id</td><td class="n">1</td><td class="d">A reference to a previously issued OpenC2 command.</td></tr>
+<tr><td class="n">3</td><td class="b">device</td><td class="s">Device</td><td class="n">1</td><td class="d">The properties of a hardware device.</td></tr>
+<tr><td class="n">7</td><td class="b">domain_name</td><td class="s">Domain-Name</td><td class="n">1</td><td class="d">A network domain name.</td></tr>
+<tr><td class="n">8</td><td class="b">email_addr</td><td class="s">Email-Addr</td><td class="n">1</td><td class="d">A single email address.</td></tr>
+<tr><td class="n">16</td><td class="b">features</td><td class="s">Features</td><td class="n">1</td><td class="d">A set of items used with the query action to determine an actuator's capabilities</td></tr>
+<tr><td class="n">10</td><td class="b">file</td><td class="s">File</td><td class="n">1</td><td class="d">Properties of a file.</td></tr>
+<tr><td class="n">11</td><td class="b">ip_addr</td><td class="s">IP-Addr</td><td class="n">1</td><td class="d">The representation of one or more IP addresses (either version 4 or version 6).</td></tr>
+<tr><td class="n">15</td><td class="b">ip_connection</td><td class="s">IP-Connection</td><td class="n">1</td><td class="d">A network connection that originates from a source and is addressed to a destination.</td></tr>
+<tr><td class="n">13</td><td class="b">mac_addr</td><td class="s">MAC-Addr</td><td class="n">1</td><td class="d">A single Media Access Control (MAC) address.</td></tr>
+<tr><td class="n">17</td><td class="b">process</td><td class="s">Process</td><td class="n">1</td><td class="d">Common properties of an instance of a computer program as executed on an operating system.</td></tr>
+<tr><td class="n">25</td><td class="b">properties</td><td class="s">Properties</td><td class="n">1</td><td class="d">Data attribute associated with an actuator</td></tr>
+<tr><td class="n">19</td><td class="b">uri</td><td class="s">URI</td><td class="n">1</td><td class="d">A uniform resource identifier (URI).</td></tr>
+<tr><td class="n">1000</td><td class="b">extension</td><td class="s">PE-Target</td><td class="n">1</td><td class="d">Targets defined in a Private Enterprise extension profile</td></tr>
+<tr><td class="n">1001</td><td class="b">extension_unr</td><td class="s">Unr-Target</td><td class="n">1</td><td class="d">Targets defined in an unregistered extension profile</td></tr>
+<tr><td class="n">1024</td><td class="b">slpf</td><td class="s">slpf:Target</td><td class="n">1</td><td class="d">Targets defined in the Stateless Packet Filter Profile</td></tr>
+</table>
+<table><caption>Actuator (Choice)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1000</td><td class="b">extension</td><td class="s">PE-Specifiers</td><td class="n">1</td><td class="d">Specifiers defined in a Private Enterprise extension profile.</td></tr>
+<tr><td class="n">1001</td><td class="b">extension_unr</td><td class="s">Unr-Specifiers</td><td class="n">1</td><td class="d">Specifiers defined in an unregistered extension profile.</td></tr>
+</table>
+<table><caption>Args (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">start_time</td><td class="s">Date-Time</td><td class="n">0..1</td><td class="d">The specific date/time to initiate the action</td></tr>
+<tr><td class="n">2</td><td class="b">stop_time</td><td class="s">Date-Time</td><td class="n">0..1</td><td class="d">The specific date/time to terminate the action</td></tr>
+<tr><td class="n">3</td><td class="b">duration</td><td class="s">Duration</td><td class="n">0..1</td><td class="d">The length of time for an action to be in effect</td></tr>
+<tr><td class="n">4</td><td class="b">response_requested</td><td class="s">Response-Type</td><td class="n">0..1</td><td class="d">The type of response required for the action</td></tr>
+<tr><td class="n">1000</td><td class="b">extension</td><td class="s">PE-Args</td><td class="n">0..1</td><td class="d">Command arguments defined in a Private Enterprise extension profile</td></tr>
+<tr><td class="n">1001</td><td class="b">extension_unr</td><td class="s">Unr-Args</td><td class="n">0..1</td><td class="d">Command arguments defined in an unregistered extension profile</td></tr>
+</table>
+<table><caption>OpenC2-Response (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">status</td><td class="s">Status-Code</td><td class="n">0..1</td><td class="d">An integer status code (Duplicates message status code)</td></tr>
+<tr><td class="n">2</td><td class="b">status_text</td><td class="s">String</td><td class="n">0..1</td><td class="d">A free-form human-readable description of the response status</td></tr>
+<tr><td class="n">3</td><td class="b">strings</td><td class="s">String</td><td class="n">0..n</td><td class="d">Generic set of string values</td></tr>
+<tr><td class="n">4</td><td class="b">ints</td><td class="s">Integer</td><td class="n">0..n</td><td class="d">Generic set of integer values</td></tr>
+<tr><td class="n">5</td><td class="b">kvps</td><td class="s">KVP</td><td class="n">0..n</td><td class="d">Generic set of key:value pairs</td></tr>
+<tr><td class="n">6</td><td class="b">versions</td><td class="s">Version</td><td class="n">0..n</td><td class="d">Supported OpenC2 Language versions</td></tr>
+<tr><td class="n">7</td><td class="b">profiles</td><td class="s">jadn:Uname</td><td class="n">0..n</td><td class="d">List of profiles supported by this actuator</td></tr>
+<tr><td class="n">8</td><td class="b">schema</td><td class="s">jadn:Schema</td><td class="n">0..1</td><td class="d">Syntax of the OpenC2 language elements supported by this actuator</td></tr>
+<tr><td class="n">9</td><td class="b">pairs</td><td class="s">Action-Targets</td><td class="n">0..n</td><td class="d">List of targets applicable to each supported action</td></tr>
+<tr><td class="n">10</td><td class="b">rate_limit</td><td class="s">Number</td><td class="n">0..1</td><td class="d">Maximum number of requests per minute supported by design or policy</td></tr>
+<tr><td class="n">1000</td><td class="b">extension</td><td class="s">PE-Results</td><td class="n">0..1</td><td class="d">Response data defined in a Private Enterprise extension profile</td></tr>
+<tr><td class="n">1001</td><td class="b">extension_unr</td><td class="s">Unr-Results</td><td class="n">0..1</td><td class="d">Response data defined in an unregistered extension profile</td></tr>
+</table>
+<table><caption>Status-Code (Enumerated.ID)</caption><tr><th class="n">ID</th><th class="d">Description</th></tr>
+<tr><td class="n">102</td><td class="d">Processing -- an interim response used to inform the client that the server has accepted the request but not yet completed it.</td></tr>
+<tr><td class="n">200</td><td class="d">OK -- the request has succeeded.</td></tr>
+<tr><td class="n">301</td><td class="d">Moved Permanently -- The target resource has been assigned a new permanent URI</td></tr>
+<tr><td class="n">400</td><td class="d">Bad Request -- the consumer cannot process the request due to something that is perceived to be a client error (e.g., malformed request syntax.)</td></tr>
+<tr><td class="n">401</td><td class="d">Unauthorized -- the request lacks valid authentication credentials for the target resources or authorization has been refused for the submitted credentials.</td></tr>
+<tr><td class="n">403</td><td class="d">Forbidden -- the consumer understood the request but refuses to authorize it.</td></tr>
+<tr><td class="n">404</td><td class="d">Not Found -- the consumer has not found anything matching the request.</td></tr>
+<tr><td class="n">500</td><td class="d">Internal Error -- the consumer encountered an unexpected condition that prevented it from fulfilling the request.</td></tr>
+<tr><td class="n">501</td><td class="d">Not Implemented -- the consumer does not support the functionality required to fulfill the request.</td></tr>
+<tr><td class="n">503</td><td class="d">Service Unavailable -- the consumer is currently unable to handle the request due to a temporary overloading or maintenance.</td></tr>
+</table>
+<table><caption>PE-Target (Choice.ID)</caption><tr><th class="n">ID</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">32473</td><td class="s">32473:Target</td><td class="n">1</td><td class="d">Example -- Targets defined in the Example Inc. extension profile</td></tr>
+</table>
+<table><caption>PE-Specifiers (Choice.ID)</caption><tr><th class="n">ID</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">32473</td><td class="s">32473:Specifiers</td><td class="n">1</td><td class="d">Example -- Actuator Specifiers defined in the Example Inc. extension profile</td></tr>
+</table>
+<table><caption>PE-Args (Map.ID)</caption><tr><th class="n">ID</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">32473</td><td class="s">32473:Args</td><td class="n">1</td><td class="d">Example -- Command Arguments defined in the Example Inc. extension profile</td></tr>
+</table>
+<table><caption>PE-Results (Map.ID)</caption><tr><th class="n">ID</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">32473</td><td class="s">32473:Results</td><td class="n">1</td><td class="d">Example -- Results defined in the Example Inc. extension profile</td></tr>
+</table>
+<table><caption>Artifact (Record)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">mime_type</td><td class="s">String</td><td class="n">0..1</td><td class="d">Permitted values specified in the IANA Media Types registry</td></tr>
+<tr><td class="n">2</td><td class="b">payload</td><td class="s">Payload</td><td class="n">0..1</td><td class="d">choice of literal content or URL to obtain content</td></tr>
+<tr><td class="n">3</td><td class="b">hashes</td><td class="s">Hashes</td><td class="n">0..1</td><td class="d">Specifies a dictionary of hashes for the contents of the payload</td></tr>
+</table>
+<table><caption>Device (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">hostname</td><td class="s">Hostname</td><td class="n">1</td><td class="d">A hostname that can be used to connect to this device over a network</td></tr>
+<tr><td class="n">2</td><td class="b">description</td><td class="s">String</td><td class="n">0..1</td><td class="d">A human-readable description of the purpose, relevance, and/or properties of the device</td></tr>
+<tr><td class="n">3</td><td class="b">device_id</td><td class="s">String</td><td class="n">0..1</td><td class="d">An identifier that refers to this device within an inventory or management system</td></tr>
+</table>
+<table><caption>Domain-Name</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Domain-Name</td><td class="s">String (hostname)</td><td class="d">RFC 1034, section 3.5</td></tr>
+</table>
+<table><caption>Email-Addr</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Email-Addr</td><td class="s">String (email)</td><td class="d">Email address, RFC 5322, section 3.4.1</td></tr>
+</table>
+<table><caption>Features</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Features</td><td class="s">ArrayOf(Feature) [0..n]</td><td class="d">A target used to query Actuator for its supported capabilities</td></tr>
+</table>
+<table><caption>File (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">name</td><td class="s">String</td><td class="n">0..1</td><td class="d">The name of the file as defined in the file system</td></tr>
+<tr><td class="n">2</td><td class="b">path</td><td class="s">String</td><td class="n">0..1</td><td class="d">The absolute path to the location of the file in the file system</td></tr>
+<tr><td class="n">3</td><td class="b">hashes</td><td class="s">Hashes</td><td class="n">0..1</td><td class="d">One or more cryptographic hash codes of the file contents</td></tr>
+</table>
+<table><caption>IP-Addr</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">IP-Addr</td><td class="s">Binary (ip-addr)</td><td class="d">32 bit IPv4 address or 128 bit IPv6 address</td></tr>
+</table>
+<table><caption>IP-Connection (Record)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">src_addr</td><td class="s">IP-Addr</td><td class="n">0..1</td><td class="d">source address</td></tr>
+<tr><td class="n">2</td><td class="b">src_port</td><td class="s">Port</td><td class="n">0..1</td><td class="d">source TCP/UDP port number</td></tr>
+<tr><td class="n">3</td><td class="b">dst_addr</td><td class="s">IP-Addr</td><td class="n">0..1</td><td class="d">destination address</td></tr>
+<tr><td class="n">4</td><td class="b">dst_port</td><td class="s">Port</td><td class="n">0..1</td><td class="d">destination TCP/UDP port number</td></tr>
+<tr><td class="n">5</td><td class="b">protocol</td><td class="s">L4-Protocol</td><td class="n">0..1</td><td class="d">Protocol (IPv4) / Next Header (IPv6)</td></tr>
+</table>
+<table><caption>MAC-Addr</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">MAC-Addr</td><td class="s">Binary</td><td class="d">Media Access Code / Extended Unique Identifier - 48 or 64 bit address</td></tr>
+</table>
+<table><caption>Process (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">pid</td><td class="s">Integer</td><td class="n">0..1</td><td class="d">Process ID of the process</td></tr>
+<tr><td class="n">2</td><td class="b">name</td><td class="s">String</td><td class="n">0..1</td><td class="d">Name of the process</td></tr>
+<tr><td class="n">3</td><td class="b">cwd</td><td class="s">String</td><td class="n">0..1</td><td class="d">Current working directory of the process</td></tr>
+<tr><td class="n">4</td><td class="b">executable</td><td class="s">File</td><td class="n">0..1</td><td class="d">Executable that was executed to start the process</td></tr>
+<tr><td class="n">5</td><td class="b">parent</td><td class="s">Process</td><td class="n">0..1</td><td class="d">Process that spawned this one</td></tr>
+<tr><td class="n">6</td><td class="b">command_line</td><td class="s">String</td><td class="n">0..1</td><td class="d">The full command line invocation used to start this process, including all arguments</td></tr>
+</table>
+<table><caption>Properties</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Properties</td><td class="s">ArrayOf(String)</td><td class="d">A list of names that uniquely identify properties of an actuator</td></tr>
+</table>
+<table><caption>URI</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">URI</td><td class="s">String (uri)</td><td class="d">Uniform Resource Identifier</td></tr>
+</table>
+<table><caption>Message-Type (Enumerated)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="d">Description</th></tr>
+<tr><td class="n">0</td><td class="b">notification</td><td class="d">A message that does not solicit a response</td></tr>
+<tr><td class="n">1</td><td class="b">request</td><td class="d">A message for which a response is requested</td></tr>
+<tr><td class="n">2</td><td class="b">response</td><td class="d">A message containing a response to a request</td></tr>
+</table>
+<table><caption>Request-Id</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Request-Id</td><td class="s">Binary</td><td class="d">A value of up to 128 bits that uniquely identifies a particular command</td></tr>
+</table>
+<table><caption>Date-Time</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Date-Time</td><td class="s">Integer</td><td class="d">Milliseconds since 00:00:00 UTC, 1 January 1970.</td></tr>
+</table>
+<table><caption>Duration</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Duration</td><td class="s">Integer</td><td class="d">Milliseconds</td></tr>
+</table>
+<table><caption>Hashes (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">md5</td><td class="s">Binary</td><td class="n">0..1</td><td class="d">MD5 hash as defined in RFC3121</td></tr>
+<tr><td class="n">4</td><td class="b">sha1</td><td class="s">Binary</td><td class="n">0..1</td><td class="d">SHA1 hash as defined in RFC3174</td></tr>
+<tr><td class="n">6</td><td class="b">sha256</td><td class="s">Binary</td><td class="n">0..1</td><td class="d">SHA256 as defined in RFC6234</td></tr>
+</table>
+<table><caption>Hostname</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Hostname</td><td class="s">String</td><td class="d">A legal Internet host name as specified in RFC 1123</td></tr>
+</table>
+<table><caption>L4-Protocol (Enumerated)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">icmp</td><td class="d">Internet Control Message Protocol - RFC 792</td></tr>
+<tr><td class="n">6</td><td class="b">tcp</td><td class="d">Transmission Control Protocol - RFC 793-</td></tr>
+<tr><td class="n">17</td><td class="b">udp</td><td class="d">User Datagram Protocol - RFC 768</td></tr>
+<tr><td class="n">132</td><td class="b">sctp</td><td class="d">Stream Control Transmission Protocol - RFC 4960</td></tr>
+</table>
+<table><caption>Payload (Choice)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">bin</td><td class="s">Binary</td><td class="n">1</td><td class="d">Specifies the data contained in the artifact.</td></tr>
+<tr><td class="n">2</td><td class="b">url</td><td class="s">URI</td><td class="n">1</td><td class="d">MUST be a valid URL that resolves to the un-encoded content</td></tr>
+</table>
+<table><caption>Port</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Port</td><td class="s">Integer [0..65535]</td><td class="d">Transport Protocol Port Number, RFC 6335</td></tr>
+</table>
+<table><caption>Feature (Enumerated)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">versions</td><td class="d">List of OpenC2 language versions supported by this actuator</td></tr>
+<tr><td class="n">2</td><td class="b">profiles</td><td class="d">List of profiles supported by this actuator</td></tr>
+<tr><td class="n">3</td><td class="b">schema</td><td class="d">Definition of the command syntax supported by this actuator</td></tr>
+<tr><td class="n">4</td><td class="b">pairs</td><td class="d">List of supported actions and applicable targets</td></tr>
+<tr><td class="n">5</td><td class="b">rate_limit</td><td class="d">Maximum number of supported requests per minute</td></tr>
+</table>
+<table><caption>Response-Type (Enumerated)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="d">Description</th></tr>
+<tr><td class="n">0</td><td class="b">none</td><td class="d">No response</td></tr>
+<tr><td class="n">1</td><td class="b">ack</td><td class="d">Respond when command received</td></tr>
+<tr><td class="n">2</td><td class="b">status</td><td class="d">Respond with progress toward command completion</td></tr>
+<tr><td class="n">3</td><td class="b">complete</td><td class="d">Respond when all aspects of command completed</td></tr>
+</table>
+<table><caption>Version</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Version</td><td class="s">String</td><td class="d">Major.Minor version number</td></tr>
+</table>
+<table><caption>KVP (Array)</caption><tr><th class="n">ID</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="s">String</td><td class="n">1</td><td class="d">key -- name of this item</td></tr>
+<tr><td class="n">2</td><td class="s">String</td><td class="n">1</td><td class="d">value -- string value of this item</td></tr>
+</table>
+<table><caption>Action-Targets (Array)</caption><tr><th class="n">ID</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="s">Action</td><td class="n">1</td><td class="d">action -- An action supported by this actuator</td></tr>
+<tr><td class="n">2</td><td class="s">Target.*</td><td class="n">1..n</td><td class="d">targets -- List of targets applicable to this action</td></tr>
+</table>
+</body>

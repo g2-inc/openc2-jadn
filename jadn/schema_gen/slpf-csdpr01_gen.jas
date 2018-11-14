@@ -1,0 +1,42 @@
+/*
+module:        oasis-open.org/openc2/oc2slpf/v1.0/oc2slpf-v1.0
+patch:         0
+title:         Stateless Packet Filtering
+description:   Data definitions for Stateless Packet Filtering (SLPF) functions
+exports:       Target, Specifiers, Args, Results
+*/
+
+Target ::= CHOICE {    -- SLPF targets
+    rule_number  [1] Rule-ID     -- Uniquely identifies a rule associated with a previously-issued deny or allow.
+}
+
+Args ::= MAP {    -- SLPF command arguments
+    drop_process  [1] Drop-Process OPTIONAL,    -- Specifies how to handle denied packets
+    running       [2] BOOLEAN OPTIONAL,    -- Normal operation assumes updates are persistent. If TRUE, updates are not persistent in the event of a reboot or restart.  Default=FALSE.
+    direction     [3] Direction OPTIONAL,    -- Specifies whether to apply rules to incoming or outgoing traffic. If omitted, rules are applied to both.
+    insert_rule   [4] Rule-ID OPTIONAL     -- Specifies the identifier of the rule within a list, typically used in a top-down rule list.
+}
+
+Drop-Process ::= ENUMERATED {
+    none         (1),    -- Drop the packet and do not send a notification to the source of the packet.
+    reject       (2),    -- Drop the packet and send an ICMP host unreachable (or equivalent) to the source of the packet.
+    false_ack    (3)     -- Drop the traffic and send a false acknowledgement that the data was received by the destination.
+}
+
+Direction ::= ENUMERATED {
+    ingress      (1),    -- Apply rules to incoming traffic only
+    egress       (2)     -- Apply rule to outbound traffic only
+}
+
+Rule-ID ::= INTEGER    -- Immutable identifier assigned when an access rule is created.
+
+Specifiers ::= MAP {    -- SLPF actuator specifiers
+    hostname     [1] STRING OPTIONAL,    -- RFC 1123 hostname (can be a domain name or IP address) for a particular device with SLPF functionality
+    named_group  [2] STRING OPTIONAL,    -- User-defined collection of devices with SLPF functionality
+    asset_id     [3] STRING OPTIONAL,    -- Unique identifier for a particular SLPF
+    asset_tuple  [4] STRING OPTIONAL     -- Unique tuple identifier for a particular SLPF consisting of a list of up to 10 strings %{'max': 10}
+}
+
+Results ::= MAP {    -- SLPF results
+    rule_number  [1] Rule-ID OPTIONAL     -- Rule identifier returned from allow or deny command.
+}

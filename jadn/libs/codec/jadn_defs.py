@@ -28,7 +28,6 @@ FTYPE = 2       # Datatype of field
 FOPTS = 3       # Field options
 FDESC = 4       # Field Description
 
-
 # JADN built-in datatypes
 
 PRIMITIVE_TYPES = (
@@ -42,7 +41,7 @@ PRIMITIVE_TYPES = (
 
 STRUCTURE_TYPES = (
     'Array',
-    'ArrayOf',  # Special case: instance is a structure but type definition has no fields
+    'ArrayOf',          # Special case: instance is a structure but type definition has no fields
     'Choice',
     'Enumerated',
     'Map',
@@ -56,7 +55,8 @@ STRUCTURE_TYPES = (
 #   The tables list the unicode codepoint of the ID and the corresponding Name.
 
 TYPE_OPTIONS = {        # ID, value type, description
-    0x3d: 'compact',    # '=', boolean, enumerated type is serialized as tag, record type is serialized as array
+    0x3d: 'compact',    # '=', boolean, Enumerated type and Choice/Map/Record keys are ID not Name
+    0x2e: 'cvt',        # '.', string, String conversion and validation function for Binary derived types
     0x5b: 'min',        # '[', integer, minimum string length, integer value, array length, property count
     0x5d: 'max',        # ']', integer, maximum string length, integer value, array length, property count
     0x2a: 'rtype',      # '*', string, Enumerated value from referenced type or ArrayOf element type

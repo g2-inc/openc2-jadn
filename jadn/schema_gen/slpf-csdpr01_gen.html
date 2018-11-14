@@ -1,0 +1,48 @@
+<!-- Generated from schema\slpf-csdpr01.jadn, Tue Nov 13 15:22:53 2018-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="theme.css">
+<title>oasis-open.org/openc2/oc2slpf/v1.0/oc2slpf-v1.0 v.0</title>
+</head>
+<body>
+<h2>Schema</h2>
+<table>
+<tr><td class="h">title:</td><td class="s">Stateless Packet Filtering</td></tr>
+<tr><td class="h">module:</td><td class="s">oasis-open.org/openc2/oc2slpf/v1.0/oc2slpf-v1.0</td></tr>
+<tr><td class="h">patch:</td><td class="s">0</td></tr>
+<tr><td class="h">description:</td><td class="s">Data definitions for Stateless Packet Filtering (SLPF) functions</td></tr>
+<tr><td class="h">exports:</td><td class="s">Target, Specifiers, Args, Results</td></tr>
+</table>
+<table><caption>Target (Choice)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">rule_number</td><td class="s">Rule-ID</td><td class="n">1</td><td class="d">Uniquely identifies a rule associated with a previously-issued deny or allow.</td></tr>
+</table>
+<table><caption>Args (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">drop_process</td><td class="s">Drop-Process</td><td class="n">0..1</td><td class="d">Specifies how to handle denied packets</td></tr>
+<tr><td class="n">2</td><td class="b">running</td><td class="s">Boolean</td><td class="n">0..1</td><td class="d">Normal operation assumes updates are persistent. If TRUE, updates are not persistent in the event of a reboot or restart.  Default=FALSE.</td></tr>
+<tr><td class="n">3</td><td class="b">direction</td><td class="s">Direction</td><td class="n">0..1</td><td class="d">Specifies whether to apply rules to incoming or outgoing traffic. If omitted, rules are applied to both.</td></tr>
+<tr><td class="n">4</td><td class="b">insert_rule</td><td class="s">Rule-ID</td><td class="n">0..1</td><td class="d">Specifies the identifier of the rule within a list, typically used in a top-down rule list.</td></tr>
+</table>
+<table><caption>Drop-Process (Enumerated)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">none</td><td class="d">Drop the packet and do not send a notification to the source of the packet.</td></tr>
+<tr><td class="n">2</td><td class="b">reject</td><td class="d">Drop the packet and send an ICMP host unreachable (or equivalent) to the source of the packet.</td></tr>
+<tr><td class="n">3</td><td class="b">false_ack</td><td class="d">Drop the traffic and send a false acknowledgement that the data was received by the destination.</td></tr>
+</table>
+<table><caption>Direction (Enumerated)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">ingress</td><td class="d">Apply rules to incoming traffic only</td></tr>
+<tr><td class="n">2</td><td class="b">egress</td><td class="d">Apply rule to outbound traffic only</td></tr>
+</table>
+<table><caption>Rule-ID</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Rule-ID</td><td class="s">Integer</td><td class="d">Immutable identifier assigned when an access rule is created.</td></tr>
+</table>
+<table><caption>Specifiers (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">hostname</td><td class="s">String</td><td class="n">0..1</td><td class="d">RFC 1123 hostname (can be a domain name or IP address) for a particular device with SLPF functionality</td></tr>
+<tr><td class="n">2</td><td class="b">named_group</td><td class="s">String</td><td class="n">0..1</td><td class="d">User-defined collection of devices with SLPF functionality</td></tr>
+<tr><td class="n">3</td><td class="b">asset_id</td><td class="s">String</td><td class="n">0..1</td><td class="d">Unique identifier for a particular SLPF</td></tr>
+<tr><td class="n">4</td><td class="b">asset_tuple</td><td class="s">String</td><td class="n">0..10</td><td class="d">Unique tuple identifier for a particular SLPF consisting of a list of up to 10 strings</td></tr>
+</table>
+<table><caption>Results (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">rule_number</td><td class="s">Rule-ID</td><td class="n">0..1</td><td class="d">Rule identifier returned from allow or deny command.</td></tr>
+</table>
+</body>

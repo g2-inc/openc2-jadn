@@ -1,0 +1,79 @@
+<!-- Generated from schema\exp.jadn, Tue Nov 13 15:22:52 2018-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="theme.css">
+<title>oasis-open.org/openc2/oc2ls/v1.0/experimental v.0</title>
+</head>
+<body>
+<h2>Schema</h2>
+<table>
+<tr><td class="h">title:</td><td class="s">Experimental Schema Features</td></tr>
+<tr><td class="h">module:</td><td class="s">oasis-open.org/openc2/oc2ls/v1.0/experimental</td></tr>
+<tr><td class="h">patch:</td><td class="s">0</td></tr>
+<tr><td class="h">description:</td><td class="s">Profile used to test schema features not used in existing language or profiles</td></tr>
+<tr><td class="h">exports:</td><td class="s">Target, Specifiers, Args, Results</td></tr>
+</table>
+<table><caption>Target (Choice)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">hashes</td><td class="s">Hashes</td><td class="n">1</td><td class="d">Hash values serialized as hex</td></tr>
+<tr><td class="n">2</td><td class="b">ipv4_addr_s</td><td class="s">IPv4-String</td><td class="n">1</td><td class="d">IPv4 address as type-specific string (dotted-decimal): '192.168.0.254'</td></tr>
+<tr><td class="n">3</td><td class="b">ipv4_addr_x</td><td class="s">IPv4-Hex</td><td class="n">1</td><td class="d">IPv4 address serialized as hex: 'C0A800FE'</td></tr>
+<tr><td class="n">4</td><td class="b">ipv4_addr_b64</td><td class="s">IPv4-Base64url</td><td class="n">1</td><td class="d">IPv4 address serialized as Base64-url: 'wKgA_g'</td></tr>
+<tr><td class="n">5</td><td class="b">ipv6_addr_s</td><td class="s">IPv6-String</td><td class="n">1</td><td class="d">IPv6 address as type-specific string (colon-hex): ''</td></tr>
+<tr><td class="n">6</td><td class="b">ipv6_addr_x</td><td class="s">IPv6-Hex</td><td class="n">1</td><td class="d">IPv6 address serialized as hex: ''</td></tr>
+<tr><td class="n">7</td><td class="b">ipv6_addr_b64</td><td class="s">IPv6-Base64url</td><td class="n">1</td><td class="d">IPv6 address serialized as Base64-url: ''</td></tr>
+</table>
+<table><caption>Hashes (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">md5</td><td class="s">Bin-128</td><td class="n">0..1</td><td class="d">MD5 hash as defined in RFC3121</td></tr>
+<tr><td class="n">4</td><td class="b">sha1</td><td class="s">Bin-160</td><td class="n">0..1</td><td class="d">SHA1 hash as defined in RFC3174</td></tr>
+<tr><td class="n">6</td><td class="b">sha256</td><td class="s">Bin-256</td><td class="n">0..1</td><td class="d">SHA256 as defined in RFC6234</td></tr>
+</table>
+<table><caption>Bin-128</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Bin-128</td><td class="s">Binary.x [16..16]</td><td class="d">128 bit value, hex display</td></tr>
+</table>
+<table><caption>Bin-160</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Bin-160</td><td class="s">Binary.x [20..20]</td><td class="d">160 bit value, hex display</td></tr>
+</table>
+<table><caption>Bin-256</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Bin-256</td><td class="s">Binary.x [32..32]</td><td class="d">256 bit value, hex display</td></tr>
+</table>
+<table><caption>IPv4-Hex</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">IPv4-Hex</td><td class="s">Binary.x [4..4]</td><td class="d">Value must be 32 bits [4..4].  Value displayed in hex (Binary.x)</td></tr>
+</table>
+<table><caption>IPv4-Base64url</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">IPv4-Base64url</td><td class="s">Binary (ipv4)</td><td class="d">Value must be 32 bits (ipv4).  Value displayed in base64url (Binary) default</td></tr>
+</table>
+<table><caption>IPv4-String</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">IPv4-String</td><td class="s">Binary.s:ipv4 (ipv4)</td><td class="d">Value must be 32 bits (ipv4).  Value displayed in ipv4 dotted-decimal (Binary.s:ipv4)</td></tr>
+</table>
+<table><caption>IPv6-Hex</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">IPv6-Hex</td><td class="s">Binary.x (ipv6)</td><td class="d">Value must be 128 bits (ipv6).  Value displayed in hex (Binary.x)</td></tr>
+</table>
+<table><caption>IPv6-Base64url</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">IPv6-Base64url</td><td class="s">Binary [16..16]</td><td class="d">Value must be 128 bits [16..16].  Value displayed in base64url (Binary) default</td></tr>
+</table>
+<table><caption>IPv6-String</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">IPv6-String</td><td class="s">Binary.s:ipv6 [16..16]</td><td class="d">Value must be 128 bits [16..16].  Value displayed in ipv6 colon-hex (Binary.s:ipv6)</td></tr>
+</table>
+<table><caption>Args (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+</table>
+<table><caption>Specifiers (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+</table>
+<table><caption>Results (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="b">knps</td><td class="s">KNP</td><td class="n">0..n</td><td class="d">Generic set of key:number pairs.</td></tr>
+<tr><td class="n">42</td><td class="b">battery</td><td class="s">Battery-Properties</td><td class="n">0..1</td><td class="d">Set of properties defined for an energy storage device</td></tr>
+</table>
+<table><caption>KNP (Array)</caption><tr><th class="n">ID</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">1</td><td class="s">String</td><td class="n">1</td><td class="d">key -- name of this item</td></tr>
+<tr><td class="n">2</td><td class="s">Number</td><td class="n">1</td><td class="d">value -- numeric value of this item</td></tr>
+</table>
+<table><caption>Battery-Properties (Map)</caption><tr><th class="n">ID</th><th class="b">Name</th><th class="s">Type</th><th class="n">#</th><th class="d">Description</th></tr>
+<tr><td class="n">7</td><td class="b">voltage</td><td class="s">Integer</td><td class="n">0..1</td><td class="d">Battery output voltage (millivolts)</td></tr>
+<tr><td class="n">18</td><td class="b">charge</td><td class="s">Percentage</td><td class="n">0..1</td><td class="d">State of charge (percent)</td></tr>
+<tr><td class="n">26</td><td class="b">manufacturer</td><td class="s">String</td><td class="n">0..1</td><td class="d">Product name for this device</td></tr>
+</table>
+<table><caption>Percentage</caption><tr><th class="s">Type Name</th><th class="s">Base Type</th><th class="d">Description</th></tr>
+<tr><td class="s">Percentage</td><td class="s">Number [0..100]</td><td class="d">Real number in the range 0.0-100.0</td></tr>
+</table>
+</body>
