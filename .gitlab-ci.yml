@@ -27,8 +27,7 @@ Translate-Schemas:
   script:
     - cd jadn
     - python schema-translators.py
-    - ls -ahl ./
-    - mv ./schema_gen_test/openc2-* ../
+    - mv ./schema_gen_test/* ../
 
   artifacts:
     name: "JADN_Translations.${CI_PIPELINE_ID}_${CI_COMMIT_SHA:0:8}"

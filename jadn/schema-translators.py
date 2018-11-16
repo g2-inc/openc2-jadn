@@ -11,8 +11,7 @@ test_dir = 'schema_gen_test'
 if not os.path.isdir(test_dir):
     os.makedirs(test_dir)
 
-with open(base_schema, 'rb') as r:
-    schema_json = json.loads(r.read())
+schema_json = json.loads(open(base_schema, 'rb').read())
 
 proto_dump(schema_json, os.path.join(test_dir, schema + '.proto'))
 proto2jadn_dump(open(os.path.join(test_dir, schema + '.proto'), 'rb').read(), os.path.join(test_dir, schema + '.proto.jadn'))
