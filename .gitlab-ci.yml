@@ -27,13 +27,13 @@ Translate-Schemas:
   script:
     - cd jadn
     - python schema-translators.py
-    - mv ./schema_gen_test/* ../
+    - mv ./schema_gen_test/* ../schema_gen
 
   artifacts:
     name: "JADN_Translations.${CI_PIPELINE_ID}_${CI_COMMIT_SHA:0:8}"
     expire_in: 2 weeks
     paths:
-     - ./openc2-*
+     - ./schema_gen/-*
 
 
 Build-Wheel:
