@@ -74,7 +74,7 @@ def dlist(src):
 
 # Option conversions
 OPTIONS = FrozenDict(
-    LIST2DIST=FrozenDict(
+    LIST2DICT=FrozenDict(
         # Common
         min=lambda x: int(x),
         max=lambda x: int(x),

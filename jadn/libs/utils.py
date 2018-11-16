@@ -54,6 +54,9 @@ class FrozenDict(dict):
     def __getattr__(self, item):
         return self.get(item, None)
 
+    def __getitem__(self, item):
+        return self.get(item, None)
+
     def _immutable(self, *args, **kws):
         raise TypeError('cannot change object - object is immutable')
 
