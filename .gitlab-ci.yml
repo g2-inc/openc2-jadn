@@ -27,6 +27,7 @@ Translate-Schemas:
   script:
     - cd jadn
     - python schema-translators.py
+    - $(rm -r ../schema_gen && mkdir -p ../schema_gen) || mkdir -p ../schema_gen
     - mv ./schema_gen_test/* ../schema_gen
 
   artifacts:
