@@ -27,6 +27,7 @@ Translate-Schemas:
   script:
     - cd jadn
     - python schema-translators.py
+    - ls -ahl ./
     - mv ./schema_gen_test/openc2-* ../
 
   artifacts:
