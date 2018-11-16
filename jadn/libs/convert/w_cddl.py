@@ -315,7 +315,7 @@ def cddl_dumps(jadn):
     Produce CDDL schema from JADN schema
     :arg jadn: JADN Schema to convert
     :type jadn: str or dict
-    :return: Protobuf3 schema
+    :return: CDDL schema
     :rtype str
     """
     return JADNtoCDDL(jadn).cddl_dump()

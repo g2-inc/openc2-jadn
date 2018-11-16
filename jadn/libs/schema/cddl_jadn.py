@@ -335,7 +335,7 @@ def cddl2jadn_dumps(cddl):
         return Utils.jadnFormat(result, indent=2)
 
     except Exception as e:
-        raise Exception('Proto parsing error has occurred: {}'.format(e))
+        raise Exception('CDDL parsing error has occurred: {}'.format(e))
 
 
 def cddl2jadn_dump(cddl, fname, source=""):
