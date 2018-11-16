@@ -6,7 +6,7 @@ import os
 
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 
-from libs.utils import toStr, Utils
+from libs.utils import safe_cast, toStr, Utils
 lineSep = '\\r?\\n'
 
 
@@ -256,7 +256,7 @@ class CddlVisitor(PTNodeVisitor):
         enumField = [
             children[0],
             optDict['field'],  # field number
-            #removes leading/trailing spaces
+            # removes leading/trailing spaces
             re.sub(r'(^\s+|\s+$)', '', children[2][1:-1]),  # name
             # removes unnecessary characters '={;#'
             re.sub(r'\s?(#|{})\S?$', '', children[3]) if len(children) >= 3 else ''  # comment
@@ -285,15 +285,14 @@ class CddlVisitor(PTNodeVisitor):
     def visit_arrayOfDef(self, node, children):
         values = []
         data_values = re.search(r'(\[.*\])', children[1]).group(1)
+        data_dict = re.match(r'\[(?P<min>\d+)?(?P<expr>.)(?P<max>\d+)?\s(?P<type>[\w]+)\]', data_values).groupdict()
 
         # parse out ex: 0*3 Query_Item
-        min = int(re.search(r'(\d+)', data_values).group(1))
-        max = int(re.search(r'.(\d+)', data_values).group(1))
-        expr = re.search(r'[0-9]+(.)[0-9]+', data_values).group(1)
-        type = re.search(r'\s([\w]+)', data_values).group(1)
+        min = safe_cast(data_dict.get('min', '0'), int, 0)
+        max = safe_cast(data_dict.get('max', '1'), int, 1)
 
         # result looks like ["*Query-Item", "[0", "]3"]
-        values.append(expr+type)
+        values.append(data_dict.get('expr', '*') + data_dict.get('type', 'string'))
         values.append('[' + str(min))
         values.append(']' + str(max))
         return [
@@ -304,6 +303,7 @@ class CddlVisitor(PTNodeVisitor):
         ]
 
     def visit_customFields(self, node, children):
+        print(children)
         return [
             children[0],
             "String" if children[2] == 'bstr' else children[2],

@@ -1,14 +1,16 @@
+"Generated from schema/oc2ls-exp.jadn, Fri Nov 16 10:38:31 2018"
+
 {
  "meta": {
-  "module": "oasis-open.org/openc2/v1.0/oc2ls-exp",
-  "patch": "0-wd01",
-  "title": "OpenC2 Language with experimental elements",
+  "exports": ["OpenC2-Command", "OpenC2-Response", "Message-Type", "Status-Code", "Request-Id", "Date-Time"],
   "description": "Datatypes that define the content of OpenC2 commands and responses.",
+  "title": "OpenC2 Language with experimental elements",
   "imports": [
    ["exp", "oasis-open.org/openc2/oc2ls/v1.0/experimental"],
    ["jadn", "oasis-open.org/openc2/v1.0/jadn"]
   ],
-  "exports": ["OpenC2-Command", "OpenC2-Response", "Message-Type", "Status-Code", "Request-Id", "Date-Time"]
+  "module": "oasis-open.org/openc2/v1.0/oc2ls-exp",
+  "patch": "0-wd01"
  },
 
  "types": [

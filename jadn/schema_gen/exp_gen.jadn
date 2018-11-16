@@ -1,10 +1,12 @@
+"Generated from schema/exp.jadn, Fri Nov 16 10:38:31 2018"
+
 {
  "meta": {
-  "module": "oasis-open.org/openc2/oc2ls/v1.0/experimental",
-  "patch": "0",
+  "exports": ["Target", "Specifiers", "Args", "Results"],
   "title": "Experimental Schema Features",
   "description": "Profile used to test schema features not used in existing language or profiles",
-  "exports": ["Target", "Specifiers", "Args", "Results"]
+  "module": "oasis-open.org/openc2/oc2ls/v1.0/experimental",
+  "patch": "0"
  },
 
  "types": [

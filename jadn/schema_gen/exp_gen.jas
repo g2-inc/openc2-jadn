@@ -1,3 +1,5 @@
+-- Generated from schema/exp.jadn, Fri Nov 16 10:38:31 2018
+
 /*
 module:        oasis-open.org/openc2/oc2ls/v1.0/experimental
 patch:         0
@@ -48,7 +50,7 @@ Specifiers ::= MAP {    -- Experimental actuator specifiers
 }
 
 Results ::= MAP {    -- Experimental results
-    knps         [1] KNP OPTIONAL,    -- Generic set of key:number pairs. %{'max': 0}
+    knps         [1] KNP OPTIONAL,    -- Generic set of key:number pairs. %{u'max': 0}
     battery      [42] Battery-Properties OPTIONAL     -- Set of properties defined for an energy storage device
 }
 

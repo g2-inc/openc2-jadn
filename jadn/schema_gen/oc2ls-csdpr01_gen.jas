@@ -1,3 +1,5 @@
+-- Generated from schema/oc2ls-csdpr01.jadn, Fri Nov 16 10:38:31 2018
+
 /*
 module:        oasis-open.org/openc2/v1.0/openc2-lang
 patch:         wd09
@@ -15,7 +17,7 @@ Message ::= ARRAY {    -- Example structure that lists message elements
     content       [3] NULL,    -- message element
     status        [4] Status-Code OPTIONAL,    -- message element
     request_id    [5] Request-Id OPTIONAL,    -- message element
-    to            [6] STRING OPTIONAL,    -- message element %{'max': 0}
+    to            [6] STRING OPTIONAL,    -- message element %{u'max': 0}
     from          [7] STRING OPTIONAL,    -- message element
     created       [8] Date-Time OPTIONAL     -- message element
 }
@@ -86,13 +88,13 @@ Args ::= MAP {
 OpenC2-Response ::= MAP {
     status         [1] Status-Code OPTIONAL,    -- An integer status code (Duplicates message status code)
     status_text    [2] STRING OPTIONAL,    -- A free-form human-readable description of the response status
-    strings        [3] STRING OPTIONAL,    -- Generic set of string values %{'max': 0}
-    ints           [4] INTEGER OPTIONAL,    -- Generic set of integer values %{'max': 0}
-    kvps           [5] KVP OPTIONAL,    -- Generic set of key:value pairs %{'max': 0}
-    versions       [6] Version OPTIONAL,    -- Supported OpenC2 Language versions %{'max': 0}
-    profiles       [7] jadn:Uname OPTIONAL,    -- List of profiles supported by this actuator %{'max': 0}
+    strings        [3] STRING OPTIONAL,    -- Generic set of string values %{u'max': 0}
+    ints           [4] INTEGER OPTIONAL,    -- Generic set of integer values %{u'max': 0}
+    kvps           [5] KVP OPTIONAL,    -- Generic set of key:value pairs %{u'max': 0}
+    versions       [6] Version OPTIONAL,    -- Supported OpenC2 Language versions %{u'max': 0}
+    profiles       [7] jadn:Uname OPTIONAL,    -- List of profiles supported by this actuator %{u'max': 0}
     schema         [8] jadn:Schema OPTIONAL,    -- Syntax of the OpenC2 language elements supported by this actuator
-    pairs          [9] Action-Targets OPTIONAL,    -- List of targets applicable to each supported action %{'max': 0}
+    pairs          [9] Action-Targets OPTIONAL,    -- List of targets applicable to each supported action %{u'max': 0}
     rate_limit     [10] REAL OPTIONAL,    -- Maximum number of requests per minute supported by design or policy
     extension      [1000] PE-Results OPTIONAL,    -- Response data defined in a Private Enterprise extension profile
     extension_unr  [1001] Unr-Results OPTIONAL     -- Response data defined in an unregistered extension profile
@@ -234,5 +236,5 @@ KVP ::= ARRAY {
 
 Action-Targets ::= ARRAY {
     action       [1] Action,    -- An action supported by this actuator
-    targets      [2] Target.*     -- List of targets applicable to this action %{'max': 0}
+    targets      [2] Target.*     -- List of targets applicable to this action %{u'max': 0}
 }

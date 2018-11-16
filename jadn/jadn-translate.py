@@ -18,7 +18,7 @@ from __future__ import print_function
 import os
 
 from libs.codec import jadn_load, jadn_dump, jadn_analyze
-from libs.convert import base_dump, jas_dump, proto_dump # , thrift_dump
+from libs.convert import html_dump, jas_dump, md_dump, proto_dump  # , thrift_dump
 
 
 if __name__ == "__main__":
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         jadn_analyze(schema)
         jas_dump(schema, dest + ".jas", source)
         jadn_dump(schema, dest + ".jadn", source)
-        base_dump(schema, dest + ".md", source, form='markdown')
-        base_dump(schema, dest + ".html", source, form='html')
+        md_dump(schema, dest + ".md", source)
+        html_dump(schema, dest + ".html", source)
         proto_dump(schema, dest + ".proto3", source)
-#       thrift_dump(schema, dest + ".thrift", source)
+        # thrift_dump(schema, dest + ".thrift", source)

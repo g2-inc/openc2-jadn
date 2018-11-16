@@ -1,10 +1,12 @@
+"Generated from schema/jadn-csdpr01.jadn, Fri Nov 16 10:38:31 2018"
+
 {
  "meta": {
-  "module": "oasis-open.org/openc2/v1.0/jadn",
-  "patch": "wd01",
+  "exports": ["Schema", "Uname"],
   "title": "JADN Syntax",
   "description": "Syntax of a JSON Abstract Data Notation (JADN) module.",
-  "exports": ["Schema", "Uname"]
+  "module": "oasis-open.org/openc2/v1.0/jadn",
+  "patch": "wd01"
  },
 
  "types": [

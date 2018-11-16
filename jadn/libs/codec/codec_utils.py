@@ -7,8 +7,10 @@ Support functions for JADN codec
 from functools import reduce
 from .jadn_defs import *
 
-# Dict conversion utilities
+from ..utils import FrozenDict
 
+
+# Dict conversion utilities
 def _dmerge(x, y):
     k, v = next(iter(y.items()))
     if k in x:
@@ -71,59 +73,97 @@ def dlist(src):
 
 
 # Option conversions
+OPTIONS = FrozenDict(
+    LIST2DIST=FrozenDict(
+        # Common
+        min=lambda x: int(x),
+        max=lambda x: int(x),
+        rtype=lambda x: x,
+        # Type
+        compact=lambda x: True,
+        cvt=lambda x: x,
+        pattern=lambda x: x,
+        format=lambda x: x,
+        # Field
+        atfield=lambda x: x,
+        etype=lambda x: x,
+        default=lambda x: x
+    ),
+    DICT2LIST=FrozenDict(
+        # Common
+        min=lambda x: '[' + x if type(x) is int else 0,
+        max=lambda x: ']' + x if type(x) is int else 1,
+        rtype=lambda x: '*' + x,
+        # Type
+        compact=lambda x: '=',
+        pattern=lambda x: '$' + x,
+        format=lambda x: '@' + x,
+        # Field
+        atfield=lambda x: '&' + x,
+        etype=lambda x: '/' + x,
+        default=lambda x: '!'
+    )
+)
+
 
 def topts_s2d(ostr):
     """
     Convert list of type definition option strings to options dictionary
     """
-
-    tval = {
-        "compact": lambda x: True,
-        "cvt": lambda x: x,
-        "min": lambda x: int(x),
-        "max": lambda x: int(x),
-        "rtype": lambda x: x,
-        "pattern": lambda x: x,
-        "format": lambda x: x,
-    }
-
     assert isinstance(ostr, (list, tuple)), "%r is not a list" % ostr
     opts = {}
     for o in ostr:
         try:
             k = TYPE_OPTIONS[ord(o[0])]
-            opts[k] = tval[k](o[1:])
+            opts[k] = OPTIONS.LIST2DICT[k](o[1:])
         except KeyError:
             raise ValueError('Unknown type option: %s' % o)
     return opts
+
 
 def fopts_s2d(ostr):
     """
     Convert list of field definition option strings to options dictionary
     """
-
-    fval = {
-        "min": lambda x: int(x),
-        "max": lambda x: int(x),
-        "atfield": lambda x: x,
-        "rtype": lambda x: x,
-        "etype": lambda x: x,
-        "default": lambda x: x
-    }
-
     assert isinstance(ostr, (list, tuple)), "%r is not a list" % ostr
     opts = {}
     for o in ostr:
         try:
             k = FIELD_OPTIONS[ord(o[0])]
-            opts[k] = fval[k](o[1:])
+            opts[k] = OPTIONS.LIST2DICT[k](o[1:])
         except KeyError:
             raise ValueError('Unknown field option: %s' % o)
     return opts
 
 
+def topts_d2s(opts):
+    """
+    Convert options dictionary to list of option strings
+    """
+    assert isinstance(opts, (dict, )), "%r is not a dict" % opts
+    ostr = []
+    for k, v in opts.items():
+        print(k, v)
+        assert k in OPTIONS.DICT2LIST, ("Unknown type option '" + k + "'")
+        ostr.append(OPTIONS.DICT2LIST[k](v))
+    return ostr
+
+
+def fopts_d2s(opts):
+    """
+    Convert options dictionary to list of option strings
+    """
+    assert isinstance(opts, (dict, )), "%r is not a dict" % opts
+    ostr = []
+    for k, v in opts.items():
+        print(k, v)
+        assert k in OPTIONS.DICT2LIST, ("Unknown field option '" + k + "'")
+        ostr.append(OPTIONS.DICT2LIST[k](v))
+    return ostr
+
+
 def basetype(tt):                   # Return base type of derived subtypes
-    return tt.rsplit(sep='.')[0]    # Strip off subtype (e.g., .ID)
+    return tt.rsplit('.')[0]    # Strip off subtype (e.g., .ID)
 
 
 def cardinality(min, max):
@@ -132,7 +172,9 @@ def cardinality(min, max):
     return str(min) + '..' + ('n' if max == 0 else str(max))
 
 
-def opts_d2s(opts):     # TODO: Refactor to use TYPE_OPTIONS / FIELD_OPTIONS as above
+
+# TODO: Remove Below Function(2)
+def opts_d2s(opts):     # TODO: Verify not used, move to topts_d2s & fopts_d2s
     """
     Convert options dictionary to list of option strings
     """

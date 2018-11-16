@@ -10,10 +10,10 @@ from lxml import etree
 convert = True
 
 if convert:
-    from libs.convert import base_dump, cddl_dump, proto_dump, relax_dump, thrift_dump
+    from libs.convert import cddl_dump, html_dump, md_dump, proto_dump, relax_dump, thrift_dump
     from libs.schema import relax2jadn_dump, proto2jadn_dump, cddl2jadn_dump, thrift2jadn_dump
 
-    schema = 'schema/openc2-wd06_functional.jadn'
+    schema = 'schema/openc2_wd08_functional.jadn'
     test_dir = 'schema_gen_test'
     if not os.path.isdir(test_dir):
         os.makedirs(test_dir)
@@ -37,9 +37,9 @@ if convert:
 
     thrift2jadn_dump(open(os.path.join(test_dir, 'openc2-wd06.thrift'), 'rb').read(), os.path.join(test_dir, 'openc2-wd06.thrift.jadn'))
 
-    base_dump(schema_json, os.path.join(test_dir, 'openc2-wd06.md'), form='markdown')
+    md_dump(schema_json, os.path.join(test_dir, 'openc2-wd06.md'))
 
-    base_dump(schema_json, os.path.join(test_dir, 'openc2-wd06.html'), form='html')
+    html_dump(schema_json, os.path.join(test_dir, 'openc2-wd06.html'))
 
 else:
     if sys.version_info.major >= 3:

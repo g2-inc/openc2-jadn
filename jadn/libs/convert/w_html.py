@@ -4,6 +4,7 @@ import os
 
 from bs4 import BeautifulSoup
 from datetime import datetime
+from html5print import CSSBeautifier
 
 from ..codec.codec_utils import fopts_s2d, topts_s2d
 from ..utils import Utils
@@ -27,17 +28,7 @@ class JADNtoHTML(object):
         else:
             raise TypeError('JADN improperly formatted')
 
-        self.indent = '  '
-
-        self._fieldMap = {
-            'Binary': 'bstr',
-            'Boolean': 'bool',
-            'Integer': 'int64',
-            'Number': 'float64',
-            'Null': 'null',
-            'String': 'bstr'
-        }
-
+        self._theme = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'theme.css')
         self._structFormats = {
             'Record': self._formatRecord,
             'Choice': self._formatChoice,
@@ -50,33 +41,63 @@ class JADNtoHTML(object):
         self._meta = jadn['meta'] or {}
         self._types = []
         self._custom = []
-        self._customFields = []
 
         for t in jadn['types']:
-            self._customFields.append(t[0])
             if t[1] in self._structFormats.keys():
                 self._types.append(t)
 
             else:
                 self._custom.append(t)
 
-    def indent_html(self, elem, level=0):
-        i = '\n' + level * '  '
-        if len(elem):
-            if not hasattr(elem, 'text') or not elem.text.strip():
-                elem.text = i + '  '
+    def _format_html(self, html):
+        formatted = ''
+        nested_tags = []
 
-            if not hasattr(elem, 'tail') or not elem.tail.strip():
-                elem.tail = i
+        tmp_format = []
+        for elm in str(html).replace('\n', '').split('><'):
+            elm = '<' + elm if not elm.startswith('<') else elm
+            elm = elm + '>' if not elm.endswith('>') else elm
+            tmp_format.append(elm)
 
-            for elem in elem:
-                self.indent_html(elem, level + 1)
+        i = 0
+        while i < len(tmp_format):
+            line = tmp_format[i].strip()
+            tag = re.sub(r'\s*?<\/?(?P<tag>[\w]+)(\s|>).*$', '\g<tag>', str(line))
 
-            if not hasattr(elem, 'tail') or not elem.tail.strip():
-                elem.tail = i
-        else:
-            if level and (not elem.tail or not elem.tail.strip()):
-                elem.tail = i
+            if tag == 'style':
+                styles = line[line.index('>')+1:line.rindex('<')]
+                styles_formatted = CSSBeautifier.beautify(styles, 5)
+                if styles_formatted == '':
+                    formatted += '{indent}{initTag}</style>\n'.format(
+                        indent='\t'*len(nested_tags),
+                        initTag=line
+                    )
+                    i += 1
+                else:
+                    formatted += '{indent}{initTag}\n{styles}\n{indent}{closeTag}\n'.format(
+                        indent='\t'*(len(nested_tags)),
+                        initTag=line[:line.index('>')+1],
+                        styles=re.sub(r'^(?P<start>.)', '{}\g<start>'.format('\t'*(len(nested_tags)+1)), str(styles_formatted), flags=re.M),
+                        closeTag=line[line.rindex('<'):]
+                    )
+
+            elif re.match(r'^<{tag}.*?<\/{tag}>$'.format(tag=tag), str(line)):
+                formatted += ('\t' * len(nested_tags)) + line + '\n'
+
+            elif line.startswith('<!') or line.endswith('/>'):
+                formatted += ('\t'*len(nested_tags)) + line + '\n'
+
+            elif line.endswith('</' + (nested_tags[-1] if len(nested_tags) > 0 else '') + '>'):
+                nested_tags.pop()
+                formatted += ('\t'*len(nested_tags)) + line + '\n'
+
+            else:
+                formatted += ('\t' * len(nested_tags)) + line + '\n'
+                if not line.endswith('{tag}/>'.format(tag=tag)):
+                    nested_tags.append(tag)
+            i += 1
+
+        return formatted
 
     def html_dump(self):
         html = BeautifulSoup('''
@@ -84,8 +105,8 @@ class JADNtoHTML(object):
             <html lang="en">
                 <head>
                     <meta charset="UTF-8">
-                    <link rel="stylesheet" type="text/css" href="theme.css">
                     <title>{title} v.{version}</title>
+                    <style type="text/css">{theme}</style>
                 </head>
                 <body>
                 </body>
@@ -93,17 +114,16 @@ class JADNtoHTML(object):
         '''.format(
             title=self._meta.get('module', 'JADN Schema Conversion'),
             version=self._meta.get('version', '0'),
+            theme=open(self._theme, 'r').read() if os.path.isfile(self._theme) else ''
         ), 'lxml')
 
         html.body.append(self.makeHeader())
 
-        # html.body.append(self.makeStructures())
+        html.body.append(self.makeStructures())
 
-        # html.body.append(self.makeCustom())
+        html.body.append(self.makeCustom())
 
-        # return html.prettify(formatter="html5")
-        # return str(html)
-        return self.indent_html(html)
+        return self._format_html(html)
 
     def formatStr(self, s):
         """
@@ -113,10 +133,7 @@ class JADNtoHTML(object):
         :return: formatted string
         :rtype str
         """
-        if s == '*':
-            return 'unknown'
-        else:
-            return re.sub(r'[\- ]', '_', s)
+        return 'unknown' if s == '*' else s
 
     def makeHeader(self):
         """
@@ -125,19 +142,20 @@ class JADNtoHTML(object):
         :rtype object - BeautifulSoup
         """
         header_html = BeautifulSoup('', 'lxml')
-        # header = ['; meta: {} - {}'.format(k, re.sub(r'(^\"|\"$)', '', json.dumps(Utils.defaultDecode(v)))) for k, v in self._meta.items()]
 
-        header = header_html.new_tag('h2')
+        header = header_html.new_tag('h1')
         header.string = 'Schema'
         header_html.append(header)
 
         meta_table = header_html.new_tag('table')
-        for k, v in self._meta.items():
+        meta_order = ['title', 'module', 'description', 'exports', 'imports', 'patch']
+
+        def mkrow(k, v):
             tr = header_html.new_tag('tr')
 
             key = header_html.new_tag('td')
-            key.string = k
-            key['class'] = 'n'
+            key.string = k + ':'
+            key['class'] = 'h'
             tr.append(key)
 
             value = header_html.new_tag('td')
@@ -150,6 +168,9 @@ class JADNtoHTML(object):
 
             meta_table.append(tr)
 
+        for meta in meta_order:
+            mkrow(meta, self._meta.get(meta, ''))
+
         header_html.append(meta_table)
 
         return header_html
@@ -158,221 +179,359 @@ class JADNtoHTML(object):
         """
         Create the type definitions for the schema
         :return: type definitions for the schema
-        :rtype str
+        :rtype object - BeautifulSoup
         """
-        tmp = ''
+        structure_html = BeautifulSoup('', 'lxml')
+
+        header = structure_html.new_tag('h2')
+        header.string = '3.2 Structure Types'
+        structure_html.append(header)
+
+        i = 1
         for t in self._types:
             df = self._structFormats.get(t[1], None)
 
             if df is not None:
-                tmp += df(t)
-        return tmp
+                structure_html.append(df(t, i))
+                i += 1
+
+        return structure_html
 
     def makeCustom(self):
-        defs = []
-        for field in self._custom:
-            line = '{name} = {type} ; {com}'.format(
-                name=self.formatStr(field[0]),
-                type=self._fieldType(field[1]),
-                com=field[-1]
-            )
-            defs.append(line)
-
-        return '\n'.join(defs)
-
-    def _fieldType(self, f):
         """
-        Determines the field type for the schema
-        :param f: current type
-        :return: type mapped to the schema
-        :rtype str
+        Create the custom definitions for the schema
+        :return: custom definitions for the schema
+        :rtype object - BeautifulSoup
         """
-        if f in self._customFields:
-            rtn = self.formatStr(f)
+        custom_html = BeautifulSoup('', 'lxml')
 
-        elif f in self._fieldMap.keys():
-            rtn = self.formatStr(self._fieldMap.get(f, f))
+        header = custom_html.new_tag('h2')
+        header.string = '3.3 Primitive Types'
+        custom_html.append(header)
 
-        else:
-            rtn = 'bstr'
+        fields_table = custom_html.new_tag('table')
 
-        # print(f, rtn)
-        return rtn
+        fields_table.append(self._makeTableHeader([
+            ('Name', {'class': 's'}),
+            ('Type', {'class': 's'}),
+            ('Description', {'class': 's'})
+        ]))
 
-    def _formatComment(self, msg, **kargs):
-        com = ';'
-        if msg not in ['', None, ' ']:
-            com += ' {msg}'.format(msg=msg)
+        body = []
+        for row in self._custom:
+            opts = topts_s2d(row[2])
+            fmt = ''
+            if 'format' in opts:
+                fmt = ' ({})'.format(opts['format'])
 
-        for k, v in kargs.items():
-            com += ' #{k}:{v}'.format(
-                k=k,
-                v=json.dumps(v)
-            )
+            body.append([row[0], '{}{}'.format(row[1], fmt), row[3]])
 
-        return com
+        fields_table.append(self._makeTableBody(
+            body,
+            columnAttr=[
+                {'class': 's'},
+                {'class': 's'},
+                {'class': 's'},
+            ]
+        ))
+
+        custom_html.append(fields_table)
+        return custom_html
+
+    def _makeTableHeader(self, headers):
+        header_html = BeautifulSoup('', 'lxml')
+
+        field_header_row = header_html.new_tag('tr')
+        for column in headers:
+            header_column = header_html.new_tag('th')
+            header_column.string = column[0]
+
+            for arg, val in (column[1] or {}).items():
+                header_column[arg] = val
+
+            field_header_row.append(header_column)
+
+        field_header = header_html.new_tag('thead')
+        field_header.append(field_header_row)
+        header_html.append(field_header)
+
+        return header_html
+
+    def _makeTableBody(self, rows, columnAttr=[], exclude=()):
+        body_html = BeautifulSoup('', 'lxml')
+        field_body = body_html.new_tag('tbody')
+
+        for row in rows:
+            i = 0
+            field_row = body_html.new_tag('tr')
+
+            for column in row:
+                if i not in exclude:
+                    row_column = body_html.new_tag('td')
+                    if type(column) is list:
+                        opts = fopts_s2d(column)
+                        tmp_str = str(opts['min']) if 'min' in opts else '1'
+                        tmp_str += ('..' + str('n' if opts['max'] == 0 else opts['max'])) if 'max' in opts else ('..1' if 'min' in opts else '')
+                        # TODO: More options
+                        row_column.string = tmp_str
+                    else:
+                        tmp_str = str(column)
+                        row_column.string = ' ' if tmp_str == '' else tmp_str
+
+                    for arg, val in (columnAttr[i] if len(columnAttr) > i else {}).items():
+                        row_column[arg] = val
+                i += 1
+                field_row.append(row_column)
+            field_body.append(field_row)
+
+        body_html.append(field_body)
+        return body_html
 
     # Structure Formats
-    def _formatRecord(self, itm):
+    def _formatRecord(self, itm, idx):
         """
         Formats records for the given schema type
         :param itm: record to format
         :return: formatted record
-        :rtype str
+        :rtype object - BeautifulSoup
         """
-        lines = []
-        i = 1
-        for l in itm[-1]:
-            opts = {'type': l[2], 'field': l[0]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
+        record_html = BeautifulSoup('', 'lxml')
+        header = record_html.new_tag('h3')
+        header.string = '3.2.{idx} {name}'.format(idx=idx, name=self.formatStr(itm[0]))
+        record_html.append(header)
 
-            lines.append('{idn}{pre_opts}{name}: {fType}{c} {com}\n'.format(
-                idn=self.indent,
-                pre_opts='? ' if '[0' in l[-2] else '',
-                name=self.formatStr(l[1]),
-                fType=self._fieldType(l[2]),
-                c=',' if i < len(itm[-1]) else '',
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
-            ))
-            i += 1
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
+        if itm[-2] != '':
+            comment = record_html.new_tag('h4')
+            comment.string = itm[-2]
+            record_html.append(comment)
 
-        return '\n{name} = {{ {com}\n{req}}}\n'.format(
-            name=self.formatStr(itm[0]),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
-            req=''.join(lines)
-        )
+        fields_table = record_html.new_tag('table')
 
-    def _formatChoice(self, itm):
+        field_caption = record_html.new_tag('caption')
+        field_caption.string = '{} (Record)'.format(self.formatStr(itm[0]))
+        fields_table.append(field_caption)
+
+        fields_table.append(self._makeTableHeader([
+            ('ID', {'class': 'n'}),
+            ('Name', {'class': 's'}),
+            ('Type', {'class': 's'}),
+            ('#', {'class': 'n'}),
+            ('Description', {'class': 's'})
+        ]))
+        fields_table.append(self._makeTableBody(itm[-1], columnAttr=[
+            {'class': 'n'},
+            {'class': 's'},
+            {'class': 's'},
+            {'class': 'n'},
+            {'class': 's'}
+        ]))
+
+        record_html.append(fields_table)
+        return record_html
+
+    def _formatChoice(self, itm, idx):
         """
         Formats choice for the given schema type
         :param itm: choice to format
         :return: formatted choice
-        :rtype str
+        :rtype object - BeautifulSoup
         """
-        lines = []
-        i = 1
-        for l in itm[-1]:
-            opts = {'type': l[2], 'field': l[0]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
+        choice_html = BeautifulSoup('', 'lxml')
+        header = choice_html.new_tag('h3')
+        header.string = '3.2.{idx} {name}'.format(idx=idx, name=self.formatStr(itm[0]))
+        choice_html.append(header)
 
-            lines.append('{name}: {type}{c} {com}'.format(
-                name=self.formatStr(l[1]),
-                type=self._fieldType(l[2]),
-                c=' //' if i < len(itm[-1]) else '',
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
-            ))
-            i += 1
+        if itm[-2] != '':
+            comment = choice_html.new_tag('h4')
+            comment.string = itm[-2]
+            choice_html.append(comment)
 
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
+        fields_table = choice_html.new_tag('table')
 
-        return '\n{name} = ( {com}\n{idn}{defs}\n)\n'.format(
-            name=self.formatStr(itm[0]),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
-            idn=self.indent,
-            defs='\n{}'.format(self.indent).join(lines)
-        )
+        field_caption = choice_html.new_tag('caption')
+        opts = topts_s2d(itm[2])
+        field_caption.string = '{name} (Choice{opts})'.format(name=self.formatStr(itm[0]), opts=('' if len(opts.keys()) == 0 else ' ' + json.dumps(opts)))
+        fields_table.append(field_caption)
 
-    def _formatMap(self, itm):
+        fields_table.append(self._makeTableHeader([
+            ('ID', {'class': 'n'}),
+            ('Name', {'class': 's'}),
+            ('Type', {'class': 's'}),
+            ('Description', {'class': 's'})
+        ]))
+        fields_table.append(self._makeTableBody(itm[-1], columnAttr=[
+            {'class': 'n'},
+            {'class': 's'},
+            {'class': 's'},
+            {},
+            {'class': 's'},
+        ], exclude=(3, )))
+
+        choice_html.append(fields_table)
+        return choice_html
+
+    def _formatMap(self, itm, idx):
         """
         Formats map for the given schema type
         :param itm: map to format
         :return: formatted map
-        :rtype str
+        :rtype object - BeautifulSoup
         """
-        lines = []
-        i = 1
-        for l in itm[-1]:
-            opts = {'type': l[2], 'field': l[0]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
+        map_html = BeautifulSoup('', 'lxml')
+        header = map_html.new_tag('h3')
+        header.string = '3.2.{idx} {name}'.format(idx=idx, name=self.formatStr(itm[0]))
+        map_html.append(header)
 
-            lines.append('{idn}{pre_opts}{name}: {fType}{c} {com}\n'.format(
-                idn=self.indent,
-                pre_opts='? ' if '[0' in l[-2] else '',
-                name=self.formatStr(l[1]),
-                fType=self._fieldType(l[2]),
-                c=',' if i < len(itm[-1]) else '',
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
-            ))
-            i += 1
+        if itm[-2] != '':
+            comment = map_html.new_tag('h4')
+            comment.string = itm[-2]
+            map_html.append(comment)
 
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
+        fields_table = map_html.new_tag('table')
 
-        return '\n{name} = [ {com}\n{defs}]\n'.format(
-            name=self.formatStr(itm[0]),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
-            defs=''.join(lines)
-        )
+        field_caption = map_html.new_tag('caption')
+        opts = topts_s2d(itm[2])
+        field_caption.string = '{name} (Map{opts})'.format(name=self.formatStr(itm[0]), opts=('' if len(opts.keys()) == 0 else ' ' + json.dumps(opts)))
+        fields_table.append(field_caption)
 
-    def _formatEnumerated(self, itm):
+        fields_table.append(self._makeTableHeader([
+            ('ID', {'class': 'n'}),
+            ('Name', {'class': 's'}),
+            ('Type', {'class': 's'}),
+            ('#', {'class': 'n'}),
+            ('Description', {'class': 's'})
+        ]))
+        fields_table.append(self._makeTableBody(itm[-1], columnAttr=[
+            {'class': 'n'},
+            {'class': 's'},
+            {'class': 's'},
+            {'class': 'n'},
+            {'class': 's'},
+        ]))
+
+        map_html.append(fields_table)
+        return map_html
+
+    def _formatEnumerated(self, itm, idx):
         """
         Formats enum for the given schema type
         :param itm: enum to format
         :return: formatted enum
-        :rtype str
+        :rtype object - BeautifulSoup
         """
-        lines = []
-        for l in itm[-1]:
-            opts = {'field': l[0]}
+        enumerated_html = BeautifulSoup('', 'lxml')
+        header = enumerated_html.new_tag('h3')
+        header.string = '3.2.{idx} {name}'.format(idx=idx, name=self.formatStr(itm[0]))
+        enumerated_html.append(header)
 
-            lines.append('\"{name}\" {com}\n'.format(
-                name=self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0])),
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+        if itm[-2] != '':
+            comment = enumerated_html.new_tag('h4')
+            comment.string = itm[-2]
+            enumerated_html.append(comment)
+
+        fields_table = enumerated_html.new_tag('table')
+
+        field_caption = enumerated_html.new_tag('caption')
+        opts = topts_s2d(itm[2])
+        field_caption.string = '{name} (Enumerated{compact})'.format(name=self.formatStr(itm[0]), compact=('.Tag' if 'compact' in opts else ''))
+        fields_table.append(field_caption)
+
+        bodyAttr = [
+            {'class': 'n'},
+            {'class': 's'},
+            {'class': 's'},
+        ]
+
+        if 'compact' in opts:
+            fields_table.append(self._makeTableHeader([
+                ('Value', {'class': 'n'}),
+                ('Description', {'class': 's'})
+            ]))
+            fields_table.append(self._makeTableBody(
+                [[row[0], '{} -- {}'.format(row[1], row[2])] for row in itm[-1]],
+                columnAttr=bodyAttr
             ))
+        else:
+            fields_table.append(self._makeTableHeader([
+                ('ID', {'class': 'n'}),
+                ('Name', {'class': 's'}),
+                ('Description', {'class': 's'})
+            ]))
+            fields_table.append(self._makeTableBody(itm[-1], columnAttr=bodyAttr))
 
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
+        enumerated_html.append(fields_table)
+        return enumerated_html
 
-        return '\n{com}\n{init}{rem}'.format(
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
-            init='{} = '.format(self.formatStr(itm[0])),
-            rem='{} /= '.format(self.formatStr(itm[0])).join(lines)
-        )
-
-    def _formatArray(self, itm):  # TODO: what should this do??
+    def _formatArray(self, itm, idx):  # TODO: what should this do??
         """
         Formats array for the given schema type
         :param itm: array to format
         :return: formatted array
-        :rtype str
+        :rtype object - BeautifulSoup
         """
-        field_opts = topts_s2d(itm[2])
+        array_html = BeautifulSoup('', 'lxml')
+        header = array_html.new_tag('h3')
+        header.string = '3.2.{idx} {name}'.format(idx=idx, name=self.formatStr(itm[0]))
+        array_html.append(header)
 
-        field_type = '[{min}*{max} {type}]'.format(
-            min=field_opts.get('min', ''),
-            max=field_opts.get('max', ''),
-            type=self.formatStr(field_opts.get('rtype', 'string'))
-        )
+        if itm[-2] != '':
+            comment = array_html.new_tag('h4')
+            comment.string = itm[-2]
+            array_html.append(comment)
 
-        return '\n{name} = {type} {com}\n'.format(
-            name=self.formatStr(itm[0]),
-            type=field_type,
-            com=self._formatComment(itm[-1])
-        )
+        fields_table = array_html.new_tag('table')
 
-    def _formatArrayOf(self, itm):  # TODO: what should this do??
+        field_caption = array_html.new_tag('caption')
+        field_caption.string = '{} (Array)'.format(self.formatStr(itm[0]))
+        fields_table.append(field_caption)
+
+        fields_table.append(self._makeTableHeader([
+            ('ID', {'class': 'n'}),
+            ('Type', {'class': 's'}),
+            ('#', {'class': 'n'}),
+            ('Description', {'class': 's'})
+        ]))
+        fields_table.append(self._makeTableBody(
+            [[row[0], row[2], row[3], '"{}": {}'.format(row[1], row[4])] for row in itm[-1]],
+            columnAttr=[
+                {'class': 'n'},
+                {'class': 's'},
+                {'class': 'n'},
+                {'class': 's'},
+            ]
+        ))
+
+        array_html.append(fields_table)
+        return array_html
+
+    def _formatArrayOf(self, itm, idx):  # TODO: what should this do??
         """
         Formats arrayof for the given schema type
         :param itm: arrayof to format
         :return: formatted arrayof
-        :rtype str
+        :rtype object - BeautifulSoup
         """
-        field_opts = topts_s2d(itm[2])
+        arrayOf_html = BeautifulSoup('', 'lxml')
+        header = arrayOf_html.new_tag('h3')
+        header.string = '3.2.{idx} {name}'.format(idx=idx, name=self.formatStr(itm[0]))
+        arrayOf_html.append(header)
 
-        field_type = '[{min}*{max} {type}]'.format(
+        if itm[-1] != '':
+            comment = arrayOf_html.new_tag('h4')
+            comment.string = itm[-1]
+            arrayOf_html.append(comment)
+
+        options = arrayOf_html.new_tag('p')
+        field_opts = topts_s2d(itm[2])
+        options.string = '{name} (ArrayOf.{type} [\'max\', \'min\'])'.format(
+            name=self.formatStr(itm[0]),
             min=field_opts.get('min', ''),
             max=field_opts.get('max', ''),
             type=self.formatStr(field_opts.get('rtype', 'string'))
         )
 
-        return '\n{name} = {type} {com}\n'.format(
-            name=self.formatStr(itm[0]),
-            type=field_type,
-            com=self._formatComment(itm[-1])
-        )
+        arrayOf_html.append(options)
+        return arrayOf_html
 
 
 def html_dumps(jadn):

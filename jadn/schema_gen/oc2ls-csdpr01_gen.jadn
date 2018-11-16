@@ -1,14 +1,16 @@
+"Generated from schema/oc2ls-csdpr01.jadn, Fri Nov 16 10:38:31 2018"
+
 {
  "meta": {
-  "module": "oasis-open.org/openc2/v1.0/openc2-lang",
-  "patch": "wd09",
-  "title": "OpenC2 Language Objects",
+  "exports": ["OpenC2-Command", "OpenC2-Response", "Message-Type", "Status-Code", "Request-Id", "Date-Time"],
   "description": "Datatypes that define the content of OpenC2 commands and responses.",
+  "title": "OpenC2 Language Objects",
   "imports": [
    ["slpf", "oasis-open.org/openc2/v1.0/ap-slpf"],
    ["jadn", "oasis-open.org/openc2/v1.0/jadn"]
   ],
-  "exports": ["OpenC2-Command", "OpenC2-Response", "Message-Type", "Status-Code", "Request-Id", "Date-Time"]
+  "module": "oasis-open.org/openc2/v1.0/openc2-lang",
+  "patch": "wd09"
  },
 
  "types": [

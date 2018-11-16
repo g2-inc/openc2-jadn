@@ -1,10 +1,12 @@
+"Generated from schema/slpf-csdpr01.jadn, Fri Nov 16 10:38:31 2018"
+
 {
  "meta": {
-  "module": "oasis-open.org/openc2/oc2slpf/v1.0/oc2slpf-v1.0",
-  "patch": "0",
+  "exports": ["Target", "Specifiers", "Args", "Results"],
   "title": "Stateless Packet Filtering",
   "description": "Data definitions for Stateless Packet Filtering (SLPF) functions",
-  "exports": ["Target", "Specifiers", "Args", "Results"]
+  "module": "oasis-open.org/openc2/oc2slpf/v1.0/oc2slpf-v1.0",
+  "patch": "0"
  },
 
  "types": [
