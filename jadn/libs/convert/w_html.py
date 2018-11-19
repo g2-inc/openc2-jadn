@@ -1,4 +1,5 @@
 import json
+import lesscpy
 import re
 import os
 
@@ -28,7 +29,8 @@ class JADNtoHTML(object):
         else:
             raise TypeError('JADN improperly formatted')
 
-        self._theme = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'theme.css')
+        # self._theme = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'theme.less')  # Dev
+        self._theme = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'theme.css')  # Prod
         self._structFormats = {
             'Record': self._formatRecord,
             'Choice': self._formatChoice,
@@ -100,6 +102,9 @@ class JADNtoHTML(object):
         return formatted
 
     def html_dump(self):
+        # theme = lesscpy.compile(open(self._theme, 'r')) if os.path.isfile(self._theme) else ''  # Dev
+        theme = open(self._theme, 'r').read() if os.path.isfile(self._theme) else ''  # Prod
+
         html = BeautifulSoup('''
             <!DOCTYPE html>
             <html lang="en">
@@ -109,19 +114,24 @@ class JADNtoHTML(object):
                     <style type="text/css">{theme}</style>
                 </head>
                 <body>
+                    <div id='schema'>
+                        <h1>Schema</h1>
+                        <div id='meta'></div>
+                        <div id='types'></div>
+                    </div>
                 </body>
             </html>
         '''.format(
             title=self._meta.get('module', 'JADN Schema Conversion'),
             version=self._meta.get('version', '0'),
-            theme=open(self._theme, 'r').read() if os.path.isfile(self._theme) else ''
+            theme=theme
         ), 'lxml')
 
-        html.body.append(self.makeHeader())
+        html.body.select('div#meta')[0].append(self.makeHeader())
 
-        html.body.append(self.makeStructures())
+        html.body.select('div#types')[0].append(self.makeStructures())
 
-        html.body.append(self.makeCustom())
+        html.body.select('div#types')[0].append(self.makeCustom())
 
         return self._format_html(html)
 
@@ -142,10 +152,6 @@ class JADNtoHTML(object):
         :rtype object - BeautifulSoup
         """
         header_html = BeautifulSoup('', 'lxml')
-
-        header = header_html.new_tag('h1')
-        header.string = 'Schema'
-        header_html.append(header)
 
         meta_table = header_html.new_tag('table')
         meta_order = ['title', 'module', 'description', 'exports', 'imports', 'patch']
@@ -548,5 +554,5 @@ def html_dumps(jadn):
 def html_dump(jadn, fname, source=""):
     with open(fname, "w") as f:
         if source:
-            f.write("<!-- Generated from " + source + ", " + datetime.ctime(datetime.now()) + "-->\n")
+            f.write("<!-- Generated from {}, {} -->\n".format(source, datetime.ctime(datetime.now())))
         f.write(html_dumps(jadn))

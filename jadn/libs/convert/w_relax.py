@@ -9,7 +9,7 @@ from ..codec.codec_utils import fopts_s2d, topts_s2d
 from ..utils import toStr, Utils
 
 primitives = [str, int, float]
-str_type = basestring
+str_type = str
 
 if sys.version_info.major < 3:
     primitives.append(unicode)
