@@ -33,6 +33,7 @@ setup(
     package_data={
         'OpenC2': [
             './{}/*'.format(versionData['pkg_name']),
+            './{}/convert/theme.*'.format(versionData['pkg_name']),
         ]
     },
 
