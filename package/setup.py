@@ -34,5 +34,7 @@ setup(
         'OpenC2': [
             './{}/*'.format(versionData['pkg_name']),
         ]
-    }
+    },
+
+    include_package_data=True
 )
