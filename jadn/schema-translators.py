@@ -16,8 +16,8 @@ schema_json = json.loads(open(base_schema, 'rb').read())
 proto_dump(schema_json, os.path.join(test_dir, schema + '.proto'))
 proto2jadn_dump(open(os.path.join(test_dir, schema + '.proto'), 'rb').read(), os.path.join(test_dir, schema + '.proto.jadn'))
 
-# cddl_dump(schema_json, os.path.join(test_dir, schema + '.cddl'))
-# cddl2jadn_dump(open(os.path.join(test_dir, schema + '.cddl'), 'rb').read(), os.path.join(test_dir, schema + '.cddl.jadn'))
+cddl_dump(schema_json, os.path.join(test_dir, schema + '.cddl'))
+cddl2jadn_dump(open(os.path.join(test_dir, schema + '.cddl'), 'rb').read(), os.path.join(test_dir, schema + '.cddl.jadn'))
 
 relax_dump(schema_json, os.path.join(test_dir, schema + '.rng'))
 relax2jadn_dump(open(os.path.join(test_dir, schema + '.rng'), 'rb').read(), os.path.join(test_dir, schema + '.rng.jadn'))

@@ -86,9 +86,10 @@ def CddlRules():
 
     def arrayOfDef():
         return (
-            ZeroOrMore(RegExMatch(r'[\w]+')),  # name
+            OneOrMore(RegExMatch(r'[\w]+')),  # name
             OneOrMore(RegExMatch(r'.*\]')),  # data up to comment
-            ZeroOrMore(RegExMatch(r';[\s*\w]+'))
+            ZeroOrMore(RegExMatch(r';[\s*\w]+')),
+            OneOrMore(endLine)
         )
 
     def typeDefs():
@@ -100,16 +101,16 @@ def CddlRules():
 
     def customFields():
             return (
-            ZeroOrMore(RegExMatch(r'[\w]+')),  # name
-            ZeroOrMore('='),
-            ZeroOrMore(RegExMatch(r'[\w]+')),  # type
+            OneOrMore(RegExMatch(r'[\w]*')),  # name
+            OneOrMore('='),
+            OneOrMore(RegExMatch(r'[\w]+')),  # type
             ZeroOrMore(RegExMatch(r';.*'))  # comment
         )
 
     def customDefs():
         return(OrderedChoice(
             Optional(commentLine),
-            ZeroOrMore(customFields)
+            OneOrMore(customFields)
         ))
 
     return (
@@ -303,14 +304,16 @@ class CddlVisitor(PTNodeVisitor):
         ]
 
     def visit_customFields(self, node, children):
+        print(children)
         return [
             children[0],
             "String" if children[2] == 'bstr' else children[2],
-            ["@"+children[0]] if 'TBD syntax' not in children[3] else [],
+            ["@"+children[0]] if 'TBD syntax' not in children else [],
             re.sub(r';\s*', '', children[3][:-1]) if len(children) > 3 else ""
         ]
 
     def visit_customDefs(self, node, children):
+        #print(children)
         if 'types' not in self.data:
             self.data['types'] = []
 
@@ -329,7 +332,7 @@ def cddl2jadn_dumps(cddl):
     :rtype str
     """
     try:
-        parser = ParserPython(CddlRules)
+        parser = ParserPython(CddlRules, debug=True)
         parse_tree = parser.parse(toStr(cddl))
         result = visit_parse_tree(parse_tree, CddlVisitor())
         return Utils.jadnFormat(result, indent=2)
