@@ -8,9 +8,9 @@ import copy
 import json
 import jsonschema
 import numbers
-import os
+
 from datetime import datetime
-from .codec import is_builtin, is_primitive, Codec
+from .codec import is_builtin, is_primitive
 from .codec_utils import topts_s2d, fopts_s2d, basetype
 from .codec_format import get_format_function
 from .jadn_defs import *

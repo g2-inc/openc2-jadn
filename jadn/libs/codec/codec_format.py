@@ -73,6 +73,7 @@ def b_ip_addr(bval):        # Length of IP addr must be 32 or 128 bits
 def b_ip_subnet(bval):      # CIDR IP Address Range = base address + network prefix length
     raise ValueError        # TODO: write it
 
+
 def s2b_ip_addr(sval):      # Convert IP addr from string to binary
     try:
         return socket.inet_pton(AF_INET, sval)

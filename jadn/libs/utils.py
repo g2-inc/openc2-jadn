@@ -1,3 +1,4 @@
+import base64
 import json
 import re
 import sys
@@ -38,6 +39,20 @@ def safe_cast(val, to_type, default=None):
         return to_type(val)
     except (ValueError, TypeError):
         return default
+
+
+def isBase64(sb):
+    try:
+        if type(sb) == str:
+            # If there's any unicode here, an exception will be thrown and the function will return false
+            sb_bytes = bytes(sb, 'ascii')
+        elif type(sb) == bytes:
+            sb_bytes = sb
+        else:
+            raise ValueError("Argument must be string or bytes")
+        return base64.b64encode(base64.b64decode(sb_bytes)) == sb_bytes
+    except Exception:
+        return False
 
 
 # Util Classes
@@ -84,6 +99,8 @@ class Utils(object):
 
                 else:
                     print('Not prepared type: {}-{}'.format(type(itm[k]), itm[k]))
+        elif isinstance(itm, (int, float)):
+            tmp = itm
         else:
             tmp = toUnicode(itm)
 
@@ -103,7 +120,8 @@ class Utils(object):
 
                 else:
                     print('not prepared type: {}-{}'.format(type(tmp), tmp))
-
+        elif isinstance(itm, (int, float)):
+            tmp = itm
         else:
             tmp = toStr(itm)
 
