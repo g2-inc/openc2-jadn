@@ -3,7 +3,6 @@ import json
 from datetime import datetime
 
 from ..codec.codec_utils import fopts_s2d, topts_s2d
-from ..utils import Utils
 
 
 class JADNtoMD(object):
@@ -255,41 +254,6 @@ class JADNtoMD(object):
 
         map += self._makeTableBody(itm[-1])
 
-        '''
-        map_html = BeautifulSoup('', 'lxml')
-        header = map_html.new_tag('h3')
-        header.string = '3.2.{idx} {name}'.format(idx=idx, name=self.formatStr(itm[0]))
-        map_html.append(header)
-
-        if itm[-2] != '':
-            comment = map_html.new_tag('h4')
-            comment.string = itm[-2]
-            map_html.append(comment)
-
-        fields_table = map_html.new_tag('table')
-
-        field_caption = map_html.new_tag('caption')
-        field_caption.string = '{name} (Map{opts})'.format(name=self.formatStr(itm[0]), opts=('' if len(opts.keys()) == 0 else ' ' + json.dumps(opts)))
-        fields_table.append(field_caption)
-
-        fields_table.append(self._makeTableHeader([
-            ('ID', {'class': 'n'}),
-            ('Name', {'class': 's'}),
-            ('Type', {'class': 's'}),
-            ('#', {'class': 'n'}),
-            ('Description', {'class': 's'})
-        ]))
-        fields_table.append(self._makeTableBody(itm[-1], columnAttr=[
-            {'class': 'n'},
-            {'class': 's'},
-            {'class': 's'},
-            {'class': 'n'},
-            {'class': 's'},
-        ]))
-
-        map_html.append(fields_table)
-        '''
-
         return map + '\n'
 
     def _formatEnumerated(self, itm, idx):
@@ -387,5 +351,5 @@ def md_dumps(jadn):
 def md_dump(jadn, fname, source=""):
     with open(fname, "w") as f:
         if source:
-            f.write("<!-- Generated from " + source + ", " + datetime.ctime(datetime.now()) + "-->\n")
+            f.write("<!-- Generated from {}, {} -->\n".format(source, datetime.ctime(datetime.now())))
         f.write(md_dumps(jadn))

@@ -94,12 +94,11 @@ def load_protobuf(m):
     :type m: str
     """
     if os.path.isfile(m):
-        if os.path.isfile(m):
-            with open(m, 'rb') as f:
-                pass
-                # TODO: Convert ProtoBuf data to dict
-                # rtn = f.read()
-                rtn = {}
+        with open(m, 'rb') as f:
+            pass
+            # TODO: Convert ProtoBuf data to dict
+            # rtn = f.read()
+            rtn = {}
     elif type(m) == str:
         rtn = {}
 

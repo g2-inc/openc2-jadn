@@ -173,7 +173,7 @@ class CddlVisitor(PTNodeVisitor):
             try:
                 self.data['meta'][line[0]] = json.loads(line[1])
             except Exception as e:
-                self.data['meta'][line[0]] = (line[1][:-1])
+                self.data['meta'][line[0]] = line[1]
 
     def visit_typeDefs(self, node, children):
         if 'types' not in self.data:
@@ -300,11 +300,10 @@ class CddlVisitor(PTNodeVisitor):
             children[0],
             'ArrayOf',
             values,
-            re.sub(r';\s*|\s*$', '', children[2])  # remove semi-colon and trailing spaces
+            re.sub(r';\s*|\s*$', '', children[2] if len(children) >= 3 else '')  # remove semi-colon and trailing spaces
         ]
 
     def visit_customFields(self, node, children):
-        print(children)
         return [
             children[0],
             "String" if children[2] == 'bstr' else children[2],
@@ -332,7 +331,7 @@ def cddl2jadn_dumps(cddl):
     :rtype str
     """
     try:
-        parser = ParserPython(CddlRules, debug=True)
+        parser = ParserPython(CddlRules)
         parse_tree = parser.parse(toStr(cddl))
         result = visit_parse_tree(parse_tree, CddlVisitor())
         return Utils.jadnFormat(result, indent=2)

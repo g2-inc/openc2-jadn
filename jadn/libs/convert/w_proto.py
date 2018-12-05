@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 
 from ..codec.codec_utils import fopts_s2d, topts_s2d
+from ..enums import CommentLevels
 from ..utils import Utils
 
 
@@ -24,6 +25,8 @@ class JADNtoProto3(object):
 
         else:
             raise TypeError('JADN improperly formatted')
+
+        self.comments = CommentLevels.ALL
 
         self.indent = '  '
 
@@ -57,12 +60,16 @@ class JADNtoProto3(object):
             else:
                 self._custom.append(t)
 
-    def proto_dump(self):
+    def proto_dump(self, comm=CommentLevels.ALL):
         """
-        Converts the JADN schema to Protobuf3
+        Converts the JADN schema to ProtoBuf3
+        :param comm: Level of comments to include in converted schema
+        :type comm: str of enums.CommentLevel
         :return: Protobuf3 schema
         :rtype str
         """
+        self.comments = comm if comm in CommentLevels.values() else CommentLevels.ALL
+
         return '{header}{imports}{defs}\n/* JADN Custom Fields\n[\n{jadn_fields}\n]\n*/'.format(
             idn=self.indent,
             header=self.makeHeader(),
@@ -161,6 +168,9 @@ class JADNtoProto3(object):
         return rtn
 
     def _formatComment(self, msg, **kargs):
+        if self.comments is CommentLevels.NONE:
+            return ''
+
         com = '//'
         if msg not in ['', None, ' ']:
             com += ' {msg}'.format(msg=msg)
@@ -170,7 +180,7 @@ class JADNtoProto3(object):
                 k=k,
                 v=json.dumps(v)
             )
-        return com
+        return '' if re.match(r'^\/\/\s+$', com) else com
 
     # Structure Formats
     def _formatRecord(self, itm):
@@ -190,7 +200,7 @@ class JADNtoProto3(object):
                 type=self._fieldType(l[2]),
                 name=self.formatStr(l[1]),
                 num=l[0],
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+                com=self._formatComment(l[-1], jadn_opts=opts)
             ))
 
         opts = {'type': itm[1]}
@@ -199,7 +209,7 @@ class JADNtoProto3(object):
         return '\nmessage {name} {{ {com}\n{req}}}\n'.format(
             name=self.formatStr(itm[0]),
             req=''.join(lines),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts)
+            com=self._formatComment(itm[-2], jadn_opts=opts)
         )
 
     def _formatChoice(self, itm):
@@ -219,7 +229,7 @@ class JADNtoProto3(object):
                 type=self._fieldType(l[2]),
                 name=self.formatStr(l[1]),
                 num=l[0],
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+                com=self._formatComment(l[-1], jadn_opts=opts)
             ))
 
         opts = {'type': itm[1]}
@@ -228,7 +238,7 @@ class JADNtoProto3(object):
         return '\noneof {name} {{ {com}\n{req}}}\n'.format(
             idn=self.indent,
             name=self.formatStr(itm[0]),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             req=''.join(lines)
         )
 
@@ -256,7 +266,7 @@ class JADNtoProto3(object):
                 idn=self.indent,
                 name=self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0])),
                 num=l[0],
-                com='' if l[-1] == '' else self._formatComment(l[-1])
+                com=self._formatComment(l[-1])
             ))
 
         opts = {'type': itm[1]}
@@ -265,7 +275,7 @@ class JADNtoProto3(object):
         return '\nenum {name} {{ {com}\n{default}{enum}}}\n'.format(
             idn=self.indent,
             name=self.formatStr(itm[0]),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             default='{}Unknown_{} = 0; // required starting enum number for protobuf3\n'.format(self.indent, itm[0].replace('-', '_')) if default else '',
             enum=''.join(lines)
         )
@@ -298,23 +308,39 @@ class JADNtoProto3(object):
             name=self.formatStr(itm[0]),
             type=self.formatStr(opts['options']['rtype']),
             field=self.formatStr(opts['options']['rtype']).lower(),
-            com=self._formatComment('' if itm[-1] == '' else itm[-1], jadn_opts=opts)
+            com=self._formatComment(itm[-1], jadn_opts=opts)
         )
 
 
-def proto_dumps(jadn):
+def proto_dumps(jadn, comm=CommentLevels.ALL):
     """
     Produce Protobuf3 schema from JADN schema
-    :arg jadn: JADN Schema to convert
+    :param jadn: JADN Schema to convert
     :type jadn: str or dict
+    :param comm: Level of comments to include in converted schema
+    :type comm: str of enums.CommentLevel
     :return: Protobuf3 schema
     :rtype str
     """
-    return JADNtoProto3(jadn).proto_dump()
+    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    return JADNtoProto3(jadn).proto_dump(comm)
 
 
-def proto_dump(jadn, fname, source=""):
+def proto_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+    """
+    Produce ProtoBuf schema from JADN schema and write to file provided
+    :param jadn: JADN Schema to convert
+    :type jadn: str or dict
+    :param fname: Name of file to write
+    :tyoe fname: str
+    :param source: Name of the original JADN schema file
+    :type source: str
+    :param comm: Level of comments to include in converted schema
+    :type comm: str of enums.CommentLevel
+    :return: N/A
+    """
+    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
     with open(fname, "w") as f:
         if source:
-            f.write("-- Generated from " + source + ", " + datetime.ctime(datetime.now()) + "\n\n")
-        f.write(proto_dumps(jadn))
+            f.write("// Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
+        f.write(proto_dumps(jadn, comm))

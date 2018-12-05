@@ -1,12 +1,15 @@
-from enum import Enum
+from ..utils import FrozenDict
 
 
-class OpenC2MessageFormats(Enum):
-    __order__ = 'JSON CBOR ProtoBuf XML'
-    JSON = 'json'
-    CBOR = 'cbor'
-    ProtoBuf = 'proto'
-    XML = 'xml'
+class OpenC2MessageFormats(FrozenDict):
+    def __init__(self, *args, **kwargs):
+        self._hash = None
+        super(FrozenDict, self).__init__(
+            JSON='json',
+            CBOR='cbor',
+            ProtoBuf='proto',
+            XML='xml'
+        )
 
     @staticmethod
     def list(val=False):

@@ -5,7 +5,6 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup, Comment
 
-from ..codec.codec_utils import opts_d2s
 from ..utils import toStr, Utils
 
 
@@ -179,8 +178,7 @@ class Relax2Jadn(object):
                 tmp_defs.append(tmp_def)
 
             else:
-                # print('Unknown tag function: {}'.format(child.name))
-                pass
+                print('Unknown tag function: {}'.format(child.name))
 
         tmp_count += 1
 

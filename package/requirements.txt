@@ -2,6 +2,7 @@ arpeggio==1.8.0
 beautifulsoup4==4.6.0
 cbor2==4.0.1
 dicttoxml==1.7.4
+enum==0.4.7
 html5print==0.1.2
 jsonschema==2.6.0
 lxml==4.2.1

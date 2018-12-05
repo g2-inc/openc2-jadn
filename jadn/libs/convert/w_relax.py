@@ -6,6 +6,7 @@ import xml.dom.minidom as md
 from datetime import datetime
 
 from ..codec.codec_utils import fopts_s2d, topts_s2d
+from ..enums import CommentLevels
 from ..utils import toStr, Utils
 
 primitives = [str, int, float]
@@ -33,6 +34,8 @@ class JADNtoRelaxNG(object):
 
         else:
             raise TypeError('JADN improperly formatted')
+
+        self.comments = CommentLevels.ALL
 
         self._fieldMap = {
             'Binary': 'base64Binary',
@@ -68,7 +71,15 @@ class JADNtoRelaxNG(object):
             else:
                 self._custom.append(t)
 
-    def relax_dump(self):
+    def relax_dump(self, comm=CommentLevels.ALL):
+        """
+        Converts the JADN schema to RelaxNG
+        :param comm: Level of comments to include in converted schema
+        :type comm: str of enums.CommentLevel
+        :return: RelaxNG schema
+        :rtype str
+        """
+        self.comments = comm if comm in CommentLevels.values() else CommentLevels.ALL
         records = [self._formatTag('element', self._fieldType(r), name='message') for r in self._records]
 
         root_cont = [
@@ -91,10 +102,11 @@ class JADNtoRelaxNG(object):
             xmlns="http://relaxng.org/ns/structure/1.0"
         )
 
-        return '{header}{root}\n'.format(
+        doubleEmpty = re.compile('^$\n?^$', re.MULTILINE)
+        return re.sub(doubleEmpty, '', '{header}{root}\n'.format(
             header=self.makeHeader(),
             root=self._formatPretty(root)
-        )
+        ))
 
     def formatStr(self, s):
         """
@@ -198,6 +210,9 @@ class JADNtoRelaxNG(object):
         return elm
 
     def _formatComment(self, msg, **kargs):
+        if self.comments is CommentLevels.NONE:
+            return ''
+
         if isinstance(msg, str_type):
             msg = re.sub(r'([\w\d])--([\w\d])', r'\1 - \2', msg)
 
@@ -213,7 +228,7 @@ class JADNtoRelaxNG(object):
 
         elm += ' -->'
 
-        return elm
+        return '' if re.match(r'^<!--\s+-->$', elm) else elm
 
     def _fieldType(self, f):
         """
@@ -251,7 +266,7 @@ class JADNtoRelaxNG(object):
                 'element',
                 self._fieldType(l[2]),
                 name=self.formatStr(l[1]),
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+                com=self._formatComment(l[-1], jadn_opts=opts)
             )
 
             if '[0' in l[-2]:
@@ -266,7 +281,7 @@ class JADNtoRelaxNG(object):
         return self._formatTag(
             'define',
             self._formatTag('interleave', defs),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             name=self.formatStr(itm[0])
         )
 
@@ -285,7 +300,7 @@ class JADNtoRelaxNG(object):
             defs.append(self._formatTag(
                 'element',
                 self._fieldType(l[2]),
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts),
+                com=self._formatComment(l[-1], jadn_opts=opts),
                 name=n
             ))
 
@@ -295,7 +310,7 @@ class JADNtoRelaxNG(object):
         return self._formatTag(
             'define',
             self._formatTag('choice', defs),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             name=self.formatStr(itm[0])
         )
 
@@ -316,7 +331,7 @@ class JADNtoRelaxNG(object):
                 'element',
                 self._fieldType(l[2]),
                 name=self.formatStr(l[1]),
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+                com=self._formatComment(l[-1], jadn_opts=opts)
             )
 
             if '[0' in l[-2]:
@@ -331,7 +346,7 @@ class JADNtoRelaxNG(object):
         return self._formatTag(
             'define',
             self._formatTag('interleave', defs),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             name=self.formatStr(itm[0])
         )
 
@@ -348,7 +363,7 @@ class JADNtoRelaxNG(object):
             defs.append(self._formatTag(
                 'value',
                 self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0])),
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+                com=self._formatComment(l[-1], jadn_opts=opts)
             ))
 
         opts = {'type': itm[1]}
@@ -357,7 +372,7 @@ class JADNtoRelaxNG(object):
         return self._formatTag(
             'define',
             self._formatTag('choice', defs),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             name=self.formatStr(itm[0])
         )
 
@@ -368,18 +383,34 @@ class JADNtoRelaxNG(object):
         :return: formatted array
         :rtype str
         """
-        field_opts = topts_s2d(itm[2])
-
         opts = {'type': itm[1]}
         if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
+
+        defs = []
+        for l in itm[-1]:
+            opts = {'type': l[2], 'field': l[0]}
+            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
+
+            ltmp = self._formatTag(
+                'element',
+                self._fieldType(l[2]),
+                name=self.formatStr(l[1]),
+                com=self._formatComment(l[-1], jadn_opts=opts)
+            )
+
+            if '[0' in l[-2]:
+                # optional
+                defs.append(self._formatTag('optional', ltmp))
+            else:
+                defs.append(ltmp)
 
         return self._formatTag(
             'define',
             self._formatTag(
-                'list',
-                self._fieldType(field_opts.get('rtype', 'string'))
+                'interleave',
+                defs
             ),
-            com=self._formatComment(itm[-1], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             name=self.formatStr(itm[0])
         )
 
@@ -398,7 +429,7 @@ class JADNtoRelaxNG(object):
         return self._formatTag(
             'define',
             self._formatTag(
-                'list',
+                'oneOrMore' if opts['options'] and opts['options'] > 0 else 'zeroOrMore',
                 self._fieldType(field_opts.get('rtype', 'string'))
             ),
             com=self._formatComment(itm[-1], jadn_opts=opts),
@@ -406,19 +437,35 @@ class JADNtoRelaxNG(object):
         )
 
 
-def relax_dumps(jadn):
+def relax_dumps(jadn, comm=CommentLevels.ALL):
     """
     Produce CDDL schema from JADN schema
-    :arg jadn: JADN Schema to convert
+    :param jadn: JADN Schema to convert
     :type jadn: str or dict
+    :param comm: Level of comments to include in converted schema
+    :type comm: str of enums.CommentLevel
     :return: Protobuf3 schema
     :rtype str
     """
-    return JADNtoRelaxNG(jadn).relax_dump()
+    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    return JADNtoRelaxNG(jadn).relax_dump(comm)
 
 
-def relax_dump(jadn, fname, source=""):
+def relax_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+    """
+    Produce RelaxNG scheema from JADN schema and write to file provided
+    :param jadn: JADN Schema to convert
+    :type jadn: str or dict
+    :param fname: Name of file to write
+    :tyoe fname: str
+    :param source: Name of the original JADN schema file
+    :type source: str
+    :param comm: Level of comments to include in converted schema
+    :type comm: str of enums.CommentLevel
+    :return: N/A
+    """
+    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
     with open(fname, "w") as f:
         if source:
-            f.write("-- Generated from " + source + ", " + datetime.ctime(datetime.now()) + "\n\n")
-        f.write(relax_dumps(jadn))
+            f.write("<!-- Generated from {}, {} -->\n".format(source, datetime.ctime(datetime.now())))
+        f.write(relax_dumps(jadn, comm))

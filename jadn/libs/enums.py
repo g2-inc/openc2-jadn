@@ -19,3 +19,10 @@ OpenC2SchemaFormats = FrozenDict(
     RELAX='relax',
     THRIFT='thrift'
 )
+
+# Conversion Comment Level
+CommentLevels = FrozenDict(
+    ALL='all',
+    NONE='none'
+
+)

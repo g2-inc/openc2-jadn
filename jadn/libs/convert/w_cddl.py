@@ -1,10 +1,10 @@
 import json
 import re
-import os
 
 from datetime import datetime
 
 from ..codec.codec_utils import fopts_s2d, topts_s2d
+from ..enums import CommentLevels
 from ..utils import Utils
 
 
@@ -25,6 +25,8 @@ class JADNtoCDDL(object):
 
         else:
             raise TypeError('JADN improperly formatted')
+
+        self.comments = CommentLevels.ALL
 
         self.indent = '  '
 
@@ -59,12 +61,22 @@ class JADNtoCDDL(object):
             else:
                 self._custom.append(t)
 
-    def cddl_dump(self):
-        return '{header}{defs}\n{custom}\n'.format(
+    def cddl_dump(self, comm=CommentLevels.ALL):
+        """
+        Converts the JADN schema to CDDL
+        :param comm: Level of comments to include in converted schema
+        :type comm: str of enums.CommentLevel
+        :return: CDDL schema
+        :rtype str
+        """
+        self.comments = comm if comm in CommentLevels.values() else CommentLevels.ALL
+
+        doubleEmpty = re.compile('^$\n?^$', re.MULTILINE)
+        return re.sub(doubleEmpty, '', '{header}{defs}\n{custom}\n'.format(
             header=self.makeHeader(),
             defs=self.makeStructures(),
             custom=self.makeCustom()
-        )
+        ))
 
     def formatStr(self, s):
         """
@@ -87,7 +99,7 @@ class JADNtoCDDL(object):
         """
         header = ['; meta: {} - {}'.format(k, re.sub(r'(^\"|\"$)', '', json.dumps(Utils.defaultDecode(v)))) for k, v in self._meta.items()]
 
-        return '\n'.join(header) + '\n\n'
+        return '\n'.join(header) + '\n'
 
     def makeStructures(self):
         """
@@ -135,6 +147,9 @@ class JADNtoCDDL(object):
         return rtn
 
     def _formatComment(self, msg, **kargs):
+        if self.comments is CommentLevels.NONE:
+            return ''
+
         com = ';'
         if msg not in ['', None, ' ']:
             com += ' {msg}'.format(msg=msg)
@@ -144,8 +159,7 @@ class JADNtoCDDL(object):
                 k=k,
                 v=json.dumps(v)
             )
-
-        return com
+        return '' if re.match(r'^;\s+$', com) else com
 
     # Structure Formats
     def _formatRecord(self, itm):
@@ -167,7 +181,7 @@ class JADNtoCDDL(object):
                 name=self.formatStr(l[1]),
                 fType=self._fieldType(l[2]),
                 c=',' if i < len(itm[-1]) else '',
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+                com=self._formatComment(l[-1], jadn_opts=opts)
             ))
             i += 1
         opts = {'type': itm[1]}
@@ -175,7 +189,7 @@ class JADNtoCDDL(object):
 
         return '\n{name} = {{ {com}\n{req}}}\n'.format(
             name=self.formatStr(itm[0]),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             req=''.join(lines)
         )
 
@@ -196,7 +210,7 @@ class JADNtoCDDL(object):
                 name=self.formatStr(l[1]),
                 type=self._fieldType(l[2]),
                 c=' //' if i < len(itm[-1]) else '',
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+                com=self._formatComment(l[-1], jadn_opts=opts)
             ))
             i += 1
 
@@ -205,7 +219,7 @@ class JADNtoCDDL(object):
 
         return '\n{name} = ( {com}\n{idn}{defs}\n)\n'.format(
             name=self.formatStr(itm[0]),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             idn=self.indent,
             defs='\n{}'.format(self.indent).join(lines)
         )
@@ -229,7 +243,7 @@ class JADNtoCDDL(object):
                 name=self.formatStr(l[1]),
                 fType=self._fieldType(l[2]),
                 c=',' if i < len(itm[-1]) else '',
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+                com=self._formatComment(l[-1], jadn_opts=opts)
             ))
             i += 1
 
@@ -238,7 +252,7 @@ class JADNtoCDDL(object):
 
         return '\n{name} = [ {com}\n{defs}]\n'.format(
             name=self.formatStr(itm[0]),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             defs=''.join(lines)
         )
 
@@ -255,14 +269,14 @@ class JADNtoCDDL(object):
 
             lines.append('\"{name}\" {com}\n'.format(
                 name=self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0])),
-                com=self._formatComment('' if l[-1] == '' else l[-1], jadn_opts=opts)
+                com=self._formatComment(l[-1], jadn_opts=opts)
             ))
 
         opts = {'type': itm[1]}
         if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
 
         return '\n{com}\n{init}{rem}'.format(
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
             init='{} = '.format(self.formatStr(itm[0])),
             rem='{} /= '.format(self.formatStr(itm[0])).join(lines)
         )
@@ -310,19 +324,36 @@ class JADNtoCDDL(object):
         )
 
 
-def cddl_dumps(jadn):
+def cddl_dumps(jadn, comm=CommentLevels.ALL):
     """
     Produce CDDL schema from JADN schema
-    :arg jadn: JADN Schema to convert
+    :param jadn: JADN Schema to convert
     :type jadn: str or dict
+    :param comm: Level of comments to include in converted schema
+    :type comm: str of enums.CommentLevel
     :return: CDDL schema
     :rtype str
     """
-    return JADNtoCDDL(jadn).cddl_dump()
+    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    return JADNtoCDDL(jadn).cddl_dump(comm)
 
 
-def cddl_dump(jadn, fname, source=""):
+def cddl_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+    """
+    Produce CDDL schema from JADN schema and write to file provided
+    :param jadn: JADN Schema to convert
+    :type jadn: str or dict
+    :param fname: Name of file to write
+    :tyoe fname: str
+    :param source: Name of the original JADN schema file
+    :type source: str
+    :param comm: Level of comments to include in converted schema
+    :type comm: str of enums.CommentLevel
+    :return: N/A
+    """
+    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+
     with open(fname, "w") as f:
         if source:
-            f.write("-- Generated from " + source + ", " + datetime.ctime(datetime.now()) + "\n\n")
-        f.write(cddl_dumps(jadn))
+            f.write("; Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
+        f.write(cddl_dumps(jadn, comm))

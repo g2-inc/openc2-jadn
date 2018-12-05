@@ -69,7 +69,7 @@ def ThriftRules():
                 # match - Any character (except line terminator) until # or line terminator
                 RegExMatch(r'.*?(#|{})'.format(lineSep)),  # comment
                 # match - Capture jadn_opts within comment, last } is matched one or more times
-                Optional(RegExMatch(r'jadn_opts:{.*}+'))  # jadn options
+                Optional(RegExMatch(r'#?jadn_opts:{.*}+'))  # jadn options
             ),
             OneOrMore(endLine)
         )

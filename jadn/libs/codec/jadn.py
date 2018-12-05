@@ -31,6 +31,7 @@ jadn_schema = {
                 "patch": {"type": "string"},
                 "title": {"type": "string"},
                 "description": {"type": "string"},
+                "version": {"type": "string"},
                 "imports": {
                     "type": "array",
                     "items": {
