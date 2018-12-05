@@ -19,7 +19,10 @@ from .jadn_defs import *
 
 jadn_schema = {
     "type": "object",
-    "required": ["meta", "types"],
+    "required": [
+        "meta",
+        "types"
+    ],
     "additionalProperties": False,
     "properties": {
         "meta": {
@@ -51,6 +54,8 @@ jadn_schema = {
             }
         },
         "types": {
+            # ['NAME', 'TYPE', ['OPTIONS'], 'COMMENTS']
+            # ['NAME', 'TYPE', ['OPTIONS'], 'COMMENTS', [FIELDS]]
             "type": "array",
             "items": {
                 "type": "array",
@@ -59,11 +64,13 @@ jadn_schema = {
                 "items": [
                     {"type": "string"},
                     {"type": "string"},
-                    {"type": "array",
+                    {
+                        "type": "array",
                         "items": {"type": "string"}
                     },
                     {"type": "string"},
-                    {"type": "array",
+                    {
+                        "type": "array",
                         "items": {
                             "type": "array",
                             "minItems": 3,
@@ -73,7 +80,7 @@ jadn_schema = {
                                 {"type": "string"},
                                 {"type": "string"},
                                 {"type": "array",
-                                 "items": {"type": "string"}
+                                    "items": {"type": "string"}
                                 },
                                 {"type": "string"}
                             ]
