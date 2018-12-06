@@ -168,7 +168,7 @@ class JADNtoProto3(object):
         return rtn
 
     def _formatComment(self, msg, **kargs):
-        if self.comments is CommentLevels.NONE:
+        if self.comments == CommentLevels.NONE:
             return ''
 
         com = '//'

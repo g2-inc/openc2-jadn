@@ -210,7 +210,7 @@ class JADNtoRelaxNG(object):
         return elm
 
     def _formatComment(self, msg, **kargs):
-        if self.comments is CommentLevels.NONE:
+        if self.comments == CommentLevels.NONE:
             return ''
 
         if isinstance(msg, str_type):
