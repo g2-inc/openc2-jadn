@@ -1,2 +1,0 @@
-# Install the standard requirements then the dev
-lesscpy==0.13.0

@@ -32,4 +32,4 @@ thrift2jadn_dump(open(os.path.join(test_dir, schema + '.all.thrift'), 'rb').read
 
 md_dump(schema_json, os.path.join(test_dir, schema + '.md'))
 
-html_dump(schema_json, os.path.join(test_dir, schema + '.html'))
+html_dump(schema_json, os.path.join(test_dir, schema + '.html'), styles='theme.css')

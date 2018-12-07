@@ -1,5 +1,5 @@
 import json
-# import lesscpy # Dev
+import lesscpy
 import re
 import os
 
@@ -28,8 +28,8 @@ class JADNtoHTML(object):
         else:
             raise TypeError('JADN improperly formatted')
 
-        # self._theme = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'theme.less')  # Dev
-        self._theme = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'theme.css')  # Prod
+        self._themeFile = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'theme.css')  # Default theme
+
         self._structFormats = {
             'Record': self._formatRecord,
             'Choice': self._formatChoice,
@@ -100,10 +100,7 @@ class JADNtoHTML(object):
 
         return formatted
 
-    def html_dump(self):
-        # theme = lesscpy.compile(open(self._theme, 'r')) if os.path.isfile(self._theme) else ''  # Dev
-        theme = open(self._theme, 'r').read() if os.path.isfile(self._theme) else ''  # Prod
-
+    def html_dump(self, styles=''):
         html = BeautifulSoup('''
             <!DOCTYPE html>
             <html lang="en">
@@ -123,7 +120,7 @@ class JADNtoHTML(object):
         '''.format(
             title=self._meta.get('module', 'JADN Schema Conversion'),
             version=self._meta.get('version', '0'),
-            theme=theme
+            theme=self.loadStyles(styles)
         ), 'lxml')
 
         html.body.select('div#meta')[0].append(self.makeHeader())
@@ -133,6 +130,25 @@ class JADNtoHTML(object):
         html.body.select('div#types')[0].append(self.makeCustom())
 
         return self._format_html(html)
+
+    def loadStyles(self, styles):
+        if styles in ['', ' ', None]:
+            # Check is theme exists
+            return open(self._themeFile, 'r').read() if os.path.isfile(self._themeFile) else ''
+
+        fname, ext = os.path.splitext(styles)
+        if ext not in ['.css', '.less']:
+            raise TypeError('Styles are not in css or less format')
+
+        if os.path.isfile(styles):
+            if ext == '.css':
+                return open(styles, 'r').read()
+            elif ext == '.less':
+                return lesscpy.compile(open(styles, 'r'))
+            else:
+                raise ValueError('The style format specified is an unknown format')
+        else:
+            raise IOError('The style file specified does not exist: {}'.format(styles))
 
     def formatStr(self, s):
         """
@@ -539,7 +555,7 @@ class JADNtoHTML(object):
         return arrayOf_html
 
 
-def html_dumps(jadn):
+def html_dumps(jadn, styles=''):
     """
     Produce CDDL schema from JADN schema
     :arg jadn: JADN Schema to convert
@@ -547,11 +563,11 @@ def html_dumps(jadn):
     :return: Protobuf3 schema
     :rtype str
     """
-    return JADNtoHTML(jadn).html_dump()
+    return JADNtoHTML(jadn).html_dump(styles)
 
 
-def html_dump(jadn, fname, source=""):
+def html_dump(jadn, fname, source="", styles=''):
     with open(fname, "w") as f:
         if source:
             f.write("<!-- Generated from {}, {} -->\n".format(source, datetime.ctime(datetime.now())))
-        f.write(html_dumps(jadn))
+        f.write(html_dumps(jadn, styles))
