@@ -40,7 +40,7 @@ Translate-Schemas:
     name: "JADN_Translations.${CI_PIPELINE_ID}_${CI_COMMIT_SHA:0:8}"
     expire_in: 2 weeks
     paths:
-     - ./schema_gen/*
+      - ./schema_gen/*
 
 
 Build-Wheel:
@@ -50,8 +50,8 @@ Build-Wheel:
     - pip wheel . -w ./dist
     - mv ./dist/*.whl ../
 
-    artifacts:
-      name: "JADN_Python.${CI_PIPELINE_ID}_${CI_COMMIT_SHA:0:8}"
-      expire_in: 2 weeks
-      paths:
+  artifacts:
+    name: "JADN_Python.${CI_PIPELINE_ID}_${CI_COMMIT_SHA:0:8}"
+    expire_in: 2 weeks
+    paths:
       - ./*.whl
