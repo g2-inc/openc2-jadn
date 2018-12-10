@@ -1,4 +1,4 @@
-from ...utils import FrozenDict
+from jadn.utils import FrozenDict
 
 
 class OpenC2MessageFormats(FrozenDict):

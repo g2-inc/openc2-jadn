@@ -1,16 +1,17 @@
-import datetime
 import json
 import re
 
-from libs.codec.codec_utils import fopts_s2d, topts_s2d
-from libs.enums import CommentLevels
-from libs.utils import Utils
+from datetime import datetime
+
+from jadn.codec.codec_utils import fopts_s2d, topts_s2d
+from jadn.enums import CommentLevels
+from jadn.utils import Utils
 
 
-class JADNtoThrift(object):
+class JADNtoCDDL(object):
     def __init__(self, jadn):
         """
-        Schema Converter for JADN to thrift
+        Schema Converter for JADN to CDDL
         :param jadn: str or dict of the JADN schema
         :type jadn: str or dict
         """
@@ -27,16 +28,17 @@ class JADNtoThrift(object):
 
         self.comments = CommentLevels.ALL
 
-        self.indent = '    '
+        self.indent = '  '
 
         self._fieldMap = {
-            'Binary': 'binary',
+            'Binary': 'bstr',
             'Boolean': 'bool',
-            'Integer': 'i64',
-            'Number': 'double',
+            'Integer': 'int64',
+            'Number': 'float64',
             'Null': 'null',
-            'String': 'string'
+            'String': 'bstr'
         }
+
         self._structFormats = {
             'Record': self._formatRecord,
             'Choice': self._formatChoice,
@@ -46,36 +48,35 @@ class JADNtoThrift(object):
             'ArrayOf': self._formatArrayOf,
         }
 
-        self._imports = []
         self._meta = jadn['meta'] or []
         self._types = []
         self._custom = []
-        self._customFields = []  # [t[0] for t in self._types]
+        self._customFields = []
 
         for t in jadn['types']:
+            self._customFields.append(t[0])
             if t[1] in self._structFormats.keys():
                 self._types.append(t)
-                self._customFields.append(t[0])
+
             else:
                 self._custom.append(t)
 
-    def thrift_dump(self, comm=CommentLevels.ALL):
+    def cddl_dump(self, comm=CommentLevels.ALL):
         """
-        Converts the JADN schema to Thrift
+        Converts the JADN schema to CDDL
         :param comm: Level of comments to include in converted schema
         :type comm: str of enums.CommentLevel
-        :return: Thrift schema
+        :return: CDDL schema
         :rtype str
         """
         self.comments = comm if comm in CommentLevels.values() else CommentLevels.ALL
 
-        return '{header}{imports}{defs}\n/* JADN Custom Fields\n[\n{jadn_fields}\n]\n*/'.format(
-            idn=self.indent,
+        doubleEmpty = re.compile('^$\n?^$', re.MULTILINE)
+        return re.sub(doubleEmpty, '', '{header}{defs}\n{custom}\n'.format(
             header=self.makeHeader(),
             defs=self.makeStructures(),
-            imports=''.join(['import \"{}\";\n'.format(i) for i in self._imports]),
-            jadn_fields=',\n'.join([self.indent+json.dumps(f) for f in Utils.defaultDecode(self._custom)])
-        )
+            custom=self.makeCustom()
+        ))
 
     def formatStr(self, s):
         """
@@ -96,15 +97,9 @@ class JADNtoThrift(object):
         :return: header for schema
         :rtype str
         """
-        header = list([
-            '/*'
-        ])
+        header = ['; meta: {} - {}'.format(k, re.sub(r'(^\"|\"$)', '', json.dumps(Utils.defaultDecode(v)))) for k, v in self._meta.items()]
 
-        header.extend([' * meta: {} - {}'.format(k, re.sub(r'(^\"|\"$)', '', json.dumps(Utils.defaultDecode(v)))) for k, v in self._meta.items()])
-
-        header.append('*/')
-
-        return '\n'.join(header) + '\n\n'
+        return '\n'.join(header) + '\n'
 
     def makeStructures(self):
         """
@@ -118,8 +113,19 @@ class JADNtoThrift(object):
 
             if df is not None:
                 tmp += df(t)
-
         return tmp
+
+    def makeCustom(self):
+        defs = []
+        for field in self._custom:
+            line = '{name} = {type} ; {com}'.format(
+                name=self.formatStr(field[0]),
+                type=self._fieldType(field[1]),
+                com=field[-1]
+            )
+            defs.append(line)
+
+        return '\n'.join(defs)
 
     def _fieldType(self, f):
         """
@@ -135,14 +141,16 @@ class JADNtoThrift(object):
             rtn = self.formatStr(self._fieldMap.get(f, f))
 
         else:
-            rtn = 'string'
+            rtn = 'bstr'
+
+        # print(f, rtn)
         return rtn
 
     def _formatComment(self, msg, **kargs):
         if self.comments == CommentLevels.NONE:
             return ''
 
-        com = '//'
+        com = ';'
         if msg not in ['', None, ' ']:
             com += ' {msg}'.format(msg=msg)
 
@@ -151,7 +159,7 @@ class JADNtoThrift(object):
                 k=k,
                 v=json.dumps(v)
             )
-        return '' if re.match(r'^\/\/\s+$', com) else com
+        return '' if re.match(r'^;\s+$', com) else com
 
     # Structure Formats
     def _formatRecord(self, itm):
@@ -161,37 +169,28 @@ class JADNtoThrift(object):
         :return: formatted record
         :rtype str
         """
-
         lines = []
+        i = 1
         for l in itm[-1]:
-            opts = {'type': l[2]}
-            if len(l[-2]) > 0:
-                opts['options'] = fopts_s2d(l[-2])
-                lines.append('{idn}{num}: {choice} {type} {name}; {com}\n'.format(
-                    idn=self.indent,
-                    choice='optional',
-                    type=self._fieldType(l[2]),
-                    name=self.formatStr(l[1]),
-                    num=l[0],
-                    com=self._formatComment(l[-1], jadn_opts=opts)
-                ))
-            else:
-                lines.append('{idn}{num}: {choice} {type} {name}; {com}\n'.format(
-                    idn=self.indent,
-                    choice='required',
-                    type=self._fieldType(l[2]),
-                    name=self.formatStr(l[1]),
-                    num=l[0],
-                    com=self._formatComment(l[-1], jadn_opts=opts)
-                ))
+            opts = {'type': l[2], 'field': l[0]}
+            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
 
+            lines.append('{idn}{pre_opts}{name}: {fType}{c} {com}\n'.format(
+                idn=self.indent,
+                pre_opts='? ' if '[0' in l[-2] else '',
+                name=self.formatStr(l[1]),
+                fType=self._fieldType(l[2]),
+                c=',' if i < len(itm[-1]) else '',
+                com=self._formatComment(l[-1], jadn_opts=opts)
+            ))
+            i += 1
         opts = {'type': itm[1]}
         if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
 
-        return '\nstruct {name} {{ {com}\n{req}}}\n'.format(
+        return '\n{name} = {{ {com}\n{req}}}\n'.format(
             name=self.formatStr(itm[0]),
-            req=''.join(lines),
-            com=self._formatComment('' if itm[-2] == '' else itm[-2], jadn_opts=opts)
+            com=self._formatComment(itm[-2], jadn_opts=opts),
+            req=''.join(lines)
         )
 
     def _formatChoice(self, itm):
@@ -201,28 +200,28 @@ class JADNtoThrift(object):
         :return: formatted choice
         :rtype str
         """
-        # Thrift does not use choice, using struct
         lines = []
+        i = 1
         for l in itm[-1]:
-            opts = {'type': l[2]}
+            opts = {'type': l[2], 'field': l[0]}
             if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
 
-            lines.append('{idn}{num}: {choice} {type} {name}; {com}\n'.format(
-                idn=self.indent,
-                choice='optional',
-                type=self._fieldType(l[2]),
+            lines.append('{name}: {type}{c} {com}'.format(
                 name=self.formatStr(l[1]),
-                num=l[0],
+                type=self._fieldType(l[2]),
+                c=' //' if i < len(itm[-1]) else '',
                 com=self._formatComment(l[-1], jadn_opts=opts)
             ))
+            i += 1
 
         opts = {'type': itm[1]}
         if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
 
-        return '\nstruct {name} {{ {com}\n{req}}}\n'.format(
+        return '\n{name} = ( {com}\n{idn}{defs}\n)\n'.format(
             name=self.formatStr(itm[0]),
-            req=''.join(lines),
-            com=self._formatComment(itm[-2], jadn_opts=opts)
+            com=self._formatComment(itm[-2], jadn_opts=opts),
+            idn=self.indent,
+            defs='\n{}'.format(self.indent).join(lines)
         )
 
     def _formatMap(self, itm):
@@ -232,9 +231,30 @@ class JADNtoThrift(object):
         :return: formatted map
         :rtype str
         """
-        # Thrift does not use maps in same way, using struct
+        lines = []
+        i = 1
+        for l in itm[-1]:
+            opts = {'type': l[2], 'field': l[0]}
+            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
 
-        return self._formatChoice(itm)
+            lines.append('{idn}{pre_opts}{name}: {fType}{c} {com}\n'.format(
+                idn=self.indent,
+                pre_opts='? ' if '[0' in l[-2] else '',
+                name=self.formatStr(l[1]),
+                fType=self._fieldType(l[2]),
+                c=',' if i < len(itm[-1]) else '',
+                com=self._formatComment(l[-1], jadn_opts=opts)
+            ))
+            i += 1
+
+        opts = {'type': itm[1]}
+        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
+
+        return '\n{name} = [ {com}\n{defs}]\n'.format(
+            name=self.formatStr(itm[0]),
+            com=self._formatComment(itm[-2], jadn_opts=opts),
+            defs=''.join(lines)
+        )
 
     def _formatEnumerated(self, itm):
         """
@@ -243,84 +263,84 @@ class JADNtoThrift(object):
         :return: formatted enum
         :rtype str
         """
-
         lines = []
-        default = True
         for l in itm[-1]:
-            a = l[-1].split('-', 1)[0]
-            if l[0] == 0: default = False
-            lines.append('{idn}{name} = {num}; {com}\n'.format(
-                idn=self.indent,
-                name=self.formatStr(l[1] or '{}'.format(a[0:-1])),
-                num=l[0],
-                com=self._formatComment(l[-1])
+            opts = {'field': l[0]}
+
+            lines.append('\"{name}\" {com}\n'.format(
+                name=self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0])),
+                com=self._formatComment(l[-1], jadn_opts=opts)
             ))
 
         opts = {'type': itm[1]}
         if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
 
-        return '\nenum {name} {{ {com}\n{enum}}}\n'.format(
-            idn=self.indent,
-            name=self.formatStr(itm[0]),
+        return '\n{com}\n{init}{rem}'.format(
             com=self._formatComment(itm[-2], jadn_opts=opts),
-            enum=''.join(lines)
+            init='{} = '.format(self.formatStr(itm[0])),
+            rem='{} /= '.format(self.formatStr(itm[0])).join(lines)
         )
 
-    def _formatArray(self, itm):
+    def _formatArray(self, itm):  # TODO: what should this do??
         """
         Formats array for the given schema type
         :param itm: array to format
         :return: formatted array
         :rtype str
         """
-        # Best method for creating some type of array
-        return self._formatArrayOf(itm)
+        field_opts = topts_s2d(itm[2])
 
-    def _formatArrayOf(self, itm):
+        field_type = '[{min}*{max} {type}]'.format(
+            min=field_opts.get('min', ''),
+            max=field_opts.get('max', ''),
+            type=self.formatStr(field_opts.get('rtype', 'string'))
+        )
+
+        return '\n{name} = {type} {com}\n'.format(
+            name=self.formatStr(itm[0]),
+            type=field_type,
+            com=self._formatComment(itm[-1])
+        )
+
+    def _formatArrayOf(self, itm):  # TODO: what should this do??
         """
         Formats arrayof for the given schema type
         :param itm: arrayof to format
         :return: formatted arrayof
         :rtype str
         """
-        # Best method for creating some type of array
-
         field_opts = topts_s2d(itm[2])
-        opts = {
-            'type': itm[1],
-            'options': topts_s2d(itm[2])
-        }
 
-        return '\nstruct {name} {{\n{req}}}\n'.format(
+        field_type = '[{min}*{max} {type}]'.format(
+            min=field_opts.get('min', ''),
+            max=field_opts.get('max', ''),
+            type=self.formatStr(field_opts.get('rtype', 'string'))
+        )
+
+        return '\n{name} = {type} {com}\n'.format(
             name=self.formatStr(itm[0]),
-            req='{idn}{num}: {choice} list<{type}> {name}; {com}\n'.format(
-                idn=self.indent,
-                num='1',
-                choice='optional',
-                type=self.formatStr(field_opts.get('rtype', 'string')),
-                name='item',
-                com=self._formatComment(itm[3], jadn_opts=opts)
-            ),
+            type=field_type,
+            com=self._formatComment(itm[-1])
         )
 
 
-def thrift_dumps(jadn, comm=CommentLevels.ALL):
+def cddl_dumps(jadn, comm=CommentLevels.ALL):
     """
-    Produce Thrift schema from JADN schema
-    :arg jadn: JADN Schema to convert
+    Produce CDDL schema from JADN schema
+    :param jadn: JADN Schema to convert
     :type jadn: str or dict
     :param comm: Level of comments to include in converted schema
     :type comm: str of enums.CommentLevel
-    :return: Thrift schema
+    :return: CDDL schema
     :rtype str
     """
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
-    return JADNtoThrift(jadn).thrift_dump(comm)
+    return JADNtoCDDL(jadn).cddl_dump(comm)
 
 
-def thrift_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+def cddl_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     """
-    Produce Thrift scheema from JADN schema and write to file provided
+    Produce CDDL schema from JADN schema and write to file provided
     :param jadn: JADN Schema to convert
     :type jadn: str or dict
     :param fname: Name of file to write
@@ -332,7 +352,8 @@ def thrift_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     :return: N/A
     """
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+
     with open(fname, "w") as f:
         if source:
-            f.write("// Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
-        f.write(thrift_dumps(jadn, comm))
+            f.write("; Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
+        f.write(cddl_dumps(jadn, comm))

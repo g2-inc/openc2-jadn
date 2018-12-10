@@ -1,8 +1,8 @@
 import os
 
-from libs import OpenC2MessageFormats
-from libs.codec import Codec, jadn_load
-from libs.message import OpenC2Message
+from jadn import OpenC2MessageFormats
+from jadn.codec import Codec, jadn_load
+from jadn.message import OpenC2Message
 
 msgs = {}
 dir = './message/'

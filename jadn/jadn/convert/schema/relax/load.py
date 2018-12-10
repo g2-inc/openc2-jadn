@@ -5,7 +5,7 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup, Comment
 
-from libs.utils import toStr, Utils
+from jadn.utils import toStr, Utils
 
 
 class Relax2Jadn(object):

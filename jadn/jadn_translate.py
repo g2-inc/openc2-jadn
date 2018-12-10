@@ -15,9 +15,9 @@ This script (jadn_translate) has no library dependencies other then jsonschema.
 from __future__ import print_function
 import os
 
-from libs.codec.jadn import jadn_load, jadn_dump, jadn_analyze, jadn_strip
-from libs.convert.w_jas import jas_dump
-from libs.convert.w_table import table_dump
+from jadn.codec.jadn import jadn_load, jadn_dump, jadn_analyze, jadn_strip
+from jadn.convert.w_jas import jas_dump
+from jadn.convert.w_table import table_dump
 
 
 if __name__ == '__main__':

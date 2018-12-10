@@ -4,7 +4,7 @@ and format-neutral mechanism for serializing structured data.  See [docs](docs/j
 information about the JADN language.
 
 ### Python package
-The JADN package ([libs](libs)) contains two subpackages:
+The JADN package ([libs](jadn)) contains two subpackages:
 
 - Codec -- Validate messages against JADN schema, serialize and deserialize messages
   - codec.py - Message encoder and decoder

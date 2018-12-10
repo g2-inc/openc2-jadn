@@ -1,8 +1,8 @@
 import json
 import os
 
-from libs.enums import CommentLevels
-from libs.convert import (
+from jadn.enums import CommentLevels
+from jadn.convert import (
     cddl_dump,
     cddl_load,
     html_dump,

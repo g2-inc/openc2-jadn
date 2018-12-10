@@ -6,7 +6,7 @@ from datetime import datetime
 
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 
-from libs.utils import safe_cast, toStr, Utils
+from jadn.utils import safe_cast, toStr, Utils
 lineSep = '\\r?\\n'
 
 

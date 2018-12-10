@@ -214,4 +214,4 @@ local.properties
 .idea/*
 jadn/schema_gen
 jadn/schema_gen_test
-package/oc2
+pkg/jadn

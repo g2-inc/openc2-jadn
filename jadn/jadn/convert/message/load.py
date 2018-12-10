@@ -6,9 +6,9 @@ import json
 import os
 import xmltodict
 
-from ...enums import OpenC2MessageFormats
-from ...utils import Utils, isBase64
-from ...codec.codec_format import s2b_ip_addr
+from jadn.enums import OpenC2MessageFormats
+from jadn.utils import Utils, isBase64
+from jadn.codec.codec_format import s2b_ip_addr
 
 try:
     from StringIO import StringIO

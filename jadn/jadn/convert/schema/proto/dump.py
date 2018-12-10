@@ -3,15 +3,15 @@ import re
 
 from datetime import datetime
 
-from libs.codec.codec_utils import fopts_s2d, topts_s2d
-from libs.enums import CommentLevels
-from libs.utils import Utils
+from jadn.codec.codec_utils import fopts_s2d, topts_s2d
+from jadn.enums import CommentLevels
+from jadn.utils import Utils
 
 
-class JADNtoCDDL(object):
+class JADNtoProto3(object):
     def __init__(self, jadn):
         """
-        Schema Converter for JADN to CDDL
+        Schema Converter for JADN to ProtoBuf3
         :param jadn: str or dict of the JADN schema
         :type jadn: str or dict
         """
@@ -31,14 +31,13 @@ class JADNtoCDDL(object):
         self.indent = '  '
 
         self._fieldMap = {
-            'Binary': 'bstr',
+            'Binary': 'string',
             'Boolean': 'bool',
             'Integer': 'int64',
-            'Number': 'float64',
-            'Null': 'null',
-            'String': 'bstr'
+            'Number': 'string',
+            'Null': 'string',
+            'String': 'string'
         }
-
         self._structFormats = {
             'Record': self._formatRecord,
             'Choice': self._formatChoice,
@@ -48,35 +47,36 @@ class JADNtoCDDL(object):
             'ArrayOf': self._formatArrayOf,
         }
 
+        self._imports = []
         self._meta = jadn['meta'] or []
         self._types = []
         self._custom = []
-        self._customFields = []
+        self._customFields = []  # [t[0] for t in self._types]
 
         for t in jadn['types']:
-            self._customFields.append(t[0])
             if t[1] in self._structFormats.keys():
                 self._types.append(t)
-
+                self._customFields.append(t[0])
             else:
                 self._custom.append(t)
 
-    def cddl_dump(self, comm=CommentLevels.ALL):
+    def proto_dump(self, comm=CommentLevels.ALL):
         """
-        Converts the JADN schema to CDDL
+        Converts the JADN schema to ProtoBuf3
         :param comm: Level of comments to include in converted schema
         :type comm: str of enums.CommentLevel
-        :return: CDDL schema
+        :return: Protobuf3 schema
         :rtype str
         """
         self.comments = comm if comm in CommentLevels.values() else CommentLevels.ALL
 
-        doubleEmpty = re.compile('^$\n?^$', re.MULTILINE)
-        return re.sub(doubleEmpty, '', '{header}{defs}\n{custom}\n'.format(
+        return '{header}{imports}{defs}\n/* JADN Custom Fields\n[\n{jadn_fields}\n]\n*/'.format(
+            idn=self.indent,
             header=self.makeHeader(),
             defs=self.makeStructures(),
-            custom=self.makeCustom()
-        ))
+            imports=''.join(['import \"{}\";\n'.format(i) for i in self._imports]),
+            jadn_fields=',\n'.join([self.indent+json.dumps(f) for f in Utils.defaultDecode(self._custom)])
+        )
 
     def formatStr(self, s):
         """
@@ -97,9 +97,19 @@ class JADNtoCDDL(object):
         :return: header for schema
         :rtype str
         """
-        header = ['; meta: {} - {}'.format(k, re.sub(r'(^\"|\"$)', '', json.dumps(Utils.defaultDecode(v)))) for k, v in self._meta.items()]
+        header = list([
+            'syntax = "proto3";',
+            '',
+            'package {};'.format(re.sub(r'[.\-/]+', '_', self._meta['module']) or 'JADN_ProtoBuf_Schema'),
+            '',
+            '/*'
+        ])
 
-        return '\n'.join(header) + '\n'
+        header.extend([' * meta: {} - {}'.format(k, re.sub(r'(^\"|\"$)', '', json.dumps(Utils.defaultDecode(v)))) for k, v in self._meta.items()])
+
+        header.append('*/')
+
+        return '\n'.join(header) + '\n\n'
 
     def makeStructures(self):
         """
@@ -111,21 +121,31 @@ class JADNtoCDDL(object):
         for t in self._types:
             df = self._structFormats.get(t[1], None)
 
-            if df is not None:
+            if df is not None and t[1] in ['Record', 'Enumerated', 'Map', 'Array', 'ArrayOf']:
                 tmp += df(t)
+
+            elif df is not None:
+                tmp += self._wrapAsRecord(df(t))
+
         return tmp
 
-    def makeCustom(self):
-        defs = []
-        for field in self._custom:
-            line = '{name} = {type} ; {com}'.format(
-                name=self.formatStr(field[0]),
-                type=self._fieldType(field[1]),
-                com=field[-1]
-            )
-            defs.append(line)
-
-        return '\n'.join(defs)
+    def _wrapAsRecord(self, itm):
+        """
+        wraps the given item as a record for the schema
+        :param itm: item to wrap
+        :type s: str
+        :return: item wrapped as a record for hte schema
+        :rtype str
+        """
+        lines = itm.split('\n')[1:-1]
+        if len(lines) > 1:
+            n = re.search(r'\s[\w\d\_]+\s', lines[0]).group()[1:-1]
+            tmp = "\nmessage {} {{\n".format(self.formatStr(n))
+            for l in lines:
+                tmp += '{}{}\n'.format(self.indent, l)
+            tmp += '}\n'
+            return tmp
+        return ''
 
     def _fieldType(self, f):
         """
@@ -134,23 +154,24 @@ class JADNtoCDDL(object):
         :return: type mapped to the schema
         :rtype str
         """
+        rtn = 'string'
+        if re.search(r'(datetime|date|time)', f):
+            if 'google/protobuf/timestamp.proto' not in self._imports:
+                self._imports.append('google/protobuf/timestamp.proto')
+            rtn = 'google.protobuf.Timestamp'
+
         if f in self._customFields:
             rtn = self.formatStr(f)
 
         elif f in self._fieldMap.keys():
             rtn = self.formatStr(self._fieldMap.get(f, f))
-
-        else:
-            rtn = 'bstr'
-
-        # print(f, rtn)
         return rtn
 
     def _formatComment(self, msg, **kargs):
         if self.comments == CommentLevels.NONE:
             return ''
 
-        com = ';'
+        com = '//'
         if msg not in ['', None, ' ']:
             com += ' {msg}'.format(msg=msg)
 
@@ -159,7 +180,7 @@ class JADNtoCDDL(object):
                 k=k,
                 v=json.dumps(v)
             )
-        return '' if re.match(r'^;\s+$', com) else com
+        return '' if re.match(r'^\/\/\s+$', com) else com
 
     # Structure Formats
     def _formatRecord(self, itm):
@@ -170,27 +191,25 @@ class JADNtoCDDL(object):
         :rtype str
         """
         lines = []
-        i = 1
         for l in itm[-1]:
-            opts = {'type': l[2], 'field': l[0]}
+            opts = {'type': l[2]}
             if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
 
-            lines.append('{idn}{pre_opts}{name}: {fType}{c} {com}\n'.format(
+            lines.append('{idn}{type} {name} = {num}; {com}\n'.format(
                 idn=self.indent,
-                pre_opts='? ' if '[0' in l[-2] else '',
+                type=self._fieldType(l[2]),
                 name=self.formatStr(l[1]),
-                fType=self._fieldType(l[2]),
-                c=',' if i < len(itm[-1]) else '',
+                num=l[0],
                 com=self._formatComment(l[-1], jadn_opts=opts)
             ))
-            i += 1
+
         opts = {'type': itm[1]}
         if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
 
-        return '\n{name} = {{ {com}\n{req}}}\n'.format(
+        return '\nmessage {name} {{ {com}\n{req}}}\n'.format(
             name=self.formatStr(itm[0]),
-            com=self._formatComment(itm[-2], jadn_opts=opts),
-            req=''.join(lines)
+            req=''.join(lines),
+            com=self._formatComment(itm[-2], jadn_opts=opts)
         )
 
     def _formatChoice(self, itm):
@@ -201,27 +220,26 @@ class JADNtoCDDL(object):
         :rtype str
         """
         lines = []
-        i = 1
         for l in itm[-1]:
-            opts = {'type': l[2], 'field': l[0]}
+            opts = {'type': l[2]}
             if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
 
-            lines.append('{name}: {type}{c} {com}'.format(
-                name=self.formatStr(l[1]),
+            lines.append('{idn}{type} {name} = {num}; {com}\n'.format(
+                idn=self.indent,
                 type=self._fieldType(l[2]),
-                c=' //' if i < len(itm[-1]) else '',
+                name=self.formatStr(l[1]),
+                num=l[0],
                 com=self._formatComment(l[-1], jadn_opts=opts)
             ))
-            i += 1
 
         opts = {'type': itm[1]}
         if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
 
-        return '\n{name} = ( {com}\n{idn}{defs}\n)\n'.format(
+        return '\noneof {name} {{ {com}\n{req}}}\n'.format(
+            idn=self.indent,
             name=self.formatStr(itm[0]),
             com=self._formatComment(itm[-2], jadn_opts=opts),
-            idn=self.indent,
-            defs='\n{}'.format(self.indent).join(lines)
+            req=''.join(lines)
         )
 
     def _formatMap(self, itm):
@@ -231,30 +249,7 @@ class JADNtoCDDL(object):
         :return: formatted map
         :rtype str
         """
-        lines = []
-        i = 1
-        for l in itm[-1]:
-            opts = {'type': l[2], 'field': l[0]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
-
-            lines.append('{idn}{pre_opts}{name}: {fType}{c} {com}\n'.format(
-                idn=self.indent,
-                pre_opts='? ' if '[0' in l[-2] else '',
-                name=self.formatStr(l[1]),
-                fType=self._fieldType(l[2]),
-                c=',' if i < len(itm[-1]) else '',
-                com=self._formatComment(l[-1], jadn_opts=opts)
-            ))
-            i += 1
-
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
-
-        return '\n{name} = [ {com}\n{defs}]\n'.format(
-            name=self.formatStr(itm[0]),
-            com=self._formatComment(itm[-2], jadn_opts=opts),
-            defs=''.join(lines)
-        )
+        return self._formatRecord(itm)
 
     def _formatEnumerated(self, itm):
         """
@@ -264,21 +259,25 @@ class JADNtoCDDL(object):
         :rtype str
         """
         lines = []
+        default = True
         for l in itm[-1]:
-            opts = {'field': l[0]}
-
-            lines.append('\"{name}\" {com}\n'.format(
+            if l[0] == 0: default = False
+            lines.append('{idn}{name} = {num}; {com}\n'.format(
+                idn=self.indent,
                 name=self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0])),
-                com=self._formatComment(l[-1], jadn_opts=opts)
+                num=l[0],
+                com=self._formatComment(l[-1])
             ))
 
         opts = {'type': itm[1]}
         if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
 
-        return '\n{com}\n{init}{rem}'.format(
+        return '\nenum {name} {{ {com}\n{default}{enum}}}\n'.format(
+            idn=self.indent,
+            name=self.formatStr(itm[0]),
             com=self._formatComment(itm[-2], jadn_opts=opts),
-            init='{} = '.format(self.formatStr(itm[0])),
-            rem='{} /= '.format(self.formatStr(itm[0])).join(lines)
+            default='{}Unknown_{} = 0; // required starting enum number for protobuf3\n'.format(self.indent, itm[0].replace('-', '_')) if default else '',
+            enum=''.join(lines)
         )
 
     def _formatArray(self, itm):  # TODO: what should this do??
@@ -288,19 +287,8 @@ class JADNtoCDDL(object):
         :return: formatted array
         :rtype str
         """
-        field_opts = topts_s2d(itm[2])
-
-        field_type = '[{min}*{max} {type}]'.format(
-            min=field_opts.get('min', ''),
-            max=field_opts.get('max', ''),
-            type=self.formatStr(field_opts.get('rtype', 'string'))
-        )
-
-        return '\n{name} = {type} {com}\n'.format(
-            name=self.formatStr(itm[0]),
-            type=field_type,
-            com=self._formatComment(itm[-1])
-        )
+        print('Array: {}'.format(itm))
+        return ''
 
     def _formatArrayOf(self, itm):  # TODO: what should this do??
         """
@@ -309,38 +297,38 @@ class JADNtoCDDL(object):
         :return: formatted arrayof
         :rtype str
         """
-        field_opts = topts_s2d(itm[2])
 
-        field_type = '[{min}*{max} {type}]'.format(
-            min=field_opts.get('min', ''),
-            max=field_opts.get('max', ''),
-            type=self.formatStr(field_opts.get('rtype', 'string'))
-        )
-
-        return '\n{name} = {type} {com}\n'.format(
+        opts = {
+            'type': 'arrayOf',
+            'options': topts_s2d(itm[2])
+        }
+        
+        return '\nmessage {name} {{\n{idn}repeated {type} {field} = 1; {com}\n}}\n'.format(
+            idn=self.indent,
             name=self.formatStr(itm[0]),
-            type=field_type,
-            com=self._formatComment(itm[-1])
+            type=self.formatStr(opts['options']['rtype']),
+            field=self.formatStr(opts['options']['rtype']).lower(),
+            com=self._formatComment(itm[-1], jadn_opts=opts)
         )
 
 
-def cddl_dumps(jadn, comm=CommentLevels.ALL):
+def proto_dumps(jadn, comm=CommentLevels.ALL):
     """
-    Produce CDDL schema from JADN schema
+    Produce Protobuf3 schema from JADN schema
     :param jadn: JADN Schema to convert
     :type jadn: str or dict
     :param comm: Level of comments to include in converted schema
     :type comm: str of enums.CommentLevel
-    :return: CDDL schema
+    :return: Protobuf3 schema
     :rtype str
     """
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
-    return JADNtoCDDL(jadn).cddl_dump(comm)
+    return JADNtoProto3(jadn).proto_dump(comm)
 
 
-def cddl_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+def proto_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     """
-    Produce CDDL schema from JADN schema and write to file provided
+    Produce ProtoBuf schema from JADN schema and write to file provided
     :param jadn: JADN Schema to convert
     :type jadn: str or dict
     :param fname: Name of file to write
@@ -352,8 +340,7 @@ def cddl_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     :return: N/A
     """
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
-
     with open(fname, "w") as f:
         if source:
-            f.write("; Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
-        f.write(cddl_dumps(jadn, comm))
+            f.write("// Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
+        f.write(proto_dumps(jadn, comm))

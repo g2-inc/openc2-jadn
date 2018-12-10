@@ -5,9 +5,9 @@ import xml.dom.minidom as md
 
 from datetime import datetime
 
-from libs.codec.codec_utils import fopts_s2d, topts_s2d
-from libs.enums import CommentLevels
-from libs.utils import toStr, Utils
+from jadn.codec.codec_utils import fopts_s2d, topts_s2d
+from jadn.enums import CommentLevels
+from jadn.utils import toStr, Utils
 
 primitives = [str, int, float]
 str_type = str

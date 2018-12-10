@@ -6,7 +6,7 @@ from xml.dom.minidom import parseString
 
 from .load import OpenC2MessageLoader
 
-from ...enums import OpenC2MessageFormats
+from jadn.enums import OpenC2MessageFormats
 
 
 class OpenC2Message(object):

@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 import os
 import unittest
 
-from libs.codec.codec import Codec
-from libs.codec.jadn import jadn_load, jadn_analyze
+from jadn.codec.codec import Codec
+from jadn.codec.jadn import jadn_load, jadn_analyze
 
 
 class Language(unittest.TestCase):

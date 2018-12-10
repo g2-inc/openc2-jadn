@@ -17,8 +17,8 @@ addtional libraries such as xlsxwriter.
 from __future__ import print_function
 import os
 
-from libs.codec import jadn_load, jadn_dump, jadn_analyze
-from libs.convert import html_dump, jas_dump, md_dump, proto_dump  # , thrift_dump
+from jadn.codec import jadn_load, jadn_dump, jadn_analyze
+from jadn.convert import html_dump, jas_dump, md_dump, proto_dump  # , thrift_dump
 
 
 if __name__ == "__main__":

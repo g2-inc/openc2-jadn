@@ -6,7 +6,7 @@ from .base import (
 )
 
 from .cddl import cddl_dump, cddl_dumps, cddl_load, cddl_loads
-from .jas import jas_dump, jas_dumps # , jas_load, jas_loads
+from .jas import jas_dump, jas_dumps  #, jas_load, jas_loads
 from .proto import proto_dump, proto_dumps, proto_load, proto_loads
 from .relax import relax_dump, relax_dumps, relax_load, relax_loads
 from .thrift import thrift_dump, thrift_dumps, thrift_load, thrift_loads
@@ -27,7 +27,7 @@ __all__ = [
     'relax_dumps',
     'thrift_dump',
     'thrift_dumps',
-    # Convert From ...for
+    # Convert From ...
     'cddl_load',
     'cddl_loads',
     # 'jas_load',
@@ -37,5 +37,5 @@ __all__ = [
     'relax_load',
     'relax_load',
     'thrift_load',
-    'thrift_loads',
+    'thrift_loads'
 ]

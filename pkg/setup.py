@@ -12,11 +12,12 @@ setup(
     description='JADN Schema/Message Translator & Validator',
     # long_description="The Server for NetVamp, that provides the REST API, controllers, and database.",
 
-    # author='G2-Inc. Solutions',
-    # author_email='solutions@g2-inc.com',
+    # author='G2-Inc.',
+    # author_email='screaming_bunny@g2-inc.com',
 
     classifiers=[
         'Development Status :: 5 - Production/Stable',
+        "License :: Apache 2.0 License",
         'Intended Audience :: Information Technology',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6',
@@ -31,7 +32,7 @@ setup(
     python_requires='>=2.7, !=3.[1-5], <4',
 
     package_data={
-        'JADN': [
+        str(versionData['name']): [
             './{}/*'.format(versionData['pkg_name']),
             './{}/convert/theme.*'.format(versionData['pkg_name']),
         ]
