@@ -1242,13 +1242,24 @@ class Bounds(unittest.TestCase):        # TODO: check max and min string length,
 schema_format = {  # JADN schema for value constraint tests
     'meta': {'module': 'unittests-Format'},
     'types': [
-        ['t_ipaddr_b64', 'Binary', ['@ip-addr'], ''],               # Baset64url encoding
-        ['t_ipaddr_bx', 'Binary', ['.x', '@ip-addr'], ''],          # Hex encoding
-        ['t_ipaddr_bstr', 'Binary', ['.ip-addr', '@ip-addr'], ''],  # Datatype-specific string encoding
+        ['IP-Base64url', 'Binary', ['@ip-addr'], ''],               # Baset64url encoding
+        ['IP-Hex', 'Binary', ['.x', '@ip-addr'], ''],               # Hex encoding
+        ['IP-String', 'Binary', ['.ip-addr', '@ip-addr'], ''],      # Datatype-specific string encoding
+        ['IPv4-Base64url', 'Binary', ['[4', ']4'], ''],             # Check length = 32 bits with format function
+        ['IPv4-Hex', 'Binary', ['[4', ']4', '.x'], ''],             # Check length = 32 bits with min/max size
+        ['IPv4-String', 'Binary', ['[4', ']4', '.ipv4'], ''],
+        ['IPv6-Base64url', 'Binary', ['[16', ']16'], ''],
+        ['IPv6-Hex', 'Binary', ['[16', ']16', '.x'], ''],
+        ['IPv6-String', 'Binary', ['[16', ']16', '.ipv6'], ''],
+        ['IPv5-error', 'Binary', ['.ipv5'], ''],                    # Generate error: unsupported (nonexistent) format
+        ['IPv4-Net', 'Array', ['.ipv4-net'], '', [
+            [1, 'addr', 'Binary', [], ''],
+            [2, 'prefix', 'Integer', [], '']
+        ]],
         # ['t_ipaddrs', 'ArraryOf', ['*t_ipaddr'], ''],
-        ['t_macaddr', 'Binary', ['@mac-addr'], ''],
-        ['t_email_s', 'String', ['@email'], ''],
-        ['t_hostname_s', 'String', ['@hostname'], '']
+        ['MAC-Base64url', 'Binary', ['@mac-addr'], ''],
+        ['Email-Addr', 'String', ['@email'], ''],
+        ['Hostname', 'String', ['@hostname'], '']
     ]
 }
 
@@ -1258,47 +1269,71 @@ class Format(unittest.TestCase):
         jadn_check(schema_format)
         self.tc = Codec(schema_format, verbose_rec=True, verbose_str=True)
 
-    ip1b = binascii.a2b_hex('c6020304')                 # IPv4 address
-    ip1s64 = 'xgIDBA'                                   # Base64url encoded
-    ip1sx = 'C6020304'                                  # Hex encoded
-    ip1str = '198.2.3.4'                                # IPv4-string encoded
-    ip1b_bad = binascii.a2b_hex('c602030456')
-    ip1s64_bad = 'xgIDBFY'
-    ip1sx_bad = 'C602030456'
-    ip1str_bad = '198.2.3.4.56'
+    ipv4_b = binascii.a2b_hex('c6020304')           # IPv4 address
+    ipv4_s64 = 'xgIDBA'                             # Base64url encoded
+    ipv4_sx = 'C6020304'                            # Hex encoded
+    ipv4_str = '198.2.3.4'                          # IPv4-string encoded
+    ipv4_b1_bad = binascii.a2b_hex('c60203')        # Too short
+    ipv4_b2_bad = binascii.a2b_hex('c602030456')    # Too long
+    ipv4_s64_bad = 'xgIDBFY'                        # Too long
+    ipv4_sx_bad = 'C602030456'                      # Too long
+    ipv4_str_bad = '198.2.3.4.56'                   # Too long
 
     def test_ipv4_addr(self):
-        self.assertEqual(self.tc.encode('t_ipaddr_b64', self.ip1b), self.ip1s64)
-        self.assertEqual(self.tc.decode('t_ipaddr_b64', self.ip1s64), self.ip1b)
-        self.assertEqual(self.tc.encode('t_ipaddr_bx', self.ip1b), self.ip1sx)
-        self.assertEqual(self.tc.decode('t_ipaddr_bx', self.ip1sx), self.ip1b)
-        self.assertEqual(self.tc.encode('t_ipaddr_bstr', self.ip1b), self.ip1str)
-        self.assertEqual(self.tc.decode('t_ipaddr_bstr', self.ip1str), self.ip1b)
+        self.assertEqual(self.tc.encode('IPv4-Base64url', self.ipv4_b), self.ipv4_s64)
+        self.assertEqual(self.tc.decode('IPv4-Base64url', self.ipv4_s64), self.ipv4_b)
+        self.assertEqual(self.tc.encode('IPv4-Hex', self.ipv4_b), self.ipv4_sx)
+        self.assertEqual(self.tc.decode('IPv4-Hex', self.ipv4_sx), self.ipv4_b)
+        self.assertEqual(self.tc.encode('IPv4-String', self.ipv4_b), self.ipv4_str)
+        self.assertEqual(self.tc.decode('IPv4-String', self.ipv4_str), self.ipv4_b)
         with self.assertRaises(ValueError):
-            self.tc.encode('t_ipaddr', self.ip1b_bad)
+            self.tc.encode('IPv4-Hex', self.ipv4_b1_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_ipaddr', self.ip1s64_bad)
+            self.tc.encode('IPv4-Hex', self.ipv4_b1_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_ipaddr', self.ip1sx_bad)
+            self.tc.decode('IPv4-Base64url', self.ipv4_s64_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_ipaddr', self.ip1str_bad)
+            self.tc.decode('IPv4-Hex', self.ipv4_sx_bad)
         with self.assertRaises(ValueError):
-            self.tc.encode('t_ipaddr', b'')
+            self.tc.decode('IPv4-String', self.ipv4_str_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_ipaddr', '')
+            self.tc.encode('IPv4-Base64url', b'')
+        with self.assertRaises(ValueError):
+            self.tc.decode('IPv4-Base64url', '')
+        with self.assertRaises(ValueError):
+            self.tc.encode('IPv4-Hex', b'')
+        with self.assertRaises(ValueError):
+            self.tc.decode('IPv4-Hex', '')
+        with self.assertRaises(ValueError):
+            self.tc.encode('IPv4-String', b'')
+        with self.assertRaises(ValueError):
+            self.tc.decode('IPv4-String', '')
 
-    ip2b = binascii.a2b_hex('20010db885a3000000008a2e03707334')     # IPv6 address
-    ip2s64 = 'IAENuIWjAAAAAIouA3BzNA'                               # Base64 encoded
-    ip2sx = '20010DB885A3000000008A2E03707334'                      # Hex encodec
-    ip2str = '2001:0DB8:85A3:0000:0000:8A2E:0370:7334'              # IPv6-string encoded
+    ipv4_net_str = '192.168.0.0/20'                     # IPv4 CIDR network address (not class C /24)
+    ipv4_net_a = [binascii.a2b_hex('c0a80000'), 20]
+
+    def test_ipv4_net(self):
+        self.assertEqual(self.tc.encode('IPv4-Net', self.ipv4_net_a), self.ipv4_net_str)
+        self.assertEqual(self.tc.decode('IPv4-Net', self.ipv4_net_str), self.ipv4_net_a)
+        #with self.assertRaises(ValueError):
+        #    self.tc.encode('IPv4-Net', self.ipv4_net_bad1)
+
+
+    ipv6_b = binascii.a2b_hex('20010db885a3000000008a2e03707334')     # IPv6 address
+    ipv6_s64 = 'IAENuIWjAAAAAIouA3BzNA'                               # Base64 encoded
+    ipv6_sx = '20010DB885A3000000008A2E03707334'                      # Hex encoded
+    ipv6_str1 = '2001:db8:85a3::8a2e:370:7334'                        # IPv6-string encoded
+    ipv6_str2 = '2001:db8:85a3::8a2e:0370:7334'                       # IPv6-string encoded - leading 0
+    ipv6_str3 = '2001:db8:85A3::8a2e:370:7334'                        # IPv6-string encoded - uppercase
+    ipv6_str4 = '2001:db8:85a3:0::8a2e:370:7334'                      # IPv6-string encoded - zero not compressed
 
     def test_ipv6_addr(self):
-        self.assertEqual(self.tc.encode('t_ipaddr_b64', self.ip2b), self.ip2s64)
-        self.assertEqual(self.tc.decode('t_ipaddr_b64', self.ip2s64), self.ip2b)
-        self.assertEqual(self.tc.encode('t_ipaddr_bx', self.ip2b), self.ip2sx)
-        self.assertEqual(self.tc.decode('t_ipaddr_bx', self.ip2sx), self.ip2b)
-        self.assertEqual(self.tc.encode('t_ipaddr_bstr', self.ip2b), self.ip2str)
-        self.assertEqual(self.tc.decode('t_ipaddr_bstr', self.ip2str), self.ip2b)
+        self.assertEqual(self.tc.encode('IP-Base64url', self.ipv6_b), self.ipv6_s64)
+        self.assertEqual(self.tc.decode('IP-Base64url', self.ipv6_s64), self.ipv6_b)
+        self.assertEqual(self.tc.encode('IP-Hex', self.ipv6_b), self.ipv6_sx)
+        self.assertEqual(self.tc.decode('IP-Hex', self.ipv6_sx), self.ipv6_b)
+        self.assertEqual(self.tc.encode('IP-String', self.ipv6_b), self.ipv6_str1)
+        self.assertEqual(self.tc.decode('IP-String', self.ipv6_str1), self.ipv6_b)
 
     eui48b = binascii.a2b_hex('002186b56e10')
     eui48s = 'ACGGtW4Q'
@@ -1308,14 +1343,14 @@ class Format(unittest.TestCase):
     eui48s_bad = 'Aib__rVuEA'
 
     def test_mac_addr(self):
-        self.assertEqual(self.tc.encode('t_macaddr', self.eui48b), self.eui48s)
-        self.assertEqual(self.tc.decode('t_macaddr', self.eui48s), self.eui48b)
-        self.assertEqual(self.tc.encode('t_macaddr', self.eui64b), self.eui64s)
-        self.assertEqual(self.tc.decode('t_macaddr', self.eui64s), self.eui64b)
+        self.assertEqual(self.tc.encode('MAC-Base64url', self.eui48b), self.eui48s)
+        self.assertEqual(self.tc.decode('MAC-Base64url', self.eui48s), self.eui48b)
+        self.assertEqual(self.tc.encode('MAC-Base64url', self.eui64b), self.eui64s)
+        self.assertEqual(self.tc.decode('MAC-Base64url', self.eui64s), self.eui64b)
         with self.assertRaises(ValueError):
-            self.tc.encode('t_macaddr', self.eui48b_bad)
+            self.tc.encode('MAC-Base64url', self.eui48b_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_macaddr', self.eui48s_bad)
+            self.tc.decode('MAC-Base64url', self.eui48s_bad)
 
     email1s = 'fred@foo.com'
     email2s_bad = 'https://www.foo.com/index.html'
@@ -1323,20 +1358,20 @@ class Format(unittest.TestCase):
     email4s_bad = 'John@'
 
     def test_email(self):
-        self.assertEqual(self.tc.encode('t_email_s', self.email1s), self.email1s)
-        self.assertEqual(self.tc.decode('t_email_s', self.email1s), self.email1s)
+        self.assertEqual(self.tc.encode('Email-Addr', self.email1s), self.email1s)
+        self.assertEqual(self.tc.decode('Email-Addr', self.email1s), self.email1s)
         with self.assertRaises(ValueError):
-            self.tc.encode('t_email_s', self.email2s_bad)
+            self.tc.encode('Email-Addr', self.email2s_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_email_s', self.email2s_bad)
+            self.tc.decode('Email-Addr', self.email2s_bad)
         with self.assertRaises(ValueError):
-            self.tc.encode('t_email_s', self.email3s_bad)
+            self.tc.encode('Email-Addr', self.email3s_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_email_s', self.email3s_bad)
+            self.tc.decode('Email-Addr', self.email3s_bad)
         with self.assertRaises(ValueError):
-            self.tc.encode('t_email_s', self.email4s_bad)
+            self.tc.encode('Email-Addr', self.email4s_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_email_s', self.email4s_bad)
+            self.tc.decode('Email-Addr', self.email4s_bad)
 
     hostname1s = 'eewww.example.com'
     hostname2s = 'top-gun.2600.xyz'                     # No TLD registry, no requirement to be FQDN
@@ -1345,30 +1380,30 @@ class Format(unittest.TestCase):
     hostname2s_bad = 'tag-.example.com'                 # Label cannot begin or end with hyphen
 
     def test_hostname(self):
-        self.assertEqual(self.tc.encode('t_hostname_s', self.hostname1s), self.hostname1s)
-        self.assertEqual(self.tc.decode('t_hostname_s', self.hostname1s), self.hostname1s)
-        self.assertEqual(self.tc.encode('t_hostname_s', self.hostname2s), self.hostname2s)
-        self.assertEqual(self.tc.decode('t_hostname_s', self.hostname2s), self.hostname2s)
-        self.assertEqual(self.tc.encode('t_hostname_s', self.hostname3s), self.hostname3s)
-        self.assertEqual(self.tc.decode('t_hostname_s', self.hostname3s), self.hostname3s)
+        self.assertEqual(self.tc.encode('Hostname', self.hostname1s), self.hostname1s)
+        self.assertEqual(self.tc.decode('Hostname', self.hostname1s), self.hostname1s)
+        self.assertEqual(self.tc.encode('Hostname', self.hostname2s), self.hostname2s)
+        self.assertEqual(self.tc.decode('Hostname', self.hostname2s), self.hostname2s)
+        self.assertEqual(self.tc.encode('Hostname', self.hostname3s), self.hostname3s)
+        self.assertEqual(self.tc.decode('Hostname', self.hostname3s), self.hostname3s)
         with self.assertRaises(ValueError):
-            self.tc.encode('t_hostname_s', self.hostname1s_bad)
+            self.tc.encode('Hostname', self.hostname1s_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_hostname_s', self.hostname1s_bad)
+            self.tc.decode('Hostname', self.hostname1s_bad)
         with self.assertRaises(ValueError):
-            self.tc.encode('t_hostname_s', self.hostname2s_bad)
+            self.tc.encode('Hostname', self.hostname2s_bad)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_hostname_s', self.hostname2s_bad)
+            self.tc.decode('Hostname', self.hostname2s_bad)
         with self.assertRaises(ValueError):
-            self.tc.encode('t_hostname_s', self.email1s)
+            self.tc.encode('Hostname', self.email1s)
         with self.assertRaises(ValueError):
-            self.tc.decode('t_hostname_s', self.email1s)
+            self.tc.decode('Hostname', self.email1s)
 
 
 class JADN(unittest.TestCase):
 
     def setUp(self):
-        fn = os.path.join('schema', 'jadn.jadn')
+        fn = os.path.join('schema', 'jadn-csdpr01.jadn')
         schema = jadn_load(fn)
         self.schema = schema
         sa = jadn_analyze(schema)

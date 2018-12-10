@@ -13,6 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 from __future__ import unicode_literals
 import numbers
+from binascii import b2a_hex
 from .jadn_defs import *
 from .codec_utils import topts_s2d, fopts_s2d
 from .codec_format import get_format_function
@@ -66,27 +67,27 @@ class Codec:
         self.schema = schema
         assert set(enctab) == set(PRIMITIVE_TYPES + STRUCTURE_TYPES)
         self.max_array = 100        # Conservative default upper bounds that can be overridden
-        self.max_string = 255       # Codec defaults (these) -> Schema defaults -> Datatype options
-        self.max_binary = 3276
+        self.max_string = 255       # Codec defaults (these) -> Schema defaults (bounds) -> Datatype options (max)
+        self.max_binary = 1000
 
-        self.arrays = None          # Declare here, populate in set_mode.
-        self.symtab = None
-        self.types = None
-        self.set_mode(verbose_rec, verbose_str)
+        self.arrays = None          # Array types generated when cardinality > 1.
+        self.symtab = None          # Symbol table - pre-computed values for all datatypes
+        self.types = None           # Index of defined types
+        self.set_mode(verbose_rec, verbose_str)  # Create symbol table based on encoding mode
 
-    def decode(self, datatype, mstr):
+    def decode(self, datatype, sval):  # Decode serialized value into API value
         try:
-            symtype = self.symtab[datatype]
+            ts = self.symtab[datatype]
         except KeyError:
-            raise ValueError('datatype "%s" is not defined: %s' % (datatype, mstr))
-        return symtype[S_CODEC][C_DEC](symtype, mstr, self)
+            raise ValueError('datatype "%s" is not defined' % (datatype))
+        return ts[S_CODEC][C_DEC](ts, sval, self)  # Dispatch to type-specific decoder
 
-    def encode(self, datatype, message):
+    def encode(self, datatype, aval):  # Encode API value into serialized value
         try:
-            symtype = self.symtab[datatype]
+            ts = self.symtab[datatype]
         except KeyError:
-            raise ValueError('datatype "%s" is not defined: %s' % (datatype, message))
-        return symtype[S_CODEC][C_ENC](symtype, message, self)
+            raise ValueError('datatype "%s" is not defined' % (datatype))
+        return ts[S_CODEC][C_ENC](ts, aval, self)  # Dispatch to type-specific encoder
 
 #    def _base_type(self, ftype):
 #        return ftype if is_builtin(ftype) else self.types[ftype][TTYPE]
@@ -119,7 +120,7 @@ class Codec:
                     aa,                             # 0: S_TDEF:  JADN type definition
                     enctab['ArrayOf'],              # 1: S_CODEC: Decoder, Encoder, Encoded type
                     list,                           # 2: S_STYPE: Encoded string type (str or tag)
-                    get_format_function('', ''),   # 3: S_FORMAT: Functions that check value constraints
+                    get_format_function('', ''),    # 3: S_FORMAT: Functions that check value constraints
                     {'rtype': fs[S_FDEF][FTYPE], 'min': amin, 'max': amax}  # 4: S_TOPT:  Type Options (dict)
                 ]
                 aa[TNAME] = _add_dtype(fs, aas)                     # Add to list of dynamically generated types
@@ -154,8 +155,8 @@ class Codec:
                 amin = opts['min'] if 'min' in opts else 1
                 amax = opts['max'] if 'max' in opts and opts['max'] > 0 else self.max_array
                 opts.update({'min': amin, 'max': amax})
-            fchk = symval[S_TOPT]['format'] if 'format' in symval[S_TOPT] else None
-            fcvt = symval[S_TOPT]['cvt'] if 'cvt' in symval[S_TOPT] else None
+            fchk = symval[S_TOPT]['format'] if 'format' in symval[S_TOPT] else ''
+            fcvt = symval[S_TOPT]['cvt'] if 'cvt' in symval[S_TOPT] else ''
             symval[S_FORMAT] = get_format_function(fchk, t[TTYPE], fcvt)
             return symval
         # TODO: Add string and binary min and max
@@ -164,7 +165,7 @@ class Codec:
         self.types = {t[TNAME]: t for t in self.schema['types']}        # pre-index types to allow symtab forward refs
         self.symtab = {t[TNAME]: sym(t) for t in self.schema['types']}
         self.symtab.update(self.arrays)                                 # Add generated arrays to symbol table
-        self.symtab.update({t: [None, enctab[t], enctab[t][C_ETYPE], get_format_function('', t)] for t in PRIMITIVE_TYPES})
+        self.symtab.update({t: [['', t], enctab[t], enctab[t][C_ETYPE], get_format_function('', t), []] for t in PRIMITIVE_TYPES})
 
 
 def _bad_index(ts, k, val):
@@ -196,19 +197,34 @@ def _check_type(ts, val, vtype, fail=False):      # fail forces rejection of boo
 
 def _format(ts, val, fmtop):
     try:
-        return ts[S_FORMAT][fmtop](val)         # fmtop selects function to check, serialize or deserialize
+        rval = ts[S_FORMAT][fmtop](val)  # fmtop selects function to check, serialize or deserialize
     except ValueError:
         td = ts[S_TDEF]
-        tn = ('%s(%s)' % (td[TNAME], td[TTYPE]) if td else 'Primitive')
+        tn = ('%s(%s)' % (td[TNAME], td[TTYPE]) if td[TNAME] else td[TTYPE])
+        val = b2a_hex(val).decode() if isinstance(val, bytes) else val
         raise ValueError('%s: %s is not a valid %s' % (tn, val, ts[S_FORMAT][FMT_NAME]))
+    except NameError:
+        td = ts[S_TDEF]
+        tn = ('%s(%s)' % (td[TNAME], td[TTYPE]) if td[TNAME] else td[TTYPE])
+        raise ValueError('%s: %s is not defined' % (tn, ts[S_FORMAT][FMT_NAME]))
+    return rval
 
 
-def _check_array_len(ts, val):
+def _check_range(ts, val):
     op = ts[S_TOPT]
     tn = ts[S_TDEF][TNAME]
-    if len(val) < op['min']:
+    if 'min' in op and val < op['min']:
+        raise ValueError('%s: %s < minimum %s' % (tn, len(val), op['min']))
+    if 'max' in op and val > op['max']:
+        raise ValueError('%s: %s > maximum %s' % (tn, len(val), op['max']))
+
+
+def _check_size(ts, val):
+    op = ts[S_TOPT]
+    tn = ts[S_TDEF][TNAME]
+    if 'min' in op and len(val) < op['min']:
         raise ValueError('%s: length %s < minimum %s' % (tn, len(val), op['min']))
-    if len(val) > op['max']:
+    if 'max' in op and len(val) > op['max']:
         raise ValueError('%s: length %s > maximum %s' % (tn, len(val), op['max']))
 
 
@@ -219,24 +235,26 @@ def _extra_value(ts, val, fld):
 
 def _decode_array_of(ts, val, codec):
     _check_type(ts, val, list)
-    _check_array_len(ts, val)
+    _check_size(ts, val)
     return [codec.decode(ts[S_TOPT]['rtype'], v) for v in val]
 
 
 def _encode_array_of(ts, val, codec):
     _check_type(ts, val, list)
-    _check_array_len(ts, val)
+    _check_size(ts, val)
     return [codec.encode(ts[S_TOPT]['rtype'], v) for v in val]
 
 
 def _decode_binary(ts, val, codec):         # Decode ASCII string to bytes
     _check_type(ts, val, type(''))
     bval = _format(ts, val, FMT_S2B)        # Convert to bytes
+    _check_size(ts, bval)
     return _format(ts, bval, FMT_CHECK)     # Check bytes value
 
 
 def _encode_binary(ts, val, codec):         # Encode bytes to string
     _check_type(ts, val, bytes)
+    _check_size(ts, val)
     val = _format(ts, val, FMT_CHECK)       # Check bytes value
     return _format(ts, val, FMT_B2S)        # Convert to string
 
@@ -309,21 +327,25 @@ def _encode_enumerated(ts, val, codec):
 
 def _decode_integer(ts, val, codec):
     _check_type(ts, val, numbers.Integral, isinstance(val, bool))
+    _check_range(ts, val)
     return _format(ts, val, FMT_CHECK)
 
 
 def _encode_integer(ts, val, codec):
     _check_type(ts, val, numbers.Integral, isinstance(val, bool))
+    _check_range(ts, val)
     return _format(ts, val, FMT_CHECK)
 
 
 def _decode_number(ts, val, codec):
     _check_type(ts, val, numbers.Real, isinstance(val, bool))
+    _check_range(ts, val)
     return _format(ts, val, FMT_CHECK)
 
 
 def _encode_number(ts, val, codec):
     _check_type(ts, val, numbers.Real, isinstance(val, bool))
+    _check_range(ts, val)
     return _format(ts, val, FMT_CHECK)
 
 
@@ -400,6 +422,12 @@ def _encode_maprec(ts, val, codec):
 
 
 def _decode_array(ts, val, codec):          # Ordered list of types, returned as a list
+    if 'cvt' in ts[S_TOPT]:
+        _check_type(ts, val, type(''))
+        aval = _format(ts, val, FMT_S2B)  # Convert string to multipart value (array)
+        apival = aval  # TODO: write field type checker
+        return apival
+
     _check_type(ts, val, list)
     apival = list()
     extra = len(val) > len(ts[S_FLD])
@@ -471,11 +499,13 @@ def _encode_null(ts, val, codec):
 
 def _decode_string(ts, val, codec):
     _check_type(ts, val, type(''))
+    _check_size(ts, val)
     return _format(ts, val, FMT_CHECK)
 
 
 def _encode_string(ts, val, codec):
     _check_type(ts, val, type(''))
+    _check_size(ts, val)
     return _format(ts, val, FMT_CHECK)
 
 

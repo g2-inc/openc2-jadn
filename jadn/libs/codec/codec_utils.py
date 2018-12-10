@@ -172,8 +172,8 @@ def cardinality(min, max):
     return str(min) + '..' + ('n' if max == 0 else str(max))
 
 
-
 # TODO: Remove Below Function(2)
+'''
 def opts_d2s(opts):     # TODO: Verify not used, move to topts_d2s & fopts_d2s
     """
     Convert options dictionary to list of option strings
@@ -195,3 +195,4 @@ def opts_d2s(opts):     # TODO: Verify not used, move to topts_d2s & fopts_d2s
         else:
             print("Unknown option '", o, "'")
     return ostr
+'''
