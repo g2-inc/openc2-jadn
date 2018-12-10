@@ -3,10 +3,10 @@ image: gitlab.labs.g2-inc.net:4567/screamingbunny/docker/plus:centos-python2
 variables:
   GIT_SSL_NO_VERIFY: "true"
   JQ_LINUX64: https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64
-  VERSION_FILE: $PKG_DIR/version.json
+  VERSION_FILE: ./version.json
 
 before_script:
-  - yum -y install wget rsync
+  - yum -y install wget
   - if [ ! -f /tmp/jq ]; then wget $JQ_LINUX64 -qO /tmp/jq; chmod 755 /tmp/jq; fi
   # Configure Version file
   - echo "$(/tmp/jq --arg NUM ${CI_PIPELINE_ID} '.version.pipe_number=$NUM' $VERSION_FILE)" > $VERSION_FILE
@@ -14,8 +14,7 @@ before_script:
   - echo "$(/tmp/jq --arg DATE $(date +%Y-%m-%d) '.version.date=$DATE' $VERSION_FILE)" > $VERSION_FILE
   - echo "$(/tmp/jq --arg PKG ${PKG_NAME} '.pkg_name=$PKG' $VERSION_FILE)" > $VERSION_FILE
   # Configure Python Env
-  - pip install -r $PKG_DIR/requirements.txt
-  - rsync -avz --delete ./jadn/libs/* ./$PKG_DIR/$PKG_NAME
+  - pip install -r ./requirements.txt
 
 # Copy and edit this stage for Unit/Code Testing
 #Test-Scripts:
