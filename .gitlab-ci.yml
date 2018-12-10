@@ -17,7 +17,7 @@ before_script:
   - echo "$(/tmp/jq --arg PKG ${PKG_NAME} '.pkg_name=$PKG' $VERSION_FILE)" > $VERSION_FILE
   # Configure Python Env
   - pip install -r ./$PKG_DIR/requirements.txt
-  - rsync -avz --delete ./jadn/libs/* ./$PKG_DIR/$PKG_NAME
+  - rsync -avz --delete ../jadn/jadn ./$PKG_DIR
 
 
 # Copy and edit this stage for Unit/Code Testing
