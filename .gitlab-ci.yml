@@ -3,6 +3,7 @@ image: gitlab.labs.g2-inc.net:4567/screamingbunny/docker/plus:centos-python2
 variables:
   GIT_SSL_NO_VERIFY: "true"
   JQ_LINUX64: https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64
+  PKG_NAME: jadn
   VERSION_FILE: ./version.json
 
 before_script:
