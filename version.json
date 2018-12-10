@@ -1,5 +1,5 @@
 {
-  "name" : "JADN Schema",
+  "name" : "JADN",
   "pkg_name": "jadn",
   "version" : {
     "number" : {

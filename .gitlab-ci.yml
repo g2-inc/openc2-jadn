@@ -48,9 +48,10 @@ Build-Wheel:
 
   script:
     - pip wheel . -w ./dist
+    - mv ./dist/*.whl ../
 
-  artifacts:
-    name: "JADN_Python.${CI_PIPELINE_ID}_${CI_COMMIT_SHA:0:8}"
-    expire_in: 2 weeks
-    paths:
-     - ./dist/*.whl
+    artifacts:
+      name: "JADN_Python.${CI_PIPELINE_ID}_${CI_COMMIT_SHA:0:8}"
+      expire_in: 2 weeks
+      paths:
+      - ./*.whl
