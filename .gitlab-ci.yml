@@ -48,7 +48,7 @@ Build-Wheel:
 
   script:
     - pip wheel . -w ./dist
-    - mv ./dist/*.whl ../
+    - mv ./dist/*.whl ./
 
   artifacts:
     name: "JADN_Python.${CI_PIPELINE_ID}_${CI_COMMIT_SHA:0:8}"
