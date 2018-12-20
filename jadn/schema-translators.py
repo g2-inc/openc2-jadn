@@ -12,7 +12,9 @@ from jadn.convert import (
     relax_dump,
     relax_load,
     thrift_dump,
-    thrift_load
+    thrift_load,
+    jas_dump,
+    jas_load
 )
 # from libs.schema import relax2jadn_dump, proto2jadn_dump, cddl2jadn_dump, thrift2jadn_dump
 
@@ -24,6 +26,10 @@ if not os.path.isdir(test_dir):
     os.makedirs(test_dir)
 
 schema_json = json.loads(open(base_schema, 'rb').read())
+
+# TODO: Add CommentLevels, requires dump.py rewrite
+jas_dump(schema_json, os.path.join(test_dir, schema + '.jas'))
+jas_load(open(os.path.join(test_dir, schema + '.jas'), 'rb').read(), os.path.join(test_dir, schema + '.jas.jadn'))
 
 proto_dump(schema_json, os.path.join(test_dir, schema + '.all.proto'), comm=CommentLevels.ALL)
 proto_dump(schema_json, os.path.join(test_dir, schema + '.none.proto'), comm=CommentLevels.NONE)

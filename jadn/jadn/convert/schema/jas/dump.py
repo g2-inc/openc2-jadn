@@ -45,7 +45,7 @@ def jas_dumps(jadn):
     for h in hdr_list + list(set(hdrs) - set(hdr_list)):
         if h in hdrs:
             if h == 'description':
-                jas += fill(hdrs[h], width=80, initial_indent='{0:14} '.format(h+':'), subsequent_indent=15*' ') + '\n'
+                jas += h + ':   ' + hdrs[h] + '\n'
             elif h == 'imports':
                 hh = '{:14} '.format(h+':')
                 for imp in hdrs[h]:
