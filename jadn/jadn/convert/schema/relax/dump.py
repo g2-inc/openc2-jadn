@@ -429,7 +429,7 @@ class JADNtoRelaxNG(object):
         return self._formatTag(
             'define',
             self._formatTag(
-                'oneOrMore' if opts['options'] and opts['options'] > 0 else 'zeroOrMore',
+                'oneOrMore' if opts['options'] and len(opts['options']) > 0 else 'zeroOrMore',
                 self._fieldType(field_opts.get('rtype', 'string'))
             ),
             com=self._formatComment(itm[-1], jadn_opts=opts),
