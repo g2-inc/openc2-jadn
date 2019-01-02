@@ -6,7 +6,8 @@ from datetime import datetime
 from bs4 import BeautifulSoup, Comment
 
 from jadn.utils import jadnFormat, toStr
-from jadn.jadn_utils import opts_d2s
+from jadn.jadn_defs import is_structure
+from jadn.jadn_utils import fopts_d2s, topts_d2s, fopts_s2d, topts_s2d
 
 
 class Relax2Jadn(object):
@@ -62,13 +63,15 @@ class Relax2Jadn(object):
             if isinstance(children[0], Comment):
                 com, opts = self._loadCommentDefs(children[0].string)
 
-                if 'type' in opts:
-                    tmp_type.append(opts['type'])
+                tmp_type.append(opts['type'] if 'type' in opts else 'String')
 
                 if 'options' in opts:
-                    tmp_type.append(opts_d2s(opts['options']))
+                    options = opts['options'] if type(opts['options']) is dict else {}
+                    tmp_type.append(topts_d2s(options))
                 else:
                     tmp_type.append([])
+
+                tmp_type.append(topts_d2s(opts['options']) if 'options' in opts else [])
 
                 tmp_type.append(com)
                 children = children[1:]
@@ -138,7 +141,8 @@ class Relax2Jadn(object):
                     tmp_def.append(self._fieldType(fieldType))
 
                     if 'options' in opts:
-                        tmp_def.append(opts_d2s(opts['options'], field=True))
+                        options = opts['options'] if type(opts['options']) is dict else {}
+                        tmp_def.append(topts_d2s(options) if is_structure(opts['type']) else fopts_d2s(options))
                     else:
                         tmp_def.append([])
 
@@ -203,6 +207,7 @@ class Relax2Jadn(object):
 
         try:
             opts = json.loads(opts)
+            opts['type'] = opts['type'] if 'type' in opts else 'String'
         except Exception as e:
             # print('Err: {}'.format(opts))
             opts = {}

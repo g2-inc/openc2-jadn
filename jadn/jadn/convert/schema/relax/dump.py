@@ -5,7 +5,7 @@ import xml.dom.minidom as md
 
 from datetime import datetime
 
-from jadn.codec.codec_utils import fopts_s2d, topts_s2d
+from jadn.jadn_utils import fopts_s2d, topts_s2d
 from jadn.enums import CommentLevels
 from jadn.utils import toStr, Utils
 
@@ -153,7 +153,7 @@ class JADNtoRelaxNG(object):
             com = '' if field[-1] == '' else field[-1]
 
             if len(field[-2]) >= 1:
-                opts = {'options': field[-2]}
+                opts = {'options': topts_s2d(field[-2])}
                 com += ' #jadn_opts:{}'.format(json.dumps(opts))
 
             c = self._formatTag(
@@ -199,7 +199,6 @@ class JADNtoRelaxNG(object):
                         elm += itm
 
             elif type(contents) is dict:
-                # print('dict')
                 for k, v in contents.items():
                     elm.append(self._formatTag(k, v))
             else:

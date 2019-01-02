@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 from jadn.utils import jadnFormat, safe_cast, toStr, Utils
-from jadn.jadn_utils import opts_d2s
+from jadn.jadn_utils import fopts_d2s, topts_d2s
 
 lineSep = '\\r?\\n'
 

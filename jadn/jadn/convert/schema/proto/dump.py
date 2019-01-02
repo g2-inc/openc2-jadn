@@ -3,7 +3,7 @@ import re
 
 from datetime import datetime
 
-from jadn.codec.codec_utils import fopts_s2d, topts_s2d
+from jadn.jadn_utils import fopts_s2d, topts_s2d
 from jadn.enums import CommentLevels
 from jadn.utils import Utils
 

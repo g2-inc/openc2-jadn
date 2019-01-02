@@ -96,21 +96,21 @@ FIELD_D2S = dict(zip(FIELD_OPTIONS.values(), FIELD_OPTIONS.keys()))
 TYPE_D2S = dict(zip(TYPE_OPTIONS.values(), TYPE_OPTIONS.keys()))
 OPTIONS_D2S = FrozenDict(
     TYPE=FrozenDict(
-        compact=lambda x: TYPE_D2S['compact'],
-        cvt=lambda x: TYPE_D2S['cvt'] + x,
-        format=lambda x: TYPE_D2S['format'] + x,
-        min=lambda x: TYPE_D2S['min'] + x if type(x) is int else 0,
-        max=lambda x: TYPE_D2S['max'] + x if type(x) is int else 1,
-        rtype=lambda x: TYPE_D2S['rtype'] + x,
-        pattern=lambda x: TYPE_D2S['pattern'] + x
+        compact=lambda x: chr(TYPE_D2S['compact']),
+        cvt=lambda x: chr(TYPE_D2S['cvt']) + str(x),
+        format=lambda x: chr(TYPE_D2S['format']) + str(x),
+        min=lambda x: chr(TYPE_D2S['min']) + str(x if type(x) is int else 0),
+        max=lambda x: chr(TYPE_D2S['max']) + str(x if type(x) is int else 1),
+        rtype=lambda x: chr(TYPE_D2S['rtype']) + str(x),
+        pattern=lambda x: chr(TYPE_D2S['pattern']) + str(x)
     ),
     FIELD=FrozenDict(
-        min=lambda x: FIELD_D2S['min'] + x if type(x) is int else 0,
-        max=lambda x: FIELD_D2S['max'] + x if type(x) is int else 1,
-        atfield=lambda x: FIELD_D2S['atfield'] + x,
-        rtype=lambda x: FIELD_D2S['rtype'] + x,
-        etype=lambda x: FIELD_D2S['etype'] + x,
-        default=lambda x: FIELD_D2S['default'] + x
+        min=lambda x: chr(FIELD_D2S['min']) + str(x if type(x) is int else 0),
+        max=lambda x: chr(FIELD_D2S['max']) + str(x if type(x) is int else 1),
+        atfield=lambda x: chr(FIELD_D2S['atfield']) + str(x),
+        rtype=lambda x: chr(FIELD_D2S['rtype']) + str(x),
+        etype=lambda x: chr(FIELD_D2S['etype']) + str(x),
+        default=lambda x: chr(FIELD_D2S['default']) + str(x)
     )
 )
 
@@ -167,7 +167,6 @@ def fopts_d2s(opts):
     assert isinstance(opts, (dict, )), "%r is not a dict" % opts
     ostr = []
     for k, v in opts.items():
-        print(k, v)
         assert k in OPTIONS_D2S.FIELD, ("Unknown field option '" + k + "'")
         ostr.append(OPTIONS_D2S.FIELD[k](v))
     return ostr

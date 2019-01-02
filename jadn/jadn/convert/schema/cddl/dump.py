@@ -3,7 +3,7 @@ import re
 
 from datetime import datetime
 
-from jadn.codec.codec_utils import fopts_s2d, topts_s2d
+from jadn.jadn_utils import fopts_s2d, topts_s2d
 from jadn.enums import CommentLevels
 from jadn.utils import Utils
 
@@ -142,8 +142,6 @@ class JADNtoCDDL(object):
 
         else:
             rtn = 'bstr'
-
-        # print(f, rtn)
         return rtn
 
     def _formatComment(self, msg, **kargs):

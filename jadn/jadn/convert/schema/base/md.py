@@ -2,7 +2,7 @@ import json
 
 from datetime import datetime
 
-from jadn.codec.codec_utils import fopts_s2d, topts_s2d
+from jadn.jadn_utils import fopts_s2d, topts_s2d
 
 
 class JADNtoMD(object):

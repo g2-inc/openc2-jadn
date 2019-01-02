@@ -18,7 +18,7 @@ from jadn.convert import (
 )
 # from libs.schema import relax2jadn_dump, proto2jadn_dump, cddl2jadn_dump, thrift2jadn_dump
 
-schema = 'oc2ls-csdpr01'
+schema = 'oc2ls-csdpr02'
 base_schema = 'schema/{}.jadn'.format(schema)
 test_dir = 'schema_gen_test'
 

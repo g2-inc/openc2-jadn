@@ -7,7 +7,8 @@ from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visi
 from datetime import datetime
 
 from jadn.utils import jadnFormat, toStr
-from jadn.jadn_utils import opts_d2s
+from jadn.jadn_defs import is_structure
+from jadn.jadn_utils import fopts_d2s, topts_d2s
 lineSep = '\\r?\\n'
 
 
@@ -202,7 +203,11 @@ class ProtoVisitor(PTNodeVisitor):
             try:
                 optDict = json.loads(optStr)
                 optDict['type'] = optDict['type'] if 'type' in optDict else defType
-                optDict['options'] = opts_d2s(optDict['options']) if 'options' in optDict else []
+                if 'options' in optDict:
+                    options = optDict['options'] if type(optDict['options']) is dict else {}
+                    optDict['options'] = topts_d2s(options) if is_structure(optDict['type']) else fopts_d2s(options)
+                else:
+                    optDict['options'] = []
             except Exception as e:
                 print('Oops, cant load jadn')
                 print(e)

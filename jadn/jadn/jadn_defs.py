@@ -53,6 +53,10 @@ def is_primitive(vtype):
     return vtype in PRIMITIVE_TYPES
 
 
+def is_structure(vtype):
+    return vtype in STRUCTURE_TYPES
+
+
 def is_builtin(vtype):
     return vtype in PRIMITIVE_TYPES + STRUCTURE_TYPES
 
