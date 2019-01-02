@@ -5,8 +5,7 @@ Merge a JSON Abstract Data Notation (JADN) module and its imported modules into 
 from __future__ import print_function
 import os
 
-from jadn.codec.jadn_defs import *
-from jadn.codec.jadn import jadn_load, jadn_dump, jadn_analyze, jadn_strip, jadn_merge
+from jadn.jadn import jadn_load, jadn_dump, jadn_merge
 
 
 def merge(idir):
@@ -60,7 +59,6 @@ def merge(idir):
                 _merge_imports(v, files)
             except ValueError as e:
                 print('  ##', v['source'], e.args)
-
 
 
 if __name__ == '__main__':

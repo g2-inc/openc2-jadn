@@ -5,7 +5,8 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup, Comment
 
-from jadn.utils import toStr, Utils
+from jadn.utils import jadnFormat, toStr
+from jadn.jadn_utils import opts_d2s
 
 
 class Relax2Jadn(object):
@@ -33,7 +34,7 @@ class Relax2Jadn(object):
             'types': self.makeTypes()
         }
 
-        return Utils.jadnFormat(jadn, indent=2)
+        return jadnFormat(jadn, indent=2)
 
     def makeMeta(self):
         meta = {}
@@ -65,7 +66,7 @@ class Relax2Jadn(object):
                     tmp_type.append(opts['type'])
 
                 if 'options' in opts:
-                    tmp_type.append(Utils.opts_d2s(opts['options']))
+                    tmp_type.append(opts_d2s(opts['options']))
                 else:
                     tmp_type.append([])
 
@@ -137,7 +138,7 @@ class Relax2Jadn(object):
                     tmp_def.append(self._fieldType(fieldType))
 
                     if 'options' in opts:
-                        tmp_def.append(Utils.opts_d2s(opts['options'], field=True))
+                        tmp_def.append(opts_d2s(opts['options'], field=True))
                     else:
                         tmp_def.append([])
 

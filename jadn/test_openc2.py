@@ -5,7 +5,7 @@ import os
 import unittest
 
 from jadn.codec.codec import Codec
-from jadn.codec.jadn import jadn_load, jadn_analyze
+from jadn.jadn import jadn_load, jadn_analyze
 
 
 class Language(unittest.TestCase):
@@ -506,10 +506,10 @@ class SLPF(unittest.TestCase):
                  ],
                 ['jadn:Type', 'Array', [], '', [
                     [1, 'tname', 'jadn:Identifier', [], ''],
-                    [2, 'btype', 'jadn:JADN-Type', ['*'], ''],
-                    [3, 'opts', 'jadn:Option', [']0'], ''],
+                    [2, 'btype', 'Enumerated', ['*jadn:JADN-Type'], ''],
+                    [3, 'opts', 'jadn:Options', [], ''],
                     [4, 'desc', 'String', [], ''],
-                    [5, 'fields', 'jadn:JADN-Type', ['&btype', ']0'], '']]
+                    [5, 'fields', 'jadn:JADN-Type', ['&2', ']0'], '']]
                  ],
                 ['jadn:JADN-Type', 'Choice', ['='], '', [
                     [1, 'Binary', 'Null', [], ''],

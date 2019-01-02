@@ -5,7 +5,8 @@ import re
 
 from arpeggio import EOF, Optional, OneOrMore, OrderedChoice, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, UnorderedGroup, ZeroOrMore
 from datetime import datetime
-from jadn.utils import toStr, Utils
+from jadn.utils import jadnFormat, toStr
+from jadn.jadn_utils import opts_d2s
 
 # For windows
 lineSep = '\\r?\\n'
@@ -169,7 +170,7 @@ class ThriftVisitor(PTNodeVisitor):
             try:
                 optDict = json.loads(optStr)
                 optDict['type'] = optDict['type'] if 'type' in optDict else defType
-                optDict['options'] = Utils.opts_d2s(optDict['options']) if 'options' in optDict else []
+                optDict['options'] = opts_d2s(optDict['options']) if 'options' in optDict else []
             except Exception as e:
                 print('Oops, cant load jadn')
                 print(e)
@@ -354,7 +355,7 @@ def thrift_loads(thrift):
         parser = ParserPython(ThriftRules)
         parse_tree = parser.parse(toStr(thrift))
         result = visit_parse_tree(parse_tree, ThriftVisitor())
-        return Utils.jadnFormat(result, indent=2)
+        return jadnFormat(result, indent=2)
 
     except Exception as e:
         raise Exception('Thrift parsing error has occurred: {}'.format(e))

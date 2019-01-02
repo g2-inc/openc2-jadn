@@ -36,13 +36,13 @@
 
   ["IPv4-Base64url", "Binary", ["[4", "]4"], "Value must be 32 bits [4..4].  Value displayed in base64url (Binary) default"],
 
-  ["IPv4-String", "Binary", ["[4", "]4", ".ipv4"], "Value must be 32 bits [4..4].  Value displayed in ipv4 dotted-decimal (Binary.s:ipv4)"],
+  ["IPv4-String", "Binary", ["[4", "]4", ".ipv4-addr"], "Value must be 32 bits [4..4].  Value displayed in ipv4 dotted-decimal (Binary.ipv4-addr)"],
 
   ["IPv6-Hex", "Binary", ["[16", "]16", ".x"], "Value must be 128 bits [16..16].  Value displayed in hex (Binary.x)"],
 
   ["IPv6-Base64url", "Binary", ["[16", "]16"], "Value must be 128 bits [16..16].  Value displayed in base64url (Binary) default"],
 
-  ["IPv6-String", "Binary", ["[16", "]16", ".ipv6"], "Value must be 128 bits [16..16].  Value displayed in ipv6 colon-hex (Binary.s:ipv6)"],
+  ["IPv6-String", "Binary", ["[16", "]16", ".ipv6-addr"], "Value must be 128 bits [16..16].  Value displayed in ipv6 colon-hex (Binary.ipv6-addr)"],
 
   ["IPv4-Net", "Array", [".ipv4-net"], "", [
     [1, "address", "Binary", [], ""],

@@ -24,5 +24,4 @@ OpenC2SchemaFormats = FrozenDict(
 CommentLevels = FrozenDict(
     ALL='all',
     NONE='none'
-
 )

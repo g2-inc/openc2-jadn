@@ -1,7 +1,7 @@
 {
  "meta": {
-  "module": "oasis-open.org/openc2/v1.0/jadn",
-  "patch": "wd01",
+  "module": "oasis-open.org/openc2/jadn/v1.0",
+  "patch": "0-csdpr02",
   "title": "JADN Syntax",
   "description": "Syntax of a JSON Abstract Data Notation (JADN) module.",
   "exports": ["Schema", "Uname"]
@@ -37,10 +37,10 @@
 
   ["Type", "Array", [], "", [
     [1, "tname", "Identifier", [], "Name of this datatype"],
-    [2, "btype", "JADN-Type", ["*"], "Base type.  Enumerated value derived from list of JADN data types"],
-    [3, "opts", "Option", ["]0"], "Type options"],
+    [2, "btype", "Enumerated", ["*JADN-Type"], "Base type.  Enumerated value derived from list of JADN data types"],
+    [3, "opts", "Options", [], "Type options"],
     [4, "desc", "String", [], "Description of this data type"],
-    [5, "fields", "JADN-Type", ["&btype", "]0"], "List of fields for compound types.  Not present for primitive types"]
+    [5, "fields", "JADN-Type", ["&2", "]0"], "List of fields for compound types.  Not present for primitive types"]
   ]],
 
   ["JADN-Type", "Choice", [], "", [

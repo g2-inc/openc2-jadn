@@ -2,10 +2,20 @@
 # from os import path
 
 from .enums import OpenC2MessageFormats, OpenC2SchemaFormats
+from .jadn import jadn_analyze, jadn_check, jadn_dump, jadn_dumps, jadn_load, jadn_loads, jadn_merge, jadn_strip
 
 __all__ = [
     'OpenC2MessageFormats',
-    'OpenC2SchemaFormats'
+    'OpenC2SchemaFormats',
+    # JADN Utils
+    'jadn_analyze',
+    'jadn_check',
+    'jadn_dump',
+    'jadn_dumps',
+    'jadn_load',
+    'jadn_loads',
+    'jadn_merge',
+    'jadn_strip'
 ]
 
 # Load all sub modules/packages

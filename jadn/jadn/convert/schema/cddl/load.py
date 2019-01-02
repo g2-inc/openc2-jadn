@@ -6,7 +6,8 @@ from datetime import datetime
 
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 
-from jadn.utils import safe_cast, toStr, Utils
+from jadn.utils import jadnFormat, safe_cast, toStr
+from jadn.jadn_utils import opts_d2s
 lineSep = '\\r?\\n'
 
 
@@ -143,7 +144,7 @@ class CddlVisitor(PTNodeVisitor):
             try:
                 optDict = json.loads(optStr)
                 optDict['type'] = optDict['type'] if 'type' in optDict else defType
-                optDict['options'] = Utils.opts_d2s(optDict['options']) if 'options' in optDict else []
+                optDict['options'] = opts_d2s(optDict['options']) if 'options' in optDict else []
             except Exception as e:
                 print('Oops, cant load jadn')
                 print(e)
@@ -334,7 +335,7 @@ def cddl_loads(cddl):
         parser = ParserPython(CddlRules)
         parse_tree = parser.parse(toStr(cddl))
         result = visit_parse_tree(parse_tree, CddlVisitor())
-        return Utils.jadnFormat(result, indent=2)
+        return jadnFormat(result, indent=2)
 
     except Exception as e:
         raise Exception('CDDL parsing error has occurred: {}'.format(e))

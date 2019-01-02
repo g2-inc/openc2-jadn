@@ -170,29 +170,3 @@ def cardinality(min, max):
     if min == 1 and max == 1:
         return '1'
     return str(min) + '..' + ('n' if max == 0 else str(max))
-
-
-# TODO: Remove Below Function(2)
-'''
-def opts_d2s(opts):     # TODO: Verify not used, move to topts_d2s & fopts_d2s
-    """
-    Convert options dictionary to list of option strings
-    """
-    ostr = []
-    for k, v in opts.items():
-        if k == "optional" and v:
-            ostr.append("?")
-        elif k == "atfield":
-            ostr.append("{" + v)
-        elif k == "range":
-            ostr.append("[" + str(v[0]) + ":" + str(v[1]))
-        elif k == "pattern":
-            ostr.append(">" + v)
-        elif k == "format":
-            ostr.append("@" + v)
-        elif k == "rtype":
-            ostr.append("*" + v)
-        else:
-            print("Unknown option '", o, "'")
-    return ostr
-'''

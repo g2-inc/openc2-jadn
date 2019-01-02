@@ -6,7 +6,8 @@ import re
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 from datetime import datetime
 
-from jadn.utils import toStr, Utils
+from jadn.utils import jadnFormat, toStr
+from jadn.jadn_utils import opts_d2s
 lineSep = '\\r?\\n'
 
 
@@ -201,7 +202,7 @@ class ProtoVisitor(PTNodeVisitor):
             try:
                 optDict = json.loads(optStr)
                 optDict['type'] = optDict['type'] if 'type' in optDict else defType
-                optDict['options'] = Utils.opts_d2s(optDict['options']) if 'options' in optDict else []
+                optDict['options'] = opts_d2s(optDict['options']) if 'options' in optDict else []
             except Exception as e:
                 print('Oops, cant load jadn')
                 print(e)
@@ -388,7 +389,7 @@ def proto_loads(proto):
         parser = ParserPython(ProtoRules)
         parse_tree = parser.parse(toStr(proto))
         result = visit_parse_tree(parse_tree, ProtoVisitor())
-        return Utils.jadnFormat(result, indent=2)
+        return jadnFormat(result, indent=2)
 
     except Exception as e:
         raise Exception('Proto parsing error has occurred: {}'.format(e))

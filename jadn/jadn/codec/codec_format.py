@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import base64
+import binascii
 import re
 import socket
 from socket import AF_INET, AF_INET6
@@ -66,12 +67,12 @@ def b_mac_addr(bval):       # Length of MAC addr must be 48 or 64 bits
 def s_uri(sval):            # Check if valid URI
     if not isinstance(sval, type('')):
         raise TypeError
-    if True:    # TODO: write it
+    if True:                # TODO: write it
         return sval
     raise ValueError
 
 
-def _format_ok(val):      # No value constraints on this type
+def _format_ok(val):        # No value constraints on this type
     return val
 
 
@@ -79,6 +80,7 @@ def _err(val):              # Unsupported format type
     raise NameError
 
 
+# Semantic validation function for type: String, Binary, Number
 FORMAT_CHECK_FUNCTIONS = {
     'hostname':     [s_hostname, _err, _err],       # Domain-Name
     'email':        [s_email, _err, _err],          # Email-Addr
@@ -88,8 +90,13 @@ FORMAT_CHECK_FUNCTIONS = {
 }
 
 
+# Binary to String, String to Binary conversion functions
+
 def s2b_hex(sval):      # Convert from hex string to binary
-    return base64.b16decode(sval)
+    try:
+        return base64.b16decode(sval)
+    except binascii.Error:
+        raise TypeError
 
 
 def b2s_hex(bval):      # Convert from binary to hex string
@@ -115,13 +122,19 @@ def s2b_ipv4_addr(sval):    # Convert IPv4 addr from string to binary
     try:
         return socket.inet_pton(AF_INET, sval)
     except AttributeError:       # Python 2 doesn't support inet_pton on Windows
-        return socket.inet_aton(sval)
+        try:
+            return socket.inet_aton(sval)
+        except IOError:
+            raise ValueError
     except OSError:
         raise ValueError
 
 
 def s2b_ipv6_addr(sval):    # Convert IPv6 address from string to binary
-    return socket.inet_pton(AF_INET6, sval)
+    try:
+        return socket.inet_pton(AF_INET6, sval)
+    except OSError:         # Python 2 doesn't support inet_pton on Windows
+        raise ValueError
 
 
 def b2s_ip_addr(bval):
@@ -132,13 +145,20 @@ def b2s_ipv4_addr(bval):      # Convert IPv4 address from binary to string
     try:
         return socket.inet_ntop(AF_INET, bval)
     except AttributeError:
-        return socket.inet_ntoa(bval)       # Python 2 doesn't support inet_ntop on Windows
+        try:
+            return socket.inet_ntoa(bval)       # Python 2 doesn't support inet_ntop on Windows
+        except IOError:
+            raise ValueError
     except OSError:
         raise ValueError
 
 
 def b2s_ipv6_addr(bval):        # Convert ipv6 address from binary to string
+    try:
         return socket.inet_ntop(AF_INET6, bval)     # Python 2 doesn't support inet_ntop on Windows
+    except OSError:
+        raise ValueError
+
 
 # IP Net (address, prefix length tuple) conversions
 
@@ -149,20 +169,20 @@ def s2a_ip_net(sval):           # Convert CIDR string to IP Net (v4 or v6)
 
 def s2a_ipv4_net(sval):
     sa, spl = sval.split('/', 1)
-    addr = s2b_ipv4_addr(sa)
+    sa = b2s_base64url(s2b_ipv4_addr(sa))   # Convert type-specific string to Binary default string
     prefix_len = int(spl)
     if prefix_len < 0 or prefix_len > 32:
         raise ValueError
-    return [addr, prefix_len]
+    return [sa, prefix_len]
 
 
 def s2a_ipv6_net(sval):
     sa, spl = sval.split('/', 1)
-    addr = s2b_ipv4_addr(sa)
+    sa = b2s_base64url(s2b_ipv6_addr(sa))   # Convert type-specific string to Binary default string
     prefix_len = int(spl)
     if prefix_len < 0 or prefix_len > 128:
         raise ValueError
-    return [addr, prefix_len]
+    return [sa, prefix_len]
 
 
 def a2s_ip_net(aval):           # Convert IP Net (v4 or v6) to string in CIDR notation
@@ -172,25 +192,29 @@ def a2s_ip_net(aval):           # Convert IP Net (v4 or v6) to string in CIDR no
 def a2s_ipv4_net(aval):
     if aval[1] < 0 or aval[1] > 32:       # Verify prefix length is valid
         raise ValueError
-    sval = b2s_ip_addr(aval[0]) + '/' + str(aval[1])
-    return sval
+    sa = b2s_ipv4_addr(s2b_base64url(aval[0]))  # Convert Binary default string to type-specific string
+    return sa + '/' + str(aval[1])
 
 
 def a2s_ipv6_net(aval):
     if aval[1] < 0 or aval[1] > 128:       # Verify prefix length is valid
         raise ValueError
-    sval = b2s_ip_addr(aval[0]) + '/' + str(aval[1])
-    return sval
+    sa = b2s_ipv6_addr(s2b_base64url(aval[0]))  # Convert Binary default string to type-specific string
+    return sa + '/' + str(aval[1])
 
 
-FORMAT_CONVERT_FUNCTIONS = {
-    'b64u': (b2s_base64url, s2b_base64url),         # Base64url
+FORMAT_CONVERT_BINARY_FUNCTIONS = {
+    'b': (b2s_base64url, s2b_base64url),            # Base64url
     'x': (b2s_hex, s2b_hex),                        # Hex
     'ip-addr':  (b2s_ip_addr, s2b_ip_addr),         # IP (v4 or v6) Address, version autodetect
-    'ipv4': (b2s_ipv4_addr, s2b_ipv4_addr),         # IPv4 Address
-    'ipv6': (b2s_ipv6_addr, s2b_ipv6_addr),         # IPv6 Address
+    'ipv4-addr': (b2s_ipv4_addr, s2b_ipv4_addr),         # IPv4 Address
+    'ipv6-addr': (b2s_ipv6_addr, s2b_ipv6_addr),         # IPv6 Address
+}
+
+FORMAT_CONVERT_MULTIPART_FUNCTIONS = {
     'ip-net': (a2s_ip_net, s2a_ip_net),             # IP (v4 or v6) Net Address with CIDR prefix length
     'ipv4-net': (a2s_ipv4_net, s2a_ipv4_net),       # IPv4 Net Address with CIDR prefix length
+    'ipv6-net': (a2s_ipv6_net, s2a_ipv6_net),       # IPv6 Net Address with CIDR prefix length
 }
 
 
@@ -200,14 +224,19 @@ def check_format_function(name, basetype, convert=None):
 
 
 def get_format_function(name, basetype, convert=None):
-    if basetype in ('Binary', 'Array'):
-        convert = convert if convert else 'b64u'
+    if basetype == 'Binary':
+        convert = convert if convert else 'b'
         try:
-            cvt = FORMAT_CONVERT_FUNCTIONS[convert]
+            cvt = FORMAT_CONVERT_BINARY_FUNCTIONS[convert]
         except KeyError:
-            cvt = (_err, _err)    # Conversion function not found, return Err
+            cvt = (_err, _err)      # Binary conversion function not found
+    elif basetype == 'Array':
+        try:
+            cvt = FORMAT_CONVERT_MULTIPART_FUNCTIONS[convert]
+        except KeyError:
+            cvt = (_err, _err)      # Multipart conversion function not found
     else:
-        cvt = (_err, _err)    # Conversion function not applicable, return Err
+        cvt = (_err, _err)          # Type does not support conversion
     try:
         col = {'String': 0, 'Binary': 1, 'Number': 2}[basetype]
         return (name, FORMAT_CHECK_FUNCTIONS[name][col]) + cvt

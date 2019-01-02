@@ -48,6 +48,15 @@ STRUCTURE_TYPES = (
     'Record',
 )
 
+
+def is_primitive(vtype):
+    return vtype in PRIMITIVE_TYPES
+
+
+def is_builtin(vtype):
+    return vtype in PRIMITIVE_TYPES + STRUCTURE_TYPES
+
+
 # Option Tags/Keys
 #   JADN Type Options (TOPTS) and Field Options (FOPTS) contain a list of strings, each of which is an option.
 #   The first character of an option string is the type ID; the remaining characters are the value.
@@ -57,11 +66,11 @@ STRUCTURE_TYPES = (
 TYPE_OPTIONS = {        # ID, value type, description
     0x3d: 'compact',    # '=', boolean, Enumerated type and Choice/Map/Record keys are ID not Name
     0x2e: 'cvt',        # '.', string, String conversion and validation function for Binary derived types
+    0x40: 'format',     # '@', string, name of validation function, e.g., date-time, email, ipaddr, ...
     0x5b: 'min',        # '[', integer, minimum string length, integer value, array length, property count
     0x5d: 'max',        # ']', integer, maximum string length, integer value, array length, property count
     0x2a: 'rtype',      # '*', string, Enumerated value from referenced type or ArrayOf element type
     0x24: 'pattern',    # '$', string, regular expression that a string type must match
-    0x40: 'format',     # '@', string, name of validation function, e.g., date-time, email, ipaddr, ...
 }
 
 FIELD_OPTIONS = {
@@ -71,4 +80,51 @@ FIELD_OPTIONS = {
     0x2a: 'rtype',      # '*', string, Enumerated value from referenced type
     0x2f: 'etype',      # '/', string, serializer-specific encoding type, e.g., u8, s16, hex, base64
     0x21: 'default',    # '!', string, default value for this field (coerced to field type)
+}
+
+SUPPORTED_TYPE_OPTIONS = {
+    'Binary': ['min', 'max', 'format', 'cvt'],
+    'Boolean': [],
+    'Integer': ['min', 'max', 'format'],
+    'Number': ['min', 'max', 'format'],
+    'Null': [],
+    'String': ['min', 'max', 'pattern', 'format'],
+    'Array': ['min', 'max', 'cvt'],
+    'ArrayOf': ['min', 'max', 'rtype'],
+    'Choice': ['compact'],
+    'Enumerated': ['compact', 'rtype'],
+    'Map': ['compact', 'min', 'max'],
+    'Record': ['min', 'max'],
+}
+
+SUPPORTED_FIELD_OPTIONS = {
+    'Binary': ['min', 'max'],
+    'Boolean': ['min', 'max'],
+    'Integer': ['min', 'max'],
+    'Number': ['min', 'max'],
+    'Null': [],
+    'String': ['min', 'max', 'pattern', 'format'],
+    'Array': ['min', 'max', 'etype', 'atfield'],
+    'ArrayOf': ['min', 'max', 'rtype'],
+    'Choice': ['min', 'max', 'etype'],
+    'Enumerated': ['rtype'],
+    'Map': ['min', 'max', 'etype'],
+    'Record': ['min', 'max', 'etype', 'atfield'],
+}
+
+FORMAT_CHECK = {            # Semantic validation functions
+    'email': 'String',      # email address, RFC 5322 Section 3.4.1
+    'hostname': 'String',   # host name, RFC 1123 Section 2.1
+    'ip-addr': 'Binary',    # length must be 4 octets (IPv4) or 16 octets (IPv6)
+    'mac-addr': 'Binary',   # length must be 6 octets (EUI-48) or 8 octets (EUI-64)
+    'uri': 'String',        # RFC 3986 Appendix A
+}
+
+FORMAT_CONVERT = {          # Binary-String and Array-String conversion functions
+    'b': 'Binary',          # Base64url - RFC 4648 Section 5 (default)
+    'x': 'Binary',          # Hex - RFC 4648 Section 8
+    'ipv4-addr': 'Binary',  # IPv4 text representation - draft-main-ipaddr-text-rep-02 Section 3
+    'ipv6-addr': 'Binary',  # IPv6 text representation - RFC 5952 Section 4
+    'ipv4-net': 'Array',    # IPv4 Network Address CIDR string - RFC 4632 Section 3.1
+    'ipv6-net': 'Array',    # IPv6 Network Address CIDR string - RFC 4291 Section 2.3
 }
