@@ -213,6 +213,12 @@ def _format(ts, val, fmtop):
     return rval
 
 
+def _check_key(ts, val):
+    try:
+        return int(val) if isinstance(next(iter(ts[S_DMAP])), int) else val
+    except ValueError:
+        raise ValueError('%s: %s is not a valid field ID' % (ts[S_TDEF][TNAME], val))
+
 def _check_range(ts, val):
     op = ts[S_TOPT]
     tn = ts[S_TDEF][TNAME]
@@ -277,6 +283,7 @@ def _decode_choice(ts, val, codec):         # Map Choice:  val == {key: value}
     if len(val) != 1:
         _bad_choice(ts, val)
     k, v = next(iter(val.items()))
+    k = _check_key(ts, k)
     if k not in ts[S_DMAP]:
         _bad_value(ts, val)
     f = ts[S_FLD][k][S_FDEF]
@@ -338,8 +345,11 @@ def _encode_number(ts, val, codec):
     return _format(ts, val, FMT_CHECK)
 
 
-def _decode_maprec(ts, val, codec):
-    _check_type(ts, val, ts[S_CODEC][C_ETYPE])
+def _decode_maprec(ts, sval, codec):
+    _check_type(ts, sval, ts[S_CODEC][C_ETYPE])
+    val = sval
+    if ts[S_CODEC][C_ETYPE] == dict:
+        val = {_check_key(ts, k): v for k, v in sval.items()}
     apival = dict()
     fx = FNAME if ts[S_VSTR] else FTAG  # Verbose or minified identifier strings
     fnames = [k for k in ts[S_FLD]]
