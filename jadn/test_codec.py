@@ -834,14 +834,22 @@ schema_selectors = {                # JADN schema for selector tests
             [4, 'flag', 'Boolean', [], ''],
             [7, 'count', 'Integer', [], ''],
             [6, 'color', 'Colors', [], ''],
-            [5, 'animal', 'Animals', [], '']
+            [5, 'animal', 'Animals', [], ''],
+            [10, 'rattr', 'Rattrs', [], ''],
+            [11, 'rattrs', 'Rattrs', [']0'], ''],
+            [12, 'pair', 'Pair', [], ''],
+            [13, 'pairs', 'Pair', [']0'], '']
         ]],
         ['Menu_name', 'Choice', [], '', [
             [9, 'name', 'String', [], ''],
             [4, 'flag', 'Boolean', [], ''],
             [7, 'count', 'Integer', [], ''],
             [6, 'color', 'Colors', [], ''],
-            [5, 'animal', 'Animals', [], '']
+            [5, 'animal', 'Animals', [], ''],
+            [10, 'rattr', 'Rattrs', [], ''],
+            [11, 'rattrs', 'Rattrs', [']0'], ''],
+            [12, 'pair', 'Pair', [], ''],
+            [13, 'pairs', 'Pair', [']0'], '']
         ]],
         ['Primitive', 'Choice', [], '', [
             [1, 'name', 'String', [], ''],
@@ -865,6 +873,10 @@ schema_selectors = {                # JADN schema for selector tests
         ['Rattrs', 'Record', [], '', [
             [1, 'length', 'Integer', [], ''],
             [2, 'weight', 'Number', [], '']
+        ]],
+        ['Pair', 'Array', [], '', [
+            [1, 'count', 'Integer', [], ''],
+            [2, 'name', 'String', [], '']
         ]]
     ]}
 
@@ -881,6 +893,12 @@ class Selectors(unittest.TestCase):         # TODO: bad schema - verify * field 
     arr_name4_bad_api = ['name', 17]        # name is type String, not Integer
     arr_name5_bad_api = ['universe', 17]    # universe is not a defined type
     arr_names1_api = ['count', [13, 17]]    # array of values of the specified type
+    arr_name_a1_api = ['rattr', {'length': 4, 'weight': 5.6}]
+    arr_names_a1_api = ['rattrs', [{'length': 4, 'weight': 5.6}, {'length': 7, 'weight': 8.9}]]
+    arr_names_a2_api = ['rattr', [{'length': 4, 'weight': 5.6}, {'length': 7, 'weight': 8.9}]]
+    arr_name_p1_api = ['pair', [1, 'rug']]
+    arr_names_p1_api = ['pairs', [[3, 'rug'], [2, 'clock']]]
+    arr_names_p2_api = ['pair', [[3, 'rug'], [2, 'clock']]]
 
     arr_tag1_api = [7, 17]                  # enumerated tag values are integers
     arr_tag2_api = [6, 'green']
@@ -909,6 +927,14 @@ class Selectors(unittest.TestCase):         # TODO: bad schema - verify * field 
         self.assertListEqual(self.tc.decode('t_attr_arr_name', self.arr_name2_api), self.arr_name2_api)
         self.assertListEqual(self.tc.encode('t_attr_arr_name', self.arr_name3_api), self.arr_name3_api)
         self.assertListEqual(self.tc.decode('t_attr_arr_name', self.arr_name3_api), self.arr_name3_api)
+        self.assertListEqual(self.tc.encode('t_attr_arr_name', self.arr_name_a1_api), self.arr_name_a1_api)
+        self.assertListEqual(self.tc.decode('t_attr_arr_name', self.arr_name_a1_api), self.arr_name_a1_api)
+        self.assertListEqual(self.tc.encode('t_attr_arr_name', self.arr_names_a1_api), self.arr_names_a1_api)
+        self.assertListEqual(self.tc.decode('t_attr_arr_name', self.arr_names_a1_api), self.arr_names_a1_api)
+        self.assertListEqual(self.tc.encode('t_attr_arr_name', self.arr_name_p1_api), self.arr_name_p1_api)
+        self.assertListEqual(self.tc.decode('t_attr_arr_name', self.arr_name_p1_api), self.arr_name_p1_api)
+        self.assertListEqual(self.tc.encode('t_attr_arr_name', self.arr_names_p1_api), self.arr_names_p1_api)
+        self.assertListEqual(self.tc.decode('t_attr_arr_name', self.arr_names_p1_api), self.arr_names_p1_api)
         with self.assertRaises(TypeError):
             self.tc.encode('t_attr_arr_name', self.arr_name4_bad_api)
         with self.assertRaises(TypeError):
@@ -922,6 +948,10 @@ class Selectors(unittest.TestCase):         # TODO: bad schema - verify * field 
         self.tc.set_mode(True, True)
         self.assertListEqual(self.tc.encode('t_attr_arr_names', self.arr_names1_api), self.arr_names1_api)
         self.assertListEqual(self.tc.decode('t_attr_arr_names', self.arr_names1_api), self.arr_names1_api)
+        self.assertListEqual(self.tc.encode('t_attr_arr_names', self.arr_names_a2_api), self.arr_names_a2_api)
+        self.assertListEqual(self.tc.decode('t_attr_arr_names', self.arr_names_a2_api), self.arr_names_a2_api)
+        self.assertListEqual(self.tc.encode('t_attr_arr_names', self.arr_names_p2_api), self.arr_names_p2_api)
+        self.assertListEqual(self.tc.decode('t_attr_arr_names', self.arr_names_p2_api), self.arr_names_p2_api)
         self.assertListEqual(self.tc.encode('t_attr_arr_tags', self.arr_tags1_api), self.arr_tags1_api)
         self.assertListEqual(self.tc.decode('t_attr_arr_tags', self.arr_tags1_api), self.arr_tags1_api)
 
@@ -1030,6 +1060,37 @@ class Selectors(unittest.TestCase):         # TODO: bad schema - verify * field 
         with self.assertRaises(ValueError):
             self.tc.decode('t_attr_rec_name', self.rec_name5_bad_min)
 
+    pep_api = {'foo': 'bar', 'data': {'count': 17}}
+    pec_api = {'foo': 'bar', 'data': {'animal': {'rat': {'length': 21, 'weight': .342}}}}
+    pep_bad_api = {'foo': 'bar', 'data': {'turnip': ''}}
+
+    def test_property_explicit_verbose(self):
+        self.tc.set_mode(True, True)
+        self.assertDictEqual(self.tc.encode('t_property_explicit_primitive', self.pep_api), self.pep_api)
+        self.assertDictEqual(self.tc.decode('t_property_explicit_primitive', self.pep_api), self.pep_api)
+        self.assertDictEqual(self.tc.encode('t_property_explicit_category', self.pec_api), self.pec_api)
+        self.assertDictEqual(self.tc.decode('t_property_explicit_category', self.pec_api), self.pec_api)
+        with self.assertRaises(ValueError):
+            self.tc.encode('t_property_explicit_primitive', self.pep_bad_api)
+        with self.assertRaises(ValueError):
+            self.tc.decode('t_property_explicit_primitive', self.pep_bad_api)
+
+    pep_min = ['bar', {7: 17}]
+    pec_min = ['bar', {2: {5: [21, 0.342]}}]
+    pep_bad_min = ['bar', {'6': 17}]
+
+    def test_property_explicit_min(self):
+        self.tc.set_mode(False, False)
+        self.assertListEqual(self.tc.encode('t_property_explicit_primitive', self.pep_api), self.pep_min)
+        self.assertDictEqual(self.tc.decode('t_property_explicit_primitive', self.pep_min), self.pep_api)
+        self.assertListEqual(self.tc.encode('t_property_explicit_category', self.pec_api), self.pec_min)
+        self.assertDictEqual(self.tc.decode('t_property_explicit_category', self.pec_min), self.pec_api)
+        with self.assertRaises(ValueError):
+            self.tc.encode('t_property_explicit_primitive', self.pep_bad_api)
+        with self.assertRaises(ValueError):
+            self.tc.decode('t_property_explicit_primitive', self.pep_bad_min)
+
+"""
     attr1i_api = {'type': 'Integer', 'value': 17}
     attr2i_api = {'type': 'Primitive', 'value': {'count': 17}}
     attr3i_api = {'type': 'Category', 'value': {'animal': {'rat': {'length': 21, 'weight': .342}}}}
@@ -1076,36 +1137,6 @@ class Selectors(unittest.TestCase):         # TODO: bad schema - verify * field 
         with self.assertRaises(ValueError):
             self.tc.decode('t_attr_rec_implicit', self.attr5i_bad_min)
 
-    pep_api = {'foo': 'bar', 'data': {'count': 17}}
-    pec_api = {'foo': 'bar', 'data': {'animal': {'rat': {'length': 21, 'weight': .342}}}}
-    pep_bad_api = {'foo': 'bar', 'data': {'turnip': ''}}
-
-    def test_property_explicit_verbose(self):
-        self.tc.set_mode(True, True)
-        self.assertDictEqual(self.tc.encode('t_property_explicit_primitive', self.pep_api), self.pep_api)
-        self.assertDictEqual(self.tc.decode('t_property_explicit_primitive', self.pep_api), self.pep_api)
-        self.assertDictEqual(self.tc.encode('t_property_explicit_category', self.pec_api), self.pec_api)
-        self.assertDictEqual(self.tc.decode('t_property_explicit_category', self.pec_api), self.pec_api)
-        with self.assertRaises(ValueError):
-            self.tc.encode('t_property_explicit_primitive', self.pep_bad_api)
-        with self.assertRaises(ValueError):
-            self.tc.decode('t_property_explicit_primitive', self.pep_bad_api)
-
-    pep_min = ['bar', {7: 17}]
-    pec_min = ['bar', {2: {5: [21, 0.342]}}]
-    pep_bad_min = ['bar', {'6': 17}]
-
-    def test_property_explicit_min(self):
-        self.tc.set_mode(False, False)
-        self.assertListEqual(self.tc.encode('t_property_explicit_primitive', self.pep_api), self.pep_min)
-        self.assertDictEqual(self.tc.decode('t_property_explicit_primitive', self.pep_min), self.pep_api)
-        self.assertListEqual(self.tc.encode('t_property_explicit_category', self.pec_api), self.pec_min)
-        self.assertDictEqual(self.tc.decode('t_property_explicit_category', self.pec_min), self.pec_api)
-        with self.assertRaises(ValueError):
-            self.tc.encode('t_property_explicit_primitive', self.pep_bad_api)
-        with self.assertRaises(ValueError):
-            self.tc.decode('t_property_explicit_primitive', self.pep_bad_min)
-
     pip_api = {'foo': 'bar', 'count': 17}
     pic_api = {'foo': 'bar', 'animal': {'rat': {'length': 21, 'weight': .342}}}
     pip_bad1_api = {'foo': 'bar', 'value': 'turnip'}
@@ -1145,7 +1176,7 @@ class Selectors(unittest.TestCase):         # TODO: bad schema - verify * field 
             self.tc.encode('t_property_implicit_primitive', self.pip_bad2_api)
         with self.assertRaises(ValueError):
             self.tc.decode('t_property_implicit_primitive', self.pip_bad2_min)
-
+"""
 
 schema_list_cardinality = {                # JADN schema for fields with cardinality > 1 (e.g., list of x)
     'meta': {'module': 'unittests-ListField'},

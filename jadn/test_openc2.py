@@ -509,21 +509,21 @@ class SLPF(unittest.TestCase):
                     [2, 'btype', 'Enumerated', ['*jadn:JADN-Type'], ''],
                     [3, 'opts', 'jadn:Options', [], ''],
                     [4, 'desc', 'String', [], ''],
-                    [5, 'fields', 'jadn:JADN-Type', ['&2', ']0'], '']]
+                    [5, 'fields', 'jadn:JADN-Type', ['&2', '[0', ']0'], '']]
                  ],
-                ['jadn:JADN-Type', 'Choice', ['='], '', [
+                ['jadn:JADN-Type', 'Choice', [], '', [
                     [1, 'Binary', 'Null', [], ''],
                     [2, 'Boolean', 'Null', [], ''],
                     [3, 'Integer', 'Null', [], ''],
                     [4, 'Number', 'Null', [], ''],
                     [5, 'Null', 'Null', [], ''],
                     [6, 'String', 'Null', [], ''],
-                    [7, 'Array', 'jadn:FullField', [']0'], ''],
+                    [7, 'Array', 'jadn:FullField', [], ''],
                     [8, 'ArrayOf', 'Null', [], ''],
-                    [9, 'Choice', 'jadn:FullField', [']0'], ''],
-                    [10, 'Enumerated', 'jadn:EnumField', [']0'], ''],
-                    [11, 'Map', 'jadn:FullField', [']0'], ''],
-                    [12, 'Record', 'jadn:FullField', [']0'], '']]
+                    [9, 'Choice', 'jadn:FullField', [], ''],
+                    [10, 'Enumerated', 'jadn:EnumField', [], ''],
+                    [11, 'Map', 'jadn:FullField', [], ''],
+                    [12, 'Record', 'jadn:FullField', [], '']]
                  ],
                 ['jadn:EnumField', 'Array', [], '', [
                     [1, '', 'Integer', [], ''],
@@ -537,10 +537,10 @@ class SLPF(unittest.TestCase):
                     [4, '', 'jadn:Options', [], ''],
                     [5, '', 'String', [], '']]
                  ],
-                ['jadn:Identifier', 'String', ['$^[a-zA-Z][\\w-]*$', '[1', ']32'], ''],
+                ['jadn:Identifier', 'String', ['$^[a-zA-Z][\\w-]*$', '[0', ']32'], ''],
                 ['jadn:Nsid', 'String', ['$^[a-zA-Z][\\w-]*$', '[1', ']8'], ''],
                 ['jadn:Uname', 'String', ['[1', ']100'], ''],
-                ['jadn:Options', 'ArrayOf', ['*jadn:Option', '[0', ']0'], ''],
+                ['jadn:Options', 'ArrayOf', ['*jadn:Option', '[0', ']10'], ''],
                 ['jadn:Option', 'String', ['[1', ']100'], '']
             ]
         }
@@ -625,6 +625,7 @@ class SLPF(unittest.TestCase):
     def test_query4r(self):
         self.assertEqual(self.tc.encode('OpenC2-Response', self.mquery4r), self.mquery4r)
         self.assertEqual(self.tc.decode('OpenC2-Response', self.mquery4r), self.mquery4r)
+
 
 if __name__ == '__main__':
     unittest.main()
