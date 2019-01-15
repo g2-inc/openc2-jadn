@@ -89,7 +89,7 @@ class JADNtoCDDL(object):
         if s == '*':
             return 'unknown'
         else:
-            return re.sub(r'[\- ]', '_', s)
+            return s #re.sub(r'[\- ]', '_', s)
 
     def makeHeader(self):
         """
@@ -293,11 +293,29 @@ class JADNtoCDDL(object):
             max=field_opts.get('max', ''),
             type=self.formatStr(field_opts.get('rtype', 'string'))
         )
+        type_opts = {'type': itm[1]}
 
-        return '\n{name} = {type} {com}\n'.format(
+        lines = []
+        i = 1
+        for l in itm[-1]:
+            opts = {'type': l[2], 'field': l[0]}
+            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
+
+            lines.append('{idn}{pre_opts}{name}: {fType}{c} {com}\n'.format(
+                idn=self.indent,
+                pre_opts='? ' if '[0' in l[-2] else '',
+                name=self.formatStr(l[1]),
+                fType=self._fieldType(l[2]),
+                c=',' if i < len(itm[-1]) else '',
+                com=self._formatComment(l[-1], jadn_opts=opts)
+            ))
+            i += 1 
+
+        return '\n{name} = [ {com}\n{defs}]\n'.format(
             name=self.formatStr(itm[0]),
-            type=field_type,
-            com=self._formatComment(itm[-1])
+            com=self._formatComment(itm[-2], jadn_opts=type_opts),
+            idn=self.indent,
+            defs=''.join(lines)
         )
 
     def _formatArrayOf(self, itm):  # TODO: what should this do??
@@ -315,10 +333,12 @@ class JADNtoCDDL(object):
             type=self.formatStr(field_opts.get('rtype', 'string'))
         )
 
+        type_opts = {'type': itm[1]}
+
         return '\n{name} = {type} {com}\n'.format(
             name=self.formatStr(itm[0]),
             type=field_type,
-            com=self._formatComment(itm[-1])
+            com=self._formatComment(itm[-1], jadn_opts=type_opts)
         )
 
 

@@ -33,7 +33,7 @@ def CddlRules():
     def defHeader():
         return (
             # matches name: "(NAME) = { ... }"
-            ZeroOrMore(RegExMatch(r'^[\w]+')),
+            ZeroOrMore(RegExMatch(r'^[\S]+')),
             # matches line up to jadn_opts
             ZeroOrMore(RegExMatch(r'.*?(#|{})')),
             # matches jadn_opts
@@ -47,7 +47,7 @@ def CddlRules():
             # matches (TYPE) : ...
             RegExMatch(r'\s*[\w]+'),  # type
             # matches type : (NAME), ...
-            RegExMatch(r':\s*[\w]+\s*,*'),  # name
+            RegExMatch(r':\s*[\S]+\s*,*'),  # name
             Optional('//'),
             Optional(
                 ';',
@@ -67,10 +67,10 @@ def CddlRules():
     def enumField():
         return (
             # matches (ENUM) = ...
-            RegExMatch(r'[\w]+'),  # enum name
+            RegExMatch(r'[\S]+'),  # enum name
             Optional('/='), Optional('='),
             # matches ... = (NAME)
-            RegExMatch(r'\"[\w]+\"'),  # item name
+            RegExMatch(r'\"[\w\s*]+\"'),  # item name
             ';',
             Optional(
                 RegExMatch(r'.*?(#|{})'.format(lineSep)),  # comment
@@ -90,20 +90,16 @@ def CddlRules():
         return (
             OneOrMore(RegExMatch(r'[\w]+')),  # name
             OneOrMore(RegExMatch(r'.*\]')),  # data up to comment
-            ZeroOrMore(RegExMatch(r';[\s*\w]+')),
+            ZeroOrMore(RegExMatch(r';[\s\w]+')),
+            Optional(
+                RegExMatch(r'.*?(#|{})'.format(lineSep)),  # comment
+                Optional(RegExMatch(r'jadn_opts:{.*}+'))  # jadn options
+            ),
             OneOrMore(endLine)
         )
-
-    def typeDefs():
-        return (OneOrMore(UnorderedGroup(
-            ZeroOrMore(recordDef),
-            ZeroOrMore(enumDef),
-            ZeroOrMore(arrayOfDef)
-        )))
-
     def customFields():
             return (
-            OneOrMore(RegExMatch(r'[\w]*')),  # name
+            OneOrMore(RegExMatch(r'[\w-]*')),  # name
             OneOrMore('='),
             OneOrMore(RegExMatch(r'[\w]+')),  # type
             ZeroOrMore(RegExMatch(r';.*'))  # comment
@@ -113,6 +109,14 @@ def CddlRules():
         return(OrderedChoice(
             Optional(commentLine),
             OneOrMore(customFields)
+        ))
+        
+    def typeDefs():
+        return OneOrMore(
+            UnorderedGroup(
+                ZeroOrMore(recordDef),
+                ZeroOrMore(enumDef),
+                ZeroOrMore(arrayOfDef)
         ))
 
     return (
@@ -179,9 +183,9 @@ class CddlVisitor(PTNodeVisitor):
         for child in children:
             line = child.split(' - ')
             try:
-                self.data['meta'][line[0]] = json.loads(line[1])
+                self.data['meta'][line[0]] = json.loads(line[1][0:-1])
             except Exception as e:
-                self.data['meta'][line[0]] = line[1]
+                self.data['meta'][line[0]] = line[1][0:-1]
 
     def visit_typeDefs(self, node, children):
         if 'types' not in self.data:
@@ -320,7 +324,6 @@ class CddlVisitor(PTNodeVisitor):
         ]
 
     def visit_customDefs(self, node, children):
-        #print(children)
         if 'types' not in self.data:
             self.data['types'] = []
 
