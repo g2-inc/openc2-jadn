@@ -27,7 +27,6 @@ before_script:
 #    - cd jadn
 #    - python test_codec.py
 #    - python test_openc2.py
-#    # - python test_openc2_exp.py
 
 Translate-Schemas:
   stage: test

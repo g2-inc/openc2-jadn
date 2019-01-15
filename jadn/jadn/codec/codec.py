@@ -213,6 +213,13 @@ def _format(ts, val, fmtop):
     return rval
 
 
+def _check_key(ts, val):
+    try:
+        return int(val) if isinstance(next(iter(ts[S_DMAP])), int) else val
+    except ValueError:
+        raise ValueError('%s: %s is not a valid field ID' % (ts[S_TDEF][TNAME], val))
+
+
 def _check_range(ts, val):
     op = ts[S_TOPT]
     tn = ts[S_TDEF][TNAME]
@@ -277,6 +284,7 @@ def _decode_choice(ts, val, codec):         # Map Choice:  val == {key: value}
     if len(val) != 1:
         _bad_choice(ts, val)
     k, v = next(iter(val.items()))
+    k = _check_key(ts, k)
     if k not in ts[S_DMAP]:
         _bad_value(ts, val)
     f = ts[S_FLD][k][S_FDEF]
@@ -338,9 +346,12 @@ def _encode_number(ts, val, codec):
     return _format(ts, val, FMT_CHECK)
 
 
-def _decode_maprec(ts, val, codec):
-    _check_type(ts, val, ts[S_CODEC][C_ETYPE])
-    apival = dict()
+def _decode_maprec(ts, sval, codec):
+    _check_type(ts, sval, ts[S_CODEC][C_ETYPE])
+    val = sval
+    if ts[S_CODEC][C_ETYPE] == dict:
+        val = {_check_key(ts, k): v for k, v in sval.items()}
+    aval = dict()
     fx = FNAME if ts[S_VSTR] else FTAG  # Verbose or minified identifier strings
     fnames = [k for k in ts[S_FLD]]
     for f in ts[S_TDEF][FIELDS]:
@@ -349,37 +360,37 @@ def _decode_maprec(ts, val, codec):
         fopts = fs[S_FOPT]              # Field options dict
         if type(val) == dict:
             fn = next(iter(set(val) & set(fs[S_FNAMES])), None) if fd[FNAME] == '<' else f[fx]
-            fv = val[fn] if fn in val else None
+            sv = val[fn] if fn in val else None
         else:
             fn = fd[FTAG] - 1
-            fv = val[fn] if len(val) > fn else None
-        if fv is not None:
+            sv = val[fn] if len(val) > fn else None
+        if sv is not None:
             if fd[FNAME] == '<':
                 if type(val) == dict:
-                    apival.update(codec.decode(fd[FTYPE], {fn: fv}))
+                    aval.update(codec.decode(fd[FTYPE], {fn: sv}))
                     fnames.append(fn)
                 else:
-                    apival.update(codec.decode(fd[FTYPE], fv))
+                    aval.update(codec.decode(fd[FTYPE], sv))
             elif 'atfield' in fopts:  # Type of this field is specified by contents of another field
                 ctf = fopts['atfield']
                 choice_type = val[ctf] if isinstance(val, dict) else val[ts[S_EMAP][ctf] - 1]
-                av = codec.decode(fd[FTYPE], {choice_type: fv})
-                apival[fd[FNAME]] = next(iter(av.values()))
+                av = codec.decode(fd[FTYPE], {choice_type: sv})
+                aval[fd[FNAME]] = next(iter(av.values()))
             else:
-                apival[fd[FNAME]] = codec.decode(fd[FTYPE], fv)
+                aval[fd[FNAME]] = codec.decode(fd[FTYPE], sv)
         else:
             if 'min' not in fopts or fopts['min'] > 0:
                 _bad_value(ts, val, fd)
     extra = set(val) - set(fnames) if type(val) == dict else len(val) > len(ts[S_FLD])
     if extra:
         _extra_value(ts, val, extra)
-    return apival
+    return aval
 
 
-def _encode_maprec(ts, val, codec):
-    _check_type(ts, val, dict)
-    encval = ts[S_CODEC][C_ETYPE]()
-    assert type(encval) in (list, dict)
+def _encode_maprec(ts, aval, codec):
+    _check_type(ts, aval, dict)
+    sval = ts[S_CODEC][C_ETYPE]()
+    assert type(sval) in (list, dict)
     fx = FNAME if ts[S_VSTR] else FTAG  # Verbose or minified identifier strings
     fnames = [f[S_FDEF][FNAME] for f in ts[S_FLD].values()]
     for f in ts[S_TDEF][FIELDS]:
@@ -388,41 +399,41 @@ def _encode_maprec(ts, val, codec):
         fname = fd[FNAME]               # Field name
         fopts = fs[S_FOPT]              # Field options dict
         if fd[FNAME] == '<':            # Pull Choice value up to this level
-            fname = next(iter(set(val) & set(fs[S_FNAMES])), None)
+            fname = next(iter(set(aval) & set(fs[S_FNAMES])), None)
             fnames.append(fname)
-            fv = codec.encode(fd[FTYPE], {fname: val[fname]}) if fname in val else None
+            sv = codec.encode(fd[FTYPE], {fname: aval[fname]}) if fname in aval else None
         elif 'atfield' in fopts:        # Type of this field is specified by contents of another field
-            choice_type = val[fopts['atfield']]
-            e = codec.encode(fd[FTYPE], {choice_type: val[fname]})
-            fv = next(iter(e.values()))
+            choice_type = aval[fopts['atfield']]
+            e = codec.encode(fd[FTYPE], {choice_type: aval[fname]})
+            sv = next(iter(e.values()))
         else:
-            fv = codec.encode(fd[FTYPE], val[fname]) if fname in val else None
-        if fv is None and ('min' not in fopts or fopts['min'] > 0):     # Missing required field
-            _bad_value(ts, val, fd)
-        if type(encval) == list:        # Concise Record
-            encval.append(fv)
-        elif fv is not None:            # Map or Verbose Record
+            sv = codec.encode(fd[FTYPE], aval[fname]) if fname in aval else None
+        if sv is None and ('min' not in fopts or fopts['min'] > 0):     # Missing required field
+            _bad_value(ts, aval, fd)
+        if type(sval) == list:        # Concise Record
+            sval.append(sv)
+        elif sv is not None:            # Map or Verbose Record
             if fd[FNAME] == '<':
-                encval.update(fv)
+                sval.update(sv)
             else:
-                encval[fd[fx]] = fv
+                sval[fd[fx]] = sv
 
-    if set(val) - set(fnames):
-        _extra_value(ts, val, fnames)
-    if type(encval) == list:
-        while encval and encval[-1] is None:    # Strip non-populated trailing optional values
-            encval.pop()
-    return encval
+    if set(aval) - set(fnames):
+        _extra_value(ts, aval, fnames)
+    if type(sval) == list:
+        while sval and sval[-1] is None:    # Strip non-populated trailing optional values
+            sval.pop()
+    return sval
 
 
-def _decode_array(ts, aval, codec):          # Ordered list of types, returned as a list
+def _decode_array(ts, sval, codec):          # Ordered list of types, returned as a list
     if 'cvt' in ts[S_TOPT]:
-        _check_type(ts, aval, type(''))
-        val = _format(ts, aval, FMT_S2B)    # Convert string to multipart value (array)
+        _check_type(ts, sval, type(''))
+        val = _format(ts, sval, FMT_S2B)    # Convert string to multipart value (array)
     else:
-        val = aval
+        val = sval
     _check_type(ts, val, list)
-    apival = list()
+    aval = list()
     extra = len(val) > len(ts[S_FLD])
     if extra:
         _extra_value(ts, val, extra)        # TODO: write sensible display of excess values
@@ -430,52 +441,62 @@ def _decode_array(ts, aval, codec):          # Ordered list of types, returned a
         f = ts[S_FLD][fn[FTAG]][S_FDEF]        # Use symtab field definition
         fx = f[FTAG] - 1
         fopts = ts[S_FLD][fx + 1][S_FOPT]
-        av = val[fx] if len(val) > fx else None
-        if av is not None:
+        sv = val[fx] if len(val) > fx else None
+        if sv is not None:
             if 'atfield' in fopts:
                 choice_type = val[int(fopts['atfield']) - 1]
-                d = codec.decode(f[FTYPE], {choice_type: av})        # TODO: fix str/int handling of choice
-                dv = d[next(iter(d))]
+                if 'max' in fopts and fopts['max'] != 1:
+                    cftype = codec.symtab[fn[FTYPE]][S_FLD][choice_type][S_FDEF][FTYPE]
+                    codec.symtab[f[FTYPE]][S_TOPT]['rtype'] = cftype    # Patch dynamic ArrayOf with fixed type
+                    av = codec.decode(f[FTYPE], sv)
+                else:
+                    d = codec.decode(f[FTYPE], {choice_type: sv})        # TODO: fix str/int handling of choice
+                    av = d[next(iter(d))]
             else:
-                dv = codec.decode(f[FTYPE], av)
-            apival.append(dv)
+                av = codec.decode(f[FTYPE], sv)
+            aval.append(av)
         else:
-            apival.append(None)
+            aval.append(None)
             if 'min' not in fopts or fopts['min'] > 0:
                 _bad_value(ts, val, f)
-    while apival and apival[-1] is None:    # Strip non-populated trailing optional values
-        apival.pop()
-    return apival
+    while aval and aval[-1] is None:    # Strip non-populated trailing optional values
+        aval.pop()
+    return aval
 
 
-def _encode_array(ts, val, codec):
-    _check_type(ts, val, list)
-    encval = list()
-    extra = len(val) > len(ts[S_FLD])
+def _encode_array(ts, aval, codec):
+    _check_type(ts, aval, list)
+    sval = list()
+    extra = len(aval) > len(ts[S_FLD])
     if extra:
-        _extra_value(ts, val, extra)
+        _extra_value(ts, aval, extra)
     for fn in ts[S_TDEF][FIELDS]:
         f = ts[S_FLD][fn[FTAG]][S_FDEF]       # Use symtab field definition
         fx = f[FTAG] - 1
         fopts = ts[S_FLD][fx + 1][S_FOPT]
-        av = val[fx] if len(val) > fx else None
+        av = aval[fx] if len(aval) > fx else None
         if av is not None:
             if 'atfield' in fopts:
-                choice_type = val[int(fopts['atfield']) - 1]
-                e = codec.encode(f[FTYPE], {choice_type: av})
-                ev = e[next(iter(e))]
+                choice_type = aval[int(fopts['atfield']) - 1]
+                if 'max' in fopts and fopts['max'] != 1:
+                    cftype = codec.symtab[fn[FTYPE]][S_FLD][choice_type][S_FDEF][FTYPE]
+                    codec.symtab[f[FTYPE]][S_TOPT]['rtype'] = cftype    # Patch dynamic ArrayOf with fixed type
+                    sv = codec.encode(f[FTYPE], av)
+                else:
+                    e = codec.encode(f[FTYPE], {choice_type: av})
+                    sv = e[next(iter(e))]
             else:
-                ev = codec.encode(f[FTYPE], av)
-            encval.append(ev)
+                sv = codec.encode(f[FTYPE], av)
+            sval.append(sv)
         else:
-            encval.append(None)
+            sval.append(None)
             if 'min' not in fopts or fopts['min'] > 0:
-                _bad_value(ts, val, f)
-    while encval and encval[-1] is None:    # Strip non-populated trailing optional values
-        encval.pop()
+                _bad_value(ts, aval, f)
+    while sval and sval[-1] is None:    # Strip non-populated trailing optional values
+        sval.pop()
     if 'cvt' in ts[S_TOPT]:
-        encval = _format(ts, encval, FMT_B2S)    # Convert multipart value to string
-    return encval
+        sval = _format(ts, sval, FMT_B2S)    # Convert multipart value to string
+    return sval
 
 
 def _decode_null(ts, val, codec):

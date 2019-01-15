@@ -40,7 +40,7 @@
     [2, "btype", "Enumerated", ["*JADN-Type"], "Base type.  Enumerated value derived from list of JADN data types"],
     [3, "opts", "Options", [], "Type options"],
     [4, "desc", "String", [], "Description of this data type"],
-    [5, "fields", "JADN-Type", ["&2", "]0"], "List of fields for compound types.  Not present for primitive types"]
+    [5, "fields", "JADN-Type", ["&2", "[0", "]0"], "List of fields for compound types.  Not present for primitive types"]
   ]],
 
   ["JADN-Type", "Choice", [], "", [
@@ -50,12 +50,12 @@
     [4, "Number", "Null", [], "Real number"],
     [5, "Null", "Null", [], "Nothing"],
     [6, "String", "Null", [], "Character (text) string"],
-    [7, "Array", "FullField", ["]0"], "Ordered list of unnamed fields"],
+    [7, "Array", "FullField", [], "Ordered list of unnamed fields"],
     [8, "ArrayOf", "Null", [], "Ordered list of fields of a specified type"],
-    [9, "Choice", "FullField", ["]0"], "One of a set of named fields"],
-    [10, "Enumerated", "EnumField", ["]0"], "One of a set of id:name pairs"],
-    [11, "Map", "FullField", ["]0"], "Unordered set of named fields"],
-    [12, "Record", "FullField", ["]0"], "Ordered list of named fields"]
+    [9, "Choice", "FullField", [], "One of a set of named fields"],
+    [10, "Enumerated", "EnumField", [], "One of a set of id:name pairs"],
+    [11, "Map", "FullField", [], "Unordered set of named fields"],
+    [12, "Record", "FullField", [], "Ordered list of named fields"]
   ]],
 
   ["EnumField", "Array", [], "Item definition for Enumerated types", [
@@ -72,7 +72,7 @@
     [5, "", "String", [], "Field description"]
   ]],
 
-  ["Identifier", "String", ["$^[a-zA-Z][\\w-]*$", "[1", "]32"], "A string starting with an alpha char followed by zero or more alphanumeric / underscore / dash chars"],
+  ["Identifier", "String", ["$^[a-zA-Z][\\w-]*$", "[0", "]32"], "A string starting with an alpha char followed by zero or more alphanumeric / underscore / dash chars"],
 
   ["Nsid", "String", ["$^[a-zA-Z][\\w-]*$", "[1", "]8"], "Namespace ID - a short identifier"],
 
