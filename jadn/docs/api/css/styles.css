@@ -1,0 +1,10 @@
+.container-fluid > .row {
+    max-width: 1200px;
+	margin: auto;
+}
+.card {
+	width: 100%;
+}
+table p {
+	margin-bottom: 5px;
+}

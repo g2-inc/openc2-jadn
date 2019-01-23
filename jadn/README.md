@@ -7,19 +7,21 @@ information about the JADN language.
 The JADN package ([libs](jadn)) contains two subpackages:
 
 - Codec -- Validate messages against JADN schema, serialize and deserialize messages
-  - codec.py - Message encoder and decoder
-  - codec_format.py - Validation routines usable with the 'format' option
-  - codec_utils.py - Utility routines used with the Codec class
-  - jadn-defs.py - Constant definitions for the JADN file format
-  - jadn.py - Load, validate, and save JADN schemas
+  	- codec.py - Message encoder and decoder
+ 	- codec_format.py - Validation routines usable with the 'format' option
+  	- codec_utils.py - Utility routines used with the Codec class
+  	- jadn-defs.py - Constant definitions for the JADN file format
+  	- jadn.py - Load, validate, and save JADN schemas
 - Convert -- Translate a JADN schema to other formats.
-  - w_cddl.py - Write schema in CDDL format
-  - w_html.py -  Write schema as HTML tables file
-  - w_jas.py - Write schema in JAS IDL format (similar to ASN.1)
-  - w_md.py - Write schema as Markdown tables
-  - w_proto - Write schema in Proto3 IDL format
-  - w_relax - Write schema in RelaxNG IDL format
-  - w_thrift - Write schema in Thrift IDL format
+	- Message
+		- TBD
+	- Schema
+		- CDDL - convert to and from
+		- HTML - convert to
+		- JAS - convert to and from
+		- MarkDown - convert too and from
+		- Relax-NG - convert to and from
+		- Thrift - convert to and from
 
 ### Scripts
 The JADN package was created using the Test Driven Development process, where tests containing desired results

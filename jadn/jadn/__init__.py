@@ -1,10 +1,12 @@
 # from pkgutil import walk_packages
 # from os import path
 
-from .enums import OpenC2MessageFormats, OpenC2SchemaFormats
+from .enums import CommentLevels, OpenC2MessageFormats, OpenC2SchemaFormats
 from .jadn import jadn_analyze, jadn_check, jadn_dump, jadn_dumps, jadn_load, jadn_loads, jadn_merge, jadn_strip
+from .utils import jadn_format
 
 __all__ = [
+    'CommentLevels',
     'OpenC2MessageFormats',
     'OpenC2SchemaFormats',
     # JADN Utils
@@ -15,7 +17,9 @@ __all__ = [
     'jadn_load',
     'jadn_loads',
     'jadn_merge',
-    'jadn_strip'
+    'jadn_strip',
+    # Custom JADN Utils
+    'jadn_format'
 ]
 
 # Load all sub modules/packages

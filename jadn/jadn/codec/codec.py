@@ -14,8 +14,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 from __future__ import unicode_literals
 import numbers
 from binascii import b2a_hex
-from ..jadn_defs import *
-from ..jadn_utils import topts_s2d, fopts_s2d
+from jadn.jadn_defs import *
+from jadn.jadn_utils import topts_s2d, fopts_s2d
 from .codec_format import get_format_function
 from .codec_format import FMT_NAME, FMT_CHECK, FMT_B2S, FMT_S2B
 

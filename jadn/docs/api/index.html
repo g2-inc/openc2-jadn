@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>JADN Package</title>
+        <!-- Bootswatch Theme Simplex -->
+		<link rel="stylesheet" href="css/bootswatch.sandstone.min.css" />
+        <!-- Custom -->
+		<link rel="stylesheet" href="css/styles.css" />
+        <!-- jQuery v3.3.1, JsRender v1.0.1, Popper v1.14.3, Bootstrap v4.1.3 -->
+		<script type="application/javascript" src="js/vendor.min.js" ></script>
+		<!-- JADN API -->
+		<script type="application/javascript" src="js/jadn_api.js" ></script>
+		<!-- Custom -->
+		<script type="application/javascript" src="js/scripts.js" ></script>
+    </head>
+    <body>
+		<div id='templates' class="d-none">
+			<script id="toggle_template" type="text/x-jsrender">
+				{{:header}}<button class="btn btn-info float-right" type="button" data-toggle="collapse" data-target="#{{:~under_escape(header)}}-api" aria-expanded="false" aria-controls="{{:~under_escape(header)}}-api">Show API</button>
+			</script>
+
+			<script id="card_template" type="text/x-jsrender">
+				{{if id}}
+				<div id="{{:~under_escape(id)}}" class="collapse card mb-3">
+				{{else}}
+				<div class="card mb-3">
+				{{/if}}
+					<h3 class="card-header">{{:header}}</h3>
+					<div class="card-body">
+						{{if title}}<h4 class="card-title">{{:title}}</h4>{{/if}}
+						{{if text}}{{props text}}
+							<p class="card-text">{{:prop}}</p>
+						{{/props}}{{/if}}
+						{{if body}}{{:body}}{{/if}}
+					</div>
+				</div>
+			</script>
+
+			<script id="constructor_template" type="text/x-jsrender">
+				<h5 class="mt-4">Constructor</h5>
+				<table class="table table-hover table-striped">
+					<thead>
+						<tr>
+							<th scope="col">Constructor and Description</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>
+								<p><strong>{{:def}}</strong></p>
+								{{if info}}{{props info}}
+									<p>{{:prop}}</p>
+								{{/props}}{{/if}}
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</script>
+
+			<script id="function_template" type="text/x-jsrender">
+				<h5 class="mt-4">Functions</h5>
+				<table class="table table-hover table-striped">
+					<thead>
+						<tr>
+							<th scope="col">Return type and Info</th>
+							<th scope="col">Function and Description</th>
+						</tr>
+					</thead>
+					<tbody>
+						{{for function}}
+							<tr>
+								<td>
+									{{if return.type}}<p><strong>{{:return.type}}</strong></p>{{/if}}
+									{{if return.info}}{{props return.info}}
+										<p>{{:prop}}</p>
+									{{/props}}{{/if}}
+								</td>
+								<td>
+									<p><strong>{{:fun_desc.def}}</strong></p>
+									{{if fun_desc.info}}{{props fun_desc.info}}
+										<p>{{:prop}}</p>
+									{{/props}}{{/if}}
+								</td>
+							</tr>
+						{{/for}}
+					</tbody>
+				</table>
+			</script>
+
+			<script id="enum_template" type="text/x-jsrender">
+				<h5 class="mt-4">Enumeration</h5>
+				<table class="table table-hover table-striped">
+					<thead>
+						<tr>
+							<th scope="col">Name</th>
+							<th scope="col">Value and Info</th>
+						</tr>
+					</thead>
+					<tbody>
+						{{for enum}}
+							<tr>
+								<td>
+									<p><strong>{{:name}}</strong></p>
+								</td>
+								<td>
+									{{if info}}
+										{{if info.value}}<p><strong>{{:info.value}}</strong></p>{{/if}}
+										{{if info.info}}{{props info.info}}
+											<p>{{:prop}}</p>
+										{{/props}}{{/if}}
+									{{/if}}
+								</td>
+							</tr>
+						{{/for}}
+					</tbody>
+				</table>
+			</script>
+		</div>
+		<div class="container-fluid mt-3">
+			<div class="row">
+				<div class="col-12">
+					<h1 class="text-center">JADN</h1>
+					<p>JSON Abstract Data Notation (JADN) is a language-neutral, platform-neutral, and format-neutral mechanism for serializing structured data.  See <a href="docs/jadn-overview.md">docs</a> for	information about the JADN language.</p>
+				</div>
+				<div class="col-12">
+					<h3>Python API</h3>
+					<p>The JADN Python API (<a href="jadn">libs</a>) is for v1.0</p>
+				</div>
+			</div>
+			
+			<div id="api" class="row">
+			</div>
+		</div>
+	</body>
+</html>

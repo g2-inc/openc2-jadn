@@ -5,7 +5,7 @@ import re
 
 from arpeggio import EOF, Optional, OneOrMore, OrderedChoice, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, UnorderedGroup, ZeroOrMore
 from datetime import datetime
-from jadn.utils import jadnFormat, toStr
+from jadn.utils import jadn_format, toStr
 from jadn.jadn_defs import is_structure
 from jadn.jadn_utils import fopts_d2s, topts_d2s
 
@@ -360,7 +360,7 @@ def thrift_loads(thrift):
         parser = ParserPython(ThriftRules)
         parse_tree = parser.parse(toStr(thrift))
         result = visit_parse_tree(parse_tree, ThriftVisitor())
-        return jadnFormat(result, indent=2)
+        return jadn_format(result, indent=2)
 
     except Exception as e:
         raise Exception('Thrift parsing error has occurred: {}'.format(e))
