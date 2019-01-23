@@ -5,7 +5,7 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup, Comment
 
-from jadn.utils import jadnFormat, toStr
+from jadn.utils import jadn_format, toStr
 from jadn.jadn_defs import is_structure
 from jadn.jadn_utils import fopts_d2s, topts_d2s, fopts_s2d, topts_s2d
 
@@ -35,7 +35,7 @@ class Relax2Jadn(object):
             'types': self.makeTypes()
         }
 
-        return jadnFormat(jadn, indent=2)
+        return jadn_format(jadn, indent=2)
 
     def makeMeta(self):
         meta = {}
