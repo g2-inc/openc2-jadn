@@ -55,7 +55,7 @@ def isBase64(sb):
         return False
 
 
-def jadnFormat(jadn, indent=1):
+def jadn_format(jadn, indent=1):
     if type(jadn) is not dict:
         try:
             jadn = json.load(jadn)
@@ -67,32 +67,26 @@ def jadnFormat(jadn, indent=1):
 
     meta_opts = []
     if 'meta' in jadn:
-        for k, v in jadn['meta'].items():
-            if type(v) is list:
+        for key, val in jadn['meta'].items():
+            if type(val) is list:
                 obj = []
 
-                for itm in v:
-                    if type(itm) is list:
-                        obj.append('{idn}[\"{v}\"]'.format(
-                            idn=idn * 3,
-                            v='\", \"'.join(itm)
-                        ))
-                    else:
-                        obj.append('{idn}\"{v}\"'.format(
-                            idn=idn * 3,
-                            v=itm
-                        ))
+                for itm in val:
+                    obj.append('{idn}[\"{val}\"]'.format(
+                        idn=idn * 3,
+                        val='\", \"'.join(itm) if type(itm) is list else itm
+                    ))
 
-                meta_opts.append('{idn}\"{k}\": [\n{v}\n{idn}]'.format(
+                meta_opts.append('{idn}\"{key}\": [\n{val}\n{idn}]'.format(
                     idn=idn * 2,
-                    k=k,
-                    v=',\n'.join(obj)
+                    key=key,
+                    val=',\n'.join(obj)
                 ))
             else:
-                meta_opts.append('{idn}\"{k}\": \"{v}\"'.format(
+                meta_opts.append('{idn}\"{key}\": \"{val}\"'.format(
                     idn=idn * 2,
-                    k=k,
-                    v=v
+                    key=key,
+                    val=val
                 ))
 
     meta = "{idn}\"meta\": {{\n{obj}\n{idn}}}".format(idn=idn, obj=',\n'.join(meta_opts))
@@ -111,10 +105,7 @@ def jadnFormat(jadn, indent=1):
 
             if type(itm[-1]) is list:
                 for def_itm in itm[-1]:
-                    if type(def_itm) is list:
-                        defs.append('{obj}'.format(obj=json.dumps(def_itm)))
-                    else:
-                        defs.append("\"{itm}\"".format(itm=def_itm))
+                    defs.append('{itm}'.format(itm=json.dumps(def_itm) if type(def_itm) is list else def_itm))
             else:
                 defs.append("\"{itm}\"".format(itm=itm[-1]))
 

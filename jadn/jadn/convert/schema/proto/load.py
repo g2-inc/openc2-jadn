@@ -6,7 +6,7 @@ import re
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 from datetime import datetime
 
-from jadn.utils import jadnFormat, toStr
+from jadn.utils import jadn_format, toStr
 from jadn.jadn_defs import is_structure
 from jadn.jadn_utils import fopts_d2s, topts_d2s
 lineSep = '\\r?\\n'
@@ -394,7 +394,7 @@ def proto_loads(proto):
         parser = ParserPython(ProtoRules)
         parse_tree = parser.parse(toStr(proto))
         result = visit_parse_tree(parse_tree, ProtoVisitor())
-        return jadnFormat(result, indent=2)
+        return jadn_format(result, indent=2)
 
     except Exception as e:
         raise Exception('Proto parsing error has occurred: {}'.format(e))

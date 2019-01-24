@@ -6,7 +6,7 @@ from datetime import datetime
 
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 
-from jadn.utils import jadnFormat, safe_cast, toStr
+from jadn.utils import jadn_format, safe_cast, toStr
 from jadn.jadn_defs import is_structure
 from jadn.jadn_utils import fopts_d2s, topts_d2s
 lineSep = '\\r?\\n'
@@ -337,15 +337,15 @@ class CddlVisitor(PTNodeVisitor):
 def cddl_loads(cddl):
     """
     Produce JADN schema from cddl schema
-    :param cddl: CUDDL schema to convert
-    :return: CUDDL schema
+    :param cddl: CDDL schema to convert
+    :return: JADN schema
     :rtype str
     """
     try:
         parser = ParserPython(CddlRules)
         parse_tree = parser.parse(toStr(cddl))
         result = visit_parse_tree(parse_tree, CddlVisitor())
-        return jadnFormat(result, indent=2)
+        return jadn_format(result, indent=2)
 
     except Exception as e:
         raise Exception('CDDL parsing error has occurred: {}'.format(e))
