@@ -115,7 +115,8 @@ def JasRules():
             RegExMatch(r'\S+'),
             RegExMatch(r'::='),
             RegExMatch(r'ARRAY_OF'),
-            RegExMatch(r'\(\S+\)'),
+            RegExMatch(r'\(\S+\)'),                 # arrayOf type
+            Optional(RegExMatch(r'\(.*\)')),        # size range
             Optional(commentLine)
         )
 
@@ -318,11 +319,19 @@ class JasVisitor(PTNodeVisitor):
 
     def visit_arrayOfDef(self, node, children):
         # TODO: update how optional parameters translate
-        arrayOfType = ''
+        arrayInfo = []        
+
+        # check array type
         match = re.match(r'\((\w+)\)', children[3])
         if match != None:
-            arrayOfType = ['*' + match.group(1)]
+            arrayInfo.append(['*' + match.group(1)])
         
+        # check array size
+        match = re.search(r'(\d+)\.\.(\d+)', children[4])
+        if match != None:
+            arrayInfo.append('[' + match.group(1))
+            arrayInfo.append(']' + match.group(2))
+
         # check if comment exists
         try:
             comment = re.sub(r'--\s+', '', children[-1][:-1])
@@ -332,7 +341,7 @@ class JasVisitor(PTNodeVisitor):
         return [ 
             children[0],
             stype_map[children[2]],
-            arrayOfType,
+            arrayInfo,
             comment
         ]
 
