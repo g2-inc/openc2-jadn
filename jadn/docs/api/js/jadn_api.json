@@ -1,0 +1,9 @@
+{
+	jadn: {
+		header: 'jadn',
+		title: 'JADN Base',
+		text: [
+			'info'
+		]
+	}	
+}
