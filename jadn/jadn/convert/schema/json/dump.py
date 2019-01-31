@@ -182,7 +182,7 @@ class JADNtoJSON(object):
         """
         if f in self._customFields:
             rtn = {
-                '$ref': f'#definitions/{self.formatStr(f)}'
+                '$ref': '#definitions/{}'.format(self.formatStr(f))
             }
 
         elif f in self._fieldMap.keys():
@@ -193,7 +193,7 @@ class JADNtoJSON(object):
                 rtn['format'] = 'binary'
 
         else:
-            print(f'unknown type: {f}')
+            print('unknown type: {}'.format(f))
             rtn = {
                 'type': 'string'
             }
