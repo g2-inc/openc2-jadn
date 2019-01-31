@@ -15,6 +15,8 @@ before_script:
   - echo "$(/tmp/jq --arg SHA_HASH ${CI_COMMIT_SHA:0:8} '.version.hash=$SHA_HASH' $VERSION_FILE)" > $VERSION_FILE
   - echo "$(/tmp/jq --arg DATE $(date +%Y-%m-%d) '.version.date=$DATE' $VERSION_FILE)" > $VERSION_FILE
   - echo "$(/tmp/jq --arg PKG ${PKG_NAME} '.pkg_name=$PKG' $VERSION_FILE)" > $VERSION_FILE
+  # Configure system
+  - yum install -y libxml2 libxml2-devel
   # Configure Python Env
   - pip3 install -r ./$PKG_DIR/requirements.txt
 
