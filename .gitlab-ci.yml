@@ -33,7 +33,7 @@ Translate-Schemas:
 
   script:
     - cd jadn
-    - python schema-translators.py
+    - python3 schema-translators.py
     - $(rm -r ../schema_gen && mkdir -p ../schema_gen) || mkdir -p ../schema_gen
     - mv ./schema_gen_test/* ../schema_gen
 
@@ -51,7 +51,7 @@ Build-Wheel:
     - cd $PKG_DIR
     - rsync -avz --delete ../jadn/jadn ./
     - cp ../LICENSE ./
-    - pip wheel . -w ./dist
+    - pip3 wheel . -w ./dist
     - mv ./dist/*.whl ../
 
   artifacts:
