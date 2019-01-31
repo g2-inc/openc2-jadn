@@ -1,4 +1,4 @@
-image: gitlab.labs.g2-inc.net:4567/screamingbunny/docker/plus:centos-python2
+image: gitlab.labs.g2-inc.net:4567/screamingbunny/docker/plus:centos-python3
 
 variables:
   GIT_SSL_NO_VERIFY: "true"
