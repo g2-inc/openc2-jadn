@@ -18,6 +18,8 @@ before_script:
   # Configure system
   # - yum install -y libxml2-devel libxslt-devel python-lxml
   # Configure Python Env
+  - pip3 install pip --upgrade
+  - pip3 install setuptools wheel --upgrade
   - pip3 install -r ./$PKG_DIR/requirements.txt
 
 
@@ -53,7 +55,8 @@ Build-Wheel:
     - cd $PKG_DIR
     - rsync -avz --delete ../jadn/jadn ./
     - cp ../LICENSE ./
-    - pip3 wheel . -w ./dist
+    # - pip3 wheel . -w ./dist
+    - python3 setup.py sdist bdist_wheel
     - mv ./dist/*.whl ../
 
   artifacts:

@@ -1,1 +1,2 @@
-include jadn/libs/convert/theme.css
+include jadn/convert/schema/base/theme.css
+include jadn/convert/schema/base/theme.less
