@@ -18,7 +18,6 @@ before_script:
   # Configure system
   # - yum install -y libxml2-devel libxslt-devel python-lxml
   # Configure Python Env
-  - pip3 install pip --upgrade
   - pip3 install setuptools wheel --upgrade
   - pip3 install -r ./$PKG_DIR/requirements.txt
 
@@ -58,9 +57,11 @@ Build-Wheel:
     # - pip3 wheel . -w ./dist
     - python3 setup.py sdist bdist_wheel
     - mv ./dist/*.whl ../
+    - mv ./dist/*.tar.gz ../
 
   artifacts:
     name: "JADN_Python.${CI_PIPELINE_ID}_${CI_COMMIT_SHA:0:8}"
     expire_in: 2 weeks
     paths:
       - ./*.whl
+      - ./*.tar.gz
