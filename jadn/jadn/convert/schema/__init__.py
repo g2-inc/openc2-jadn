@@ -7,7 +7,7 @@ from .base import (
 
 from .cddl import cddl_dump, cddl_dumps, cddl_load, cddl_loads
 from .jas import jas_dump, jas_dumps, jas_load, jas_loads
-from .json import json_dump, json_dumps  # , json_load, json_loads
+from .json import json_dump, json_dumps, json_load, json_loads
 from .proto import proto_dump, proto_dumps, proto_load, proto_loads
 from .relax import relax_dump, relax_dumps, relax_load, relax_loads
 from .thrift import thrift_dump, thrift_dumps, thrift_load, thrift_loads
@@ -35,6 +35,8 @@ __all__ = [
     'cddl_loads',
     'jas_load',
     'jas_loads',
+    'json_load',
+    'json_loads',
     'proto_load',
     'proto_loads',
     'relax_load',

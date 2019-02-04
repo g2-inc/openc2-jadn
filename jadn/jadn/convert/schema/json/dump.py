@@ -28,8 +28,6 @@ class JADNtoJSON(object):
 
         self.comments = CommentLevels.ALL
 
-        self.indent = '  '
-
         self._fieldMap = {
             'Binary': 'string',
             'Boolean': 'bool',
@@ -66,6 +64,37 @@ class JADNtoJSON(object):
             'def': ['id', 'name', 'type', 'opts', 'desc'],
             'enum_def': ['id', 'value', 'desc'],
         }
+
+        self. _optKeys = {
+            'array': {
+                'min': 'minItems',
+                'max': 'maxItems'
+            },
+            'integer': {
+                'min': 'minimum',
+                'max': 'maximum',
+                'format': 'format'
+            },
+            'object': {
+                'min': 'minItems',
+                'max': 'maxItems'
+            },
+            'string': {
+                'format': 'format',
+                'min': 'minLength',
+                'max': 'maxLength',
+                'pattern': 'pattern'
+            }
+        }
+        self._optKeys.update(
+            binary=self. _optKeys['string'],
+            choice=self._optKeys['object'],
+            enumerated=self._optKeys['string'],
+            map=self._optKeys['object'],
+        )
+        self._ignoreOpts = [
+            'rtype'
+        ]
 
         self._meta = jadn['meta'] or []
         self._types = []
@@ -157,19 +186,9 @@ class JADNtoJSON(object):
 
             def_field = self._fieldType(field['type'])
             def_field.update(self._formatComment(field['desc']))
-
-            if len(field['opts']) > 0:
-                if 'min' in field['opts']:
-                    def_field['minimum'] = safe_cast(field['opts']['min'], int, 0)
-
-                if 'max' in field['opts']:
-                    def_field['maximum'] = safe_cast(field['opts']['max'], int, 100)
-
-                if 'format' in field['opts']:
-                    def_field['format'] = self._validationMap.get(field['opts']['format'], field['opts']['format'])
+            def_field.update(self._optReformat(field['type'], field['opts']))
 
             defs[self.formatStr(field['name'])] = def_field
-
 
         return defs
 
@@ -198,6 +217,7 @@ class JADNtoJSON(object):
                 'type': 'string'
             }
 
+        print(rtn)
         return rtn
 
     def _formatComment(self, msg, **kargs):
@@ -227,6 +247,7 @@ class JADNtoJSON(object):
         :rtype str
         """
         item = dict(zip(self._keys['structure'], itm))
+        item['opts'] = topts_s2d(item['opts'])
         properties = {}
         required = []
 
@@ -242,6 +263,12 @@ class JADNtoJSON(object):
                 required.append(prop['name'])
 
             properties[prop['name']] = self._fieldType(prop['type'])
+
+            field_type = properties[prop['name']].get('type', '')
+            field_type = properties[prop['name']].get('$ref', '') if field_type == '' else field_type
+            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
+            properties[prop['name']].update(self._optReformat(field_type, prop['opts']))
+
             properties[prop['name']].update(self._formatComment(prop['desc']))
 
         type_def = dict(
@@ -249,6 +276,7 @@ class JADNtoJSON(object):
             properties=properties,
             additionalProperties=False
         )
+        type_def.update(self._optReformat('object', item['opts']))
         type_def.update(self._formatComment(item['desc']))
 
         if len(required) > 0:
@@ -266,6 +294,7 @@ class JADNtoJSON(object):
         :rtype str
         """
         item = dict(zip(self._keys['structure'], itm))
+        item['opts'] = topts_s2d(item['opts'])
         fields = []
         properties = {}
 
@@ -275,6 +304,12 @@ class JADNtoJSON(object):
             fields.append(prop['name'])
 
             properties[prop['name']] = self._fieldType(prop['type'])
+
+            field_type = properties[prop['name']].get('type', '')
+            field_type = properties[prop['name']].get('$ref', '') if field_type == '' else field_type
+            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
+            properties[prop['name']].update(self._optReformat(field_type, prop['opts']))
+
             properties[prop['name']].update(self._formatComment(prop['desc']))
 
         type_def = dict(
@@ -285,6 +320,7 @@ class JADNtoJSON(object):
                 dict(properties=properties)
             ]
         )
+        type_def.update(self._optReformat('object', item['opts']))
         type_def.update(self._formatComment(item['desc']))
 
         return {
@@ -299,6 +335,7 @@ class JADNtoJSON(object):
         :rtype str
         """
         item = dict(zip(self._keys['structure'], itm))
+        item['opts'] = topts_s2d(item['opts'])
         fields = []
         properties = {}
 
@@ -308,6 +345,12 @@ class JADNtoJSON(object):
             fields.append(prop['name'])
 
             properties[prop['name']] = self._fieldType(prop['type'])
+
+            field_type = properties[prop['name']].get('type', '')
+            field_type = properties[prop['name']].get('$ref', '') if field_type == '' else field_type
+            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
+            properties[prop['name']].update(self._optReformat(field_type, prop['opts']))
+
             properties[prop['name']].update(self._formatComment(prop['desc']))
 
         type_def = dict(
@@ -318,6 +361,7 @@ class JADNtoJSON(object):
                 dict(properties=properties)
             ]
         )
+        type_def.update(self._optReformat('object', item['opts']))
         type_def.update(self._formatComment(item['desc']))
 
         return {
@@ -332,23 +376,38 @@ class JADNtoJSON(object):
         :rtype str
         """
         item = dict(zip(self._keys['structure'], itm))
+        item['opts'] = topts_s2d(item['opts'])
         values = []
+        options = []
 
         for prop in item['fields']:
             prop = dict(zip(self._keys['enum_def'], prop))
             values.append(prop['value'])
+            opt = dict(
+                value=prop['value'],
+                label=prop['value']
+            )
+            if prop['desc'] != '':
+                opt['description'] = prop['desc']
+
+            options.append(opt)
 
         type_def = dict(
             type='string',
             enum=values
         )
+
+        if self.comments != CommentLevels.NONE:
+            type_def['options'] = options
+
+        type_def.update(self._optReformat('string', item['opts']))
         type_def.update(self._formatComment(item['desc']))
 
         return {
             self.formatStr(item['name']): type_def
         }
 
-    def _formatArray(self, itm):  # TODO: what should this do??
+    def _formatArray(self, itm):
         """
         Formats array for the given schema type
         :param itm: array to format
@@ -356,6 +415,7 @@ class JADNtoJSON(object):
         :rtype str
         """
         item = dict(zip(self._keys['structure'], itm))
+        item['opts'] = topts_s2d(item['opts'])
         properties = {}
         required = []
 
@@ -371,6 +431,12 @@ class JADNtoJSON(object):
                 required.append(prop['name'])
 
             properties[prop['name']] = self._fieldType(prop['type'])
+
+            field_type = properties[prop['name']].get('type', '')
+            field_type = properties[prop['name']].get('$ref', '') if field_type == '' else field_type
+            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
+            properties[prop['name']].update(self._optReformat(field_type, prop['opts']))
+
             properties[prop['name']].update(self._formatComment(prop['desc']))
 
         type_def = dict(
@@ -384,18 +450,13 @@ class JADNtoJSON(object):
             type_def['items']['required'] = required
 
         type_def.update(self._formatComment(item['desc']))
-
-        if 'min' in prop['opts']:
-            type_def['minItems'] = prop['opts']['min']
-
-        if 'max' in prop['opts']:
-            type_def['maxItems'] = prop['opts']['max']
+        type_def.update(self._optReformat('array', item['opts']))
 
         return {
             self.formatStr(itm[0]): type_def
         }
 
-    def _formatArrayOf(self, itm):  # TODO: what should this do??
+    def _formatArrayOf(self, itm):
         """
         Formats arrayof for the given schema type
         :param itm: arrayof to format
@@ -404,25 +465,53 @@ class JADNtoJSON(object):
         """
         item = dict(zip(self._keys['structure'], itm))
         item['opts'] = topts_s2d(item['opts'])
+        rtype = item['opts'].get('rtype', 'String')
 
         type_def = dict(
             type='array',
             items=[
-                self._fieldType(item['opts'].get('rtype', 'String'))
+                self._fieldType(rtype)
             ]
         )
 
         type_def.update(self._formatComment(item['desc']))
-
-        if 'min' in item['opts']:
-            type_def['minItems'] = item['opts']['min']
-
-        if 'max' in item['opts']:
-            type_def['maxItems'] = item['opts']['max']
+        type_def.update(self._optReformat('array', item['opts']))
 
         return {
             self.formatStr(item['name']): type_def
         }
+
+    # Helper Functions
+    def _getType(self, name):
+        """
+        Get the type of the field based of the name
+        :param name:
+        :return:
+        """
+        type_def = [d for d in self._types if d[0] == name] + [d for d in self._custom if d[0] == name]
+        type_def = type_def[0] if len(type_def) == 1 else ['oops...', 'String']
+        return type_def[1]
+
+    def _optReformat(self, optType, opts):
+        """
+        Reformat options for the given schema
+        :param opts:
+        :return:
+        """
+        optType = optType.lower()
+        r_opts = {}
+
+        optKeys = self._optKeys.get(optType, {})
+        for k, v in opts.items():
+            if k in optKeys:
+                r_opts[self._optKeys[optType][k]] = v
+            elif k in self._ignoreOpts:
+                # print(f'option ignored: {k}')
+                pass
+            else:
+                print(f'unknown option for type {optType}: {k} - {v}')
+
+        return r_opts
 
 
 def json_dumps(jadn, comm=CommentLevels.ALL):

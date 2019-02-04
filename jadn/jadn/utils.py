@@ -72,9 +72,9 @@ def jadn_format(jadn, indent=1):
                 obj = []
 
                 for itm in val:
-                    obj.append('{idn}[\"{val}\"]'.format(
+                    obj.append('{idn}\"{val}\"'.format(
                         idn=idn * 3,
-                        val='\", \"'.join(itm) if type(itm) is list else itm
+                        val='[{v}]'.format(v='\", \"'.join(itm)) if type(itm) is list else itm
                     ))
 
                 meta_opts.append('{idn}\"{key}\": [\n{val}\n{idn}]'.format(

@@ -2,357 +2,410 @@ from __future__ import unicode_literals, print_function
 
 import json
 import re
-from datetime import datetime
 
-from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
+from datetime import datetime
 
 from jadn.utils import jadn_format, safe_cast, toStr
 from jadn.jadn_defs import is_structure
 from jadn.jadn_utils import fopts_d2s, topts_d2s
-lineSep = '\\r?\\n'
 
 
-def JsonRules():
+class JSONtoJADN(object):
+    def __init__(self, jsn):
+        """
+        Schema Converter for JADN to JSON
+        :param jadn: str or dict of the JADN schema
+        :type jadn: str or dict
+        """
+        if type(jsn) in [str, bytes]:
+            try:
+                self._schema = json.loads(jsn)
+            except Exception as e:
+                raise e
+        elif type(jsn) is dict:
+            self._schema = jsn
 
-    def endLine():
-        return RegExMatch(r'({})?'.format(lineSep))
+        else:
+            raise TypeError('JSON improperly formatted')
 
-    def commentLine():
-        return ZeroOrMore(RegExMatch(r'\s*;.*'))
-
-    def metaLine():
-        # match:  "; meta: (COMMENT)"
-        return RegExMatch(r'\s*;\smeta:\s*(.*)')
-
-    def headerComments():
-        return ZeroOrMore(metaLine)
-
-    def header():
-        return ZeroOrMore(headerComments)
-
-    def defHeader():
-        return (
-            # matches name: "(NAME) = { ... }"
-            ZeroOrMore(RegExMatch(r'^[\S]+')),
-            # matches line up to jadn_opts
-            ZeroOrMore(RegExMatch(r'.*?(#|{})')),
-            # matches jadn_opts
-            ZeroOrMore(RegExMatch(r'#?jadn_opts:{.*}+')),
-            OneOrMore(endLine)
-        )
-
-    def defField():
-        return (
-            Optional('?'),
-            # matches (TYPE) : ...
-            RegExMatch(r'\s*[\w]+'),  # type
-            # matches type : (NAME), ...
-            RegExMatch(r':\s*[\S]+\s*,*'),  # name
-            Optional('//'),
-            Optional(
-                ';',
-                RegExMatch(r'.*?(#|{})'.format(lineSep)),  # comment
-                Optional(RegExMatch(r'jadn_opts:{.*}+'))  # jadn options
-            ),
-            OneOrMore(endLine)
-        )
-
-    def recordDef():
-        return (
-            defHeader,
-            OneOrMore(defField),
-            Optional('}'), Optional(')'), Optional(']')
-        )
-
-    def enumField():
-        return (
-            # matches (ENUM) = ...
-            RegExMatch(r'[\S]+'),  # enum name
-            Optional('/='), Optional('='),
-            # matches ... = (NAME)
-            RegExMatch(r'\"[\w\s*]+\"'),  # item name
-            ';',
-            Optional(
-                RegExMatch(r'.*?(#|{})'.format(lineSep)),  # comment
-                Optional(RegExMatch(r'jadn_opts:{.*}+'))  # jadn options
-            ),
-            OneOrMore(endLine)
-        )
-
-    def enumDef():
-        return (
-            defHeader,
-            OneOrMore(enumField),
-            OneOrMore(endLine)
-        )
-
-    def arrayOfDef():
-        return (
-            OneOrMore(RegExMatch(r'[\w]+')),  # name
-            OneOrMore(RegExMatch(r'.*\]')),  # data up to comment
-            ZeroOrMore(RegExMatch(r';[\s\w]+')),
-            Optional(
-                RegExMatch(r'.*?(#|{})'.format(lineSep)),  # comment
-                Optional(RegExMatch(r'jadn_opts:{.*}+'))  # jadn options
-            ),
-            OneOrMore(endLine)
-        )
-    def customFields():
-            return (
-            OneOrMore(RegExMatch(r'[\w-]*')),  # name
-            OneOrMore('='),
-            OneOrMore(RegExMatch(r'[\w]+')),  # type
-            ZeroOrMore(RegExMatch(r';.*'))  # comment
-        )
-
-    def customDefs():
-        return(OrderedChoice(
-            Optional(commentLine),
-            OneOrMore(customFields)
-        ))
-        
-    def typeDefs():
-        return OneOrMore(
-            UnorderedGroup(
-                ZeroOrMore(recordDef),
-                ZeroOrMore(enumDef),
-                ZeroOrMore(arrayOfDef)
-        ))
-
-    return (
-        header,
-        typeDefs,
-        customDefs,
-        EOF
-    )
-
-
-class JsonVisitor(PTNodeVisitor):
-
-    data = {}
-    repeatedTypes = {
-        'arrayOf': 'ArrayOf',
-        'array': 'Array'
-    }
-
-    def load_jadnOpts(self, jadnString, defaultDict):
-        jadnString = toStr(jadnString)
-        defType = defaultDict['type'] if 'type' in defaultDict else 'String'
-        optDict = {
-            'type': 'String',
-            'options': []
+        self._fieldMap = {
+            'binary': 'Binary',
+            'integer': 'Integer',
+            'null': 'Null',
+            'string': 'String',
         }
-        optDict.update(defaultDict)
 
-        if re.match(r'^jadn_opts:', jadnString):
-            optStr = re.sub(r'jadn_opts:(?P<opts>{.*?}+)', '\g<opts>', jadnString)
-            try:
-                optDict = json.loads(optStr)
-                optDict['type'] = optDict['type'] if 'type' in optDict else defType
+        self._optKeys = {
+            'array': {
+                'minItems': 'min',
+                'maxItems': 'max'
+            },
+            'integer': {
+                'minimum': 'min',
+                'exclusiveMinimum': 'min',
+                'maximum': 'max',
+                'exclusiveMaximum': 'max',
+                'format': 'format'
+            },
+            'object': {},
+            'string': {
+                'format': 'format',
+                'minLength': 'min',
+                'maxLength': 'max',
+                'pattern': 'pattern'
+            },
+        }
 
-                if 'options' in optDict:
-                    options = optDict['options'] if type(optDict['options']) is dict else {}
-                    optDict['options'] = topts_d2s(options) if is_structure(optDict['type']) else fopts_d2s(options)
+    def jadn_dump(self):
+        return dict(
+            meta=self.makeHeader(),
+            types=self.makeStructures()
+        )
+
+    def makeHeader(self):
+        """
+        Create the header for the schema
+        :return: header for schema
+        :rtype dict
+        """
+        module = self._schema['id'] if 'id' in self._schema else (self._schema['$id'] if '$id' in self._schema else '')
+        module = re.sub(r'^https?:\/\/', '', module)
+        return dict(
+                module=module,
+                title=self._schema.get('title', ''),
+                description=self._schema.get('description', ''),
+                imports=[
+                    # ["jadn", "oasis-open.org/openc2/jadn/v1.0"]
+                ],
+                exports=[e.get('$ref', '').split('/')[-1] for e in self._schema.get('oneOf', {})]
+            )
+
+    def makeStructures(self):
+        """
+        Create the type definitions for the schema
+        :return: type definitions for the schema
+        :rtype str
+        """
+        tmp_types = []
+        # TODO: process definitions
+        for key, val in self._schema.get('definitions', {}).items():
+            print(key)
+            def_type = val.get('type', '')
+            if def_type == 'object':
+                print('-- Structure')
+                if 'patternProperties' not in val:
+                    print('---- Record')
+                    tmp_types.append(self._formatRecord(key, val))
+                elif 'oneOf' in val:
+                    print('---- Choice')
+                    tmp_types.append(self._formatChoice(key, val))
+                elif 'anyOf' in val:
+                    print('---- Map')
+                    tmp_types.append(self._formatMap(key, val))
                 else:
-                    optDict['options'] = []
+                    print('---- Unknown')
 
-            except Exception as e:
-                print('Oops, cant load jadn')
-                print(e)
+            elif def_type == 'array':
+                print('-- Structure')
+                if len(val['items']) == 1:
+                    print('---- ArrayOf')
+                    tmp_types.append(self._formatArrayOf(key, val))
+                else:
+                    print('---- Array')
+                    tmp_types.append(self._formatArray(key, val))
 
-        return optDict
+            elif def_type == 'string' and 'enum' in val:
+                print('-- Structure\n---- Enumerated')
+                tmp_types.append(self._formatEnumerated(key, val))
 
-    def visit_JsonRules(self, node, children):
-        return self.data
-
-    def visit_number(self, node, children):
-        try:
-            return float(node.value) if '.' in node.value else int(node.value)
-        except Exception as e:
-            print(e)
-
-        return node.value
-
-    def visit_metaLine(self, node, children):
-        # removes "; meta: " from beginning of meta comment
-        return re.sub(r';\s*meta:\s*', '', node.value)
-
-    def visit_headerComments(self, node, children):
-        if 'meta' not in self.data:
-            self.data['meta'] = {}
-        for child in children:
-            line = child.split(' - ')
-            try:
-                self.data['meta'][line[0]] = json.loads(line[1][0:-1])
-            except Exception as e:
-                self.data['meta'][line[0]] = line[1][0:-1]
-
-    def visit_typeDefs(self, node, children):
-        if 'types' not in self.data:
-            self.data['types'] = []
-
-        for child in children:
-            if type(child) is list:
-                self.data['types'].append(child)
             else:
-                print('type child is not type list')
+                print('-- Custom Type')
+                tmp_types.append(self._formatCustom(key, val))
+            print('')
 
-    def visit_defHeader(self, node, children):
-        optDict = self.load_jadnOpts(children[-1], {
-            'type': 'Record',
-            'options': []
-        })
-        # remove unnecessary leading/trailing symbols from string "= { ; ... #"
-        children[1] = re.sub(r'=|\(|;|\[|\{|#', '', children[1])
-        # remove leading spaces
-        children[1] = re.sub(r'^\s*', '', children[1])
-        # remove trailing spaces
-        children[1] = re.sub(r'\s*$', '', children[1])
+        return tmp_types
 
-        return [
-            children[0],  # Type Name
-            optDict['type'],  # Type
-            optDict['options'],  # Options
-            # remove unnecessary leading/trailing symbols from string "= { ; ... #"
-            children[1] if len(children) >= 2 and 'jadn_opts' not in children[1] else ''  # comment
-        ]
+    def _fieldType(self, v):
+        """
+        Determines the field type for the schema
+        :param f: current type
+        :return: type mapped to the schema
+        :rtype str
+        """
+        t, d = self._getRef(v['$ref']) if '$ref' in v else (v['type'], {})
 
-    def visit_defField(self, node, children):
-        optDict = self.load_jadnOpts(children[-1], {
-            'type': 'String',
-            'options': []
-        })
+        if v.get('type', '') == 'string' and v.get('format', '') == 'binary':
+            return 'Binary'
+        else:
+            return self._fieldMap.get(t, t)
 
-        if children[0] == '?':
-            children = children[1:]
-        return [
-            optDict['field'] if 'field' in optDict else 0,
-            re.sub(r'(:\s*)', '', children[0]),  # name
-            optDict['type'] if 'type' in optDict else children[1],
-            optDict['options'],  # options
-            re.sub(r'\s?#\S?$', '', children[-2]) if children[-2] else ''  # comment
-        ]
+    # Structure Formats
+    def _formatRecord(self, name, itm):
+        """
+        Formats records for the given schema type
+        :param itm: record to format
+        :return: formatted record
+        :rtype list
+        """
+        tmp_def = dict(
+            name=name,
+            type='Record',
+            opts={},
+            desc=itm.get('description', '').strip(),
+            fields=[]
+        )
 
-    def visit_recordDef(self, node, children):
-        msgFields = []
+        i = 1
+        for k, v in itm.get('properties', {}).items():
+            field = dict(
+                id=i,
+                name=k,
+                type=self._fieldType(v),
+                opts={},
+                desc=v.get('description', '').strip(),
+            )
+            if k not in itm.get('required', []):
+                field['opts']['min'] = 0
 
-        for child in children[1:-1]:
-            if type(child) is list:
-                msgFields.append(child)
+            field['opts'] = fopts_d2s(field['opts'])
+            tmp_def['fields'].append(field)
+            i += 1
+
+        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['fields'] = [list(field.values()) for field in tmp_def['fields']]
+        return list(tmp_def.values())
+
+    def _formatChoice(self, name, itm):
+        """
+        Formats choice for the given schema type
+        :param itm: choice to format
+        :return: formatted choice
+        :rtype list
+        """
+        tmp_def = dict(
+            name=name,
+            type='Choice',
+            opts={},
+            desc=itm.get('description', '').strip(),
+            fields=[]
+        )
+
+        i = 1
+        for option in itm.get('oneOf', {}):
+            for k, v in option.get('properties', {}).items():
+                field = dict(
+                    id=i,
+                    name=k,
+                    type=self._fieldType(v),
+                    opts={},
+                    desc=v.get('description', '').strip(),
+                )
+
+                field['opts'] = fopts_d2s(field['opts'])
+                tmp_def['fields'].append(field)
+                i += 1
+
+        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['fields'] = [list(field.values()) for field in tmp_def['fields']]
+        return list(tmp_def.values())
+
+    def _formatMap(self, name, itm):
+        """
+        Formats map for the given schema type
+        :param itm: map to format
+        :return: formatted map
+        :rtype list
+        """
+        tmp_def = dict(
+            name=name,
+            type='Map',
+            opts={},
+            desc=itm.get('description', '').strip(),
+            fields=[]
+        )
+
+        i = 1
+        for option in itm.get('anyOf', {}):
+            for k, v in option.get('properties', {}).items():
+                field = dict(
+                    id=i,
+                    name=k,
+                    type=self._fieldType(v),
+                    opts={},
+                    desc=v.get('description', '').strip(),
+                )
+
+                field['opts'] = fopts_d2s(field['opts'])
+                tmp_def['fields'].append(field)
+                i += 1
+
+        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['fields'] = [list(field.values()) for field in tmp_def['fields']]
+        return list(tmp_def.values())
+
+    def _formatEnumerated(self, name, itm):
+        """
+        Formats enum for the given schema type
+        :param itm: enum to format
+        :return: formatted enum
+        :rtype list
+        """
+        tmp_def = dict(
+            name=name,
+            type='Enumerated',
+            opts={},
+            desc=itm.get('description', '').strip(),
+            fields=[]
+        )
+
+        i = 1
+        if 'options' in itm:
+            for field in itm['options']:
+                tmp_def['fields'].append([safe_cast(field['value'], int, i), field['label'], field['description']])
+                i += 1
+        else:
+            for field in itm['enum']:
+                tmp_def['fields'].append([i, field, ''])
+                i += 1
+
+        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        return list(tmp_def.values())
+
+    def _formatArray(self, name, itm):  # TODO: what should this do??
+        """
+        Formats array for the given schema type
+        :param itm: array to format
+        :return: formatted array
+        :rtype list
+        """
+        tmp_def = dict(
+            name=name,
+            type='Array',
+            opts=self._optReformat('array', itm),
+            desc=itm.get('description', '').strip(),
+            fields=[]
+        )
+
+        i = 1
+        for k, v in itm.get('items', {}).get('properties', {}).items():
+            field_type = self._fieldType(v)
+            field = dict(
+                id=i,
+                name=k,
+                type=field_type,
+                opts=self._optReformat(field_type, v),
+                desc=v.get('description', '').strip(),
+            )
+            if k not in itm.get('items', {}).get('required', []):
+                field['opts']['min'] = 0
+
+            field['opts'] = fopts_d2s(field['opts'])
+            tmp_def['fields'].append(field)
+            i += 1
+
+        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['fields'] = [list(field.values()) for field in tmp_def['fields']]
+        return list(tmp_def.values())
+
+    def _formatArrayOf(self, name, itm):  # TODO: what should this do??
+        """
+        Formats arrayof for the given schema type
+        :param itm: arrayof to format
+        :return: formatted arrayof
+        :rtype list
+        """
+        rtype = itm.get('items', [])[0]
+
+        tmp_def = dict(
+            name=name,
+            type='ArrayOf',
+            opts=dict(
+                rtype=rtype['$ref'].split('/')[-1] if '$ref' in rtype else rtype['type']
+            ),
+            desc=itm.get('description', '').strip()
+        )
+        tmp_def['opts'].update(self._optReformat('array', itm))
+
+        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        return list(tmp_def.values())
+
+    def _formatCustom(self, name, itm):
+        """
+        Formats custom type for the given schema type
+        :param itm: custom type to format
+        :return: formatted custom type
+        :rtype list
+        """
+        def_type = self._fieldType(itm)
+
+        tmp_def = dict(
+            name=name,
+            type=def_type,
+            opts=self._optReformat(def_type, itm),
+            desc=itm.get('description', '').strip()
+        )
+        if 'format' in itm and itm['format'] != 'binary':
+            tmp_def['opts']['format'] = itm['format']
+
+        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        return list(tmp_def.values())
+
+    # Helper Functions
+    def _getRef(self, ref):
+        """
+        get JSON Schema referenced definition
+        :param ref: reference
+        :return: referenced object
+        """
+        ref = ref.split('/')
+        if ref[0].startswith('#'):
+            ref[0] = ref[0][1:]
+            tmp_ref = dict(self._schema)
+
+            for k in ref:
+                tmp_ref = tmp_ref.get(k, {})
+
+            return ref[-1], tmp_ref
+        else:
+            return ref[-1], {}
+
+    def _optReformat(self, optType, opts):
+        """
+        Reformat options for the given schema
+        :param opts:
+        :return:
+        """
+        ignoreKeys = ['description', 'items', 'type', '$ref']
+        optType = optType.lower()
+        r_opts = {}
+
+        optKeys = self._optKeys.get(optType, {})
+        for k, v in opts.items():
+            if k in ignoreKeys:
+                # print(f'option ignored for type {optType}: {k}')
+                pass
             else:
-                print('Message child not type list')
-                print(child)
+                if k in optKeys:
+                    r_opts[self._optKeys[optType][k]] = v
+                else:
+                    # print(f'unknown option for type {optType}: {k}')
+                    pass
 
-        children[0].append(msgFields)
-        return children[0]
-
-    def visit_enumHeader(self, node, children):
-        optDict = self.load_jadnOpts(re.sub(r';\s*#', '', children[0]), {
-            'type': 'String',
-            'options': []
-        })
-        enumHeader = [
-            "",
-            optDict['type'],
-            optDict['options'],
-            # removes unnecessary characters '={;#'
-            re.sub(r'=\s*{\s*;\s*|\s*#', '', children[1]) if len(children) >= 2 else ''  # comment
-        ]
-        return enumHeader
-
-    def visit_enumField(self, node, children):
-        optDict = self.load_jadnOpts(re.sub(r';\s*#', '', children[-1]), {
-            'type': 'String',
-            'options': [],
-        })
-
-        enumField = [
-            children[0],
-            optDict['field'],  # field number
-            # removes leading/trailing spaces
-            re.sub(r'(^\s+|\s+$)', '', children[2][1:-1]),  # name
-            # removes unnecessary characters '={;#'
-            re.sub(r'\s?(#|{})\S?$', '', children[3]) if len(children) >= 3 else ''  # comment
-        ]
-        return enumField
-
-    def visit_enumDef(self, node, children):
-        enumFields = []
-
-        children[0][0] = children[1][0]
-        name = children[0][0]
-
-        for child in children[1:]:
-            if type(child) is list and not (child[0] == 0 and re.match(r'^Unknown_{}'.format(name), child[1])):
-                enumFields.append(child[1:])
-            elif child[0] == 0 and re.match(r'^Unknown_{}'.format(name), child[1]):
-                print('Enumerated field is placeholder')
-                print(child)
-            else:
-                print('Enumerated field not type list')
-                print(child)
-
-        children[0].append(enumFields)
-        return children[0]
-
-    def visit_arrayOfDef(self, node, children):
-        values = []
-        data_values = re.search(r'(\[.*\])', children[1]).group(1)
-        data_dict = re.match(r'\[(?P<min>\d+)?(?P<expr>.)(?P<max>\d+)?\s(?P<type>[\w]+)\]', data_values).groupdict()
-
-        # parse out ex: 0*3 Query_Item
-        min = safe_cast(data_dict.get('min', '0'), int, 0)
-        max = safe_cast(data_dict.get('max', '1'), int, 1)
-
-        # result looks like ["*Query-Item", "[0", "]3"]
-        values.append(data_dict.get('expr', '*') + data_dict.get('type', 'string'))
-        values.append('[' + str(min))
-        values.append(']' + str(max))
-        return [
-            children[0],
-            'ArrayOf',
-            values,
-            re.sub(r';\s*|\s*$', '', children[2] if len(children) >= 3 else '')  # remove semi-colon and trailing spaces
-        ]
-
-    def visit_customFields(self, node, children):
-        return [
-            children[0],
-            "String" if children[2] == 'bstr' else children[2],
-            ["@"+children[0]] if 'TBD syntax' not in children else [],
-            re.sub(r';\s*', '', children[3][:-1]) if len(children) > 3 else ""
-        ]
-
-    def visit_customDefs(self, node, children):
-        if 'types' not in self.data:
-            self.data['types'] = []
-
-        for child in children[1:]:
-            if type(child) is list:
-                self.data['types'].append(child)
-            else:
-                print('type child is not type list')
+        return r_opts
 
 
-def json_loads(cddl):
+def json_loads(json):
     """
-    Produce JADN schema from cddl schema
-    :param cddl: CDDL schema to convert
+    Produce JADN schema from JSON schema
+    :param json: JSON schema to convert
     :return: JADN schema
     :rtype str
     """
-    try:
-        parser = ParserPython(JsonRules)
-        parse_tree = parser.parse(toStr(cddl))
-        result = visit_parse_tree(parse_tree, JsonVisitor())
-        return jadn_format(result, indent=2)
-
-    except Exception as e:
-        raise Exception('CDDL parsing error has occurred: {}'.format(e))
+    return jadn_format(JSONtoJADN(json).jadn_dump())
 
 
-def json_load(cddl, fname, source=""):
+def json_load(jsn, fname, source=""):
     with open(fname, "w") as f:
         if source:
             f.write("-- Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
-        f.write(json_loads(cddl))
+        f.write(json_loads(jsn))
