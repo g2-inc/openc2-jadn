@@ -260,6 +260,7 @@ class JSONtoJADN(object):
 
         i = 1
         if 'options' in itm:
+            if str(itm['options'][0]['value']).isdigit(): tmp_def['opts']['compact'] = True
             for field in itm['options']:
                 tmp_def['fields'].append([safe_cast(field['value'], int, i), field['label'], field['description']])
                 i += 1

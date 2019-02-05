@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 import base64
 import binascii
+import ipaddress
 import re
-import socket
-from socket import AF_INET, AF_INET6
-import string
+
+from urllib.parse import urlparse
 
 # Supported Operations - return value of check_format_function
 FMT_CHK = 0     # Format check function exists
@@ -36,7 +36,7 @@ def s_hostname(sval):
 #   A more comprehensive email address validator is available at http://isemail.info/about
 def s_email(sval):
     if not isinstance(sval, type('')):
-        raise TypeError
+        raise TypeError(f"E-Mail given is not expected {type('')}, given {type(sval)}")
     rfc5322_re = (
         r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"
         r'"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@'
@@ -45,38 +45,63 @@ def s_email(sval):
         r":(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])")
     if re.match(rfc5322_re, sval):
         return sval
-    raise ValueError
+    raise ValueError(f"E-Mail given is not valid")
 
 
-def b_ip_addr(bval):        # Length of IP addr must be 32 or 128 bits
+def b_ip_addr(bval):
+    """
+    Check if valid IP Address
+    Length of IP addr must be 32 or 128 bits
+    :param bval: MAC Address to validate
+    :return: given MAC Address
+    :raises TypeError, ValueError
+    """
     if not isinstance(bval, bytes):
-        raise TypeError
+        raise TypeError(f"IP Address given is not expected {bytes}, given {type(bval)}")
     if len(bval) == 4 or len(bval) == 16:
         return bval
-    raise ValueError
+    raise ValueError(f"IP Address given is not valid")
 
 
-def b_mac_addr(bval):       # Length of MAC addr must be 48 or 64 bits
+def b_mac_addr(bval):
+    """
+    Check if valid MAC Address
+    Length of MAC addr must be 48 or 64 bits
+    :param bval: MAC Address to validate
+    :return: given MAC Address
+    :raises TypeError, ValueError
+    """
     if not isinstance(bval, bytes):
-        raise TypeError
+        raise TypeError(f"MAC Address given is not expected {bytes}, given {type(bval)}")
     if len(bval) == 6 or len(bval) == 8:
         return bval
-    raise ValueError
+    raise ValueError(f"Mac Address given is not valid")
 
 
 def s_uri(sval):            # Check if valid URI
+    """
+    Check if valid URI
+    :param sval: URI to validate
+    :return: uri given
+    :raises TypeError, ValueError
+    """
     if not isinstance(sval, type('')):
-        raise TypeError
-    if True:                # TODO: write it
-        return sval
-    raise ValueError
+        raise TypeError(f"URI given is not expected {type('')}, given {type(sval)}")
+
+    try:
+        result = urlparse(sval)
+        if all([result.scheme, result.netloc]):
+            return sval
+    except Exception:
+        pass
+    raise ValueError(f"URI given is not expected valid")
 
 
-def _format_ok(val):        # No value constraints on this type
+def _format_ok(val):  # No value constraints on this type
     return val
 
 
-def _err(val):              # Unsupported format type
+def _err(val):  # Unsupported format type
     raise NameError
 
 
@@ -93,122 +118,268 @@ FORMAT_CHECK_FUNCTIONS = {
 # Binary to String, String to Binary conversion functions
 
 def s2b_hex(sval):      # Convert from hex string to binary
+    """
+    Convert from hex string to binary
+    :param sval: hex string to convert to binary
+    :return: binary value of the given hex string
+    """
     try:
         return base64.b16decode(sval)
     except binascii.Error:
         raise TypeError
 
 
-def b2s_hex(bval):      # Convert from binary to hex string
+def b2s_hex(bval):
+    """
+    Convert from binary to hex string
+    :param bval: binary value to convert to hex string
+    :return: hex string of the binary value given
+    """
     return base64.b16encode(bval).decode()
 
 
-def s2b_base64url(sval):      # Convert from base64url string to binary
-    v = sval + ((4 - len(sval) % 4) % 4)*'='          # Pad b64 string out to a multiple of 4 characters
-    if set(v) - set(string.ascii_letters + string.digits + '-_='):  # Python 2 doesn't support Validate
-        raise TypeError('base64decode: bad character')
-    return base64.b64decode(str(v), altchars='-_')
+def s2b_base64url(sval):
+    """
+    Convert from base64url string to binary
+    :param sval: base64url string to convert to binary
+    :return: binary representation of the give base64url
+    """
+    v = str(sval + ('=' * (len(sval) % 4)))  # Pad b64 string out to a multiple of 4 characters
+    if re.match(r'^[a-zA-z0-9\-_=]*={0,3}$', v):
+        return base64.b64decode(v, altchars='-_')
+    raise TypeError('base64decode: bad character')
 
 
-def b2s_base64url(bval):      # Convert from binary to base64url string
+def b2s_base64url(bval):
+    """
+    Convert from binary to base64url string
+    :param bval: binary value to convert to a base64url string
+    :return: base64url string of the binary value given
+    """
     return base64.urlsafe_b64encode(bval).decode().rstrip('=')
 
 
+# Convert IP address string to binary
+def _value_check_s2b(val):
+    """
+    Validate the value given is the proper type
+    :param val: value to validate the type
+    :raises: TypeError - Invalid type given
+    """
+    if isinstance(type(val), type('')):
+        raise TypeError(f"IP Address given is not expected {type('')}, given {type(val)}")
+
+
 def s2b_ip_addr(sval):
+    """
+    Convert the given IP Address to a binary representation
+    :param sval: string value of the IP Address to convert to binary
+    :return: binary representation of the IP Address given
+    """
+    check = _value_check_s2b(sval)
+    if check:
+        raise check
+
     return s2b_ipv6_addr(sval) if ':' in sval else s2b_ipv4_addr(sval)
 
 
-def s2b_ipv4_addr(sval):    # Convert IPv4 addr from string to binary
+def s2b_ipv4_addr(sval):
+    """
+    Convert the given IPv4 Address to a binary representation
+    :param sval: string value of the IPv4 Address to convert to binary
+    :return: binary representation of the IPv4 Address given
+    """
     try:
-        return socket.inet_pton(AF_INET, sval)
-    except (socket.error, AttributeError):       # Python 2 doesn't support inet_pton on Windows
-        try:
-            return socket.inet_aton(sval)
-        except IOError:
-            raise ValueError
-    except OSError:
-        raise ValueError
+        check = _value_check_s2b(sval)
+        return ipaddress.IPv4Address(sval).packed
+    except Exception as e:
+        raise e
 
 
-def s2b_ipv6_addr(sval):    # Convert IPv6 address from string to binary
+def s2b_ipv6_addr(sval):
+    """
+    Convert the given IPv6 Address to a binary representation
+    :param sval: string value of the IPv6 Address to convert to binary
+    :return: binary representation of the IPv6 Address given
+    """
     try:
-        return socket.inet_pton(AF_INET6, sval)
-    except (socket.error, OSError):         # Python 2 doesn't support inet_pton on Windows
-        raise ValueError
+        check = _value_check_s2b(sval)
+        return ipaddress.IPv6Address(sval).packed
+    except Exception as e:
+        raise e
+
+
+# Convert IP address binary to string
+def _value_check_b2s(val):
+    """
+    Validate the value given is the proper type
+    :param val: value to validate the type
+    :raises: TypeError - Invalid type given
+    """
+    if isinstance(type(val), type(b'')):
+        raise TypeError(f"IP Address given is not expected {type(b'')}, given {type(val)}")
 
 
 def b2s_ip_addr(bval):
+    """
+    Convert the given IP Address to a string representation
+    :param bval: binary value of the IP Address to convert to string
+    :return: string representation of the IP Address given
+    """
+    check = _value_check_b2s(bval)
+    if check:
+        raise check
+
     return b2s_ipv6_addr(bval) if len(bval) > 4 else b2s_ipv4_addr(bval)
 
 
-def b2s_ipv4_addr(bval):      # Convert IPv4 address from binary to string
+def b2s_ipv4_addr(bval):
+    """
+    Convert the given IPv4 Address to a string representation
+    :param bval: binary value of the IPv4 Address to convert to string
+    :return: string representation of the IPv4 Address given
+    """
     try:
-        return socket.inet_ntop(AF_INET, bval)
-    except (socket.error, AttributeError):
-        try:
-            return socket.inet_ntoa(bval)       # Python 2 doesn't support inet_ntop on Windows
-        except IOError:
-            raise ValueError
-    except OSError:
-        raise ValueError
+        check = _value_check_b2s(bval)
+        return str(ipaddress.IPv4Address(bval))
+    except Exception as e:
+        raise e
 
 
-def b2s_ipv6_addr(bval):        # Convert ipv6 address from binary to string
+def b2s_ipv6_addr(bval):
+    """
+    Convert the given IPv6 Address to a string representation
+    :param bval: binary value of the IPv6 Address to convert to string
+    :return: string representation of the IPv6 Address given
+    """
     try:
-        return socket.inet_ntop(AF_INET6, bval)     # Python 2 doesn't support inet_ntop on Windows
-    except (socket.error, OSError):
-        raise ValueError
+        check = _value_check_b2s(bval)
+        return str(ipaddress.IPv6Address(bval))
+    except Exception as e:
+        raise e
 
 
 # IP Net (address, prefix length tuple) conversions
+# Convert CIDR string to IP Net (v4 or v6)
+def _value_check_s2a(val):
+    """
+    Validate the value given is the proper type
+    :param val: value to validate the type
+    :raises: TypeError - Invalid type given
+    """
+    if isinstance(type(val), type('')):
+        raise TypeError(f"CIDR Address given is not expected {type('')}, given {type(val)}")
 
 
-def s2a_ip_net(sval):           # Convert CIDR string to IP Net (v4 or v6)
-    return s2a_ipv6_net(sval) if ':' in sval else s2a_ipv4_net(sval)
+def s2a_ip_net(sval, strict=False):
+    """
+    Convert the given CIDR Address to an IP and Prefix
+    :param sval: binary value of the CIDR Address to convert an IP and Prefix
+    :param strict: boot - enforce validation of network with host bits set
+    :return: list - ip, prefix
+    """
+    check = _value_check_b2s(sval)
+    if check:
+        raise check
+
+    return s2a_ipv6_net(sval, strict) if ':' in sval else s2a_ipv4_net(sval, strict)
 
 
-def s2a_ipv4_net(sval):
-    sa, spl = sval.split('/', 1)
-    sa = b2s_base64url(s2b_ipv4_addr(sa))   # Convert type-specific string to Binary default string
-    prefix_len = int(spl)
-    if prefix_len < 0 or prefix_len > 32:
-        raise ValueError
-    return [sa, prefix_len]
+def s2a_ipv4_net(sval, strict=False):
+    """
+    Convert the given CIDRv4 Address to an IP and Prefix
+    :param sval: binary value of the CIDRv4 Address to convert an IP and Prefix
+    :param strict: boot - enforce validation of network with host bits set
+    :return: list - ipv4, prefix
+    """
+    try:
+        check = _value_check_s2a(sval)
+        addr = tuple(sval.split('/', 1))
+        v = ipaddress.IPv4Network(addr, strict)
+        return [b2s_base64url(s2b_ipv4_addr(addr[0])), v.prefixlen]
+    except Exception as e:
+        raise e
 
 
-def s2a_ipv6_net(sval):
-    sa, spl = sval.split('/', 1)
-    sa = b2s_base64url(s2b_ipv6_addr(sa))   # Convert type-specific string to Binary default string
-    prefix_len = int(spl)
-    if prefix_len < 0 or prefix_len > 128:
-        raise ValueError
-    return [sa, prefix_len]
+def s2a_ipv6_net(sval, strict=False):
+    """
+    Convert the given CIDRv6 Address to an IP and Prefix
+    :param sval: binary value of the CIDRv6 Address to convert an IP and Prefix
+    :param strict: boot - enforce validation of network with host bits set
+    :return: list - ipv6, prefix
+    """
+    try:
+        check = _value_check_s2a(sval)
+        addr = tuple(sval.split('/', 1))
+        v = ipaddress.IPv6Network(addr, strict)
+        return [b2s_base64url(s2b_ipv6_addr(addr[0])), v.prefixlen]
+    except Exception as e:
+        raise e
 
 
-def a2s_ip_net(aval):           # Convert IP Net (v4 or v6) to string in CIDR notation
+# Convert IP Net (v4 or v6) to string in CIDR notation
+def _value_check_a2s(val):
+    """
+    Validate the value given is the proper type
+    :param val: value to validate the type
+    :raises: Value - Invalid size list given
+    :raises: TypeError - Invalid type given
+    """
+    if len(val) != 2:
+        raise ValueError(f'List of size 2 expected, give size {len(val)}')
+    elif isinstance(type(val[0]), type('')):
+        raise TypeError(f"IP Address given is not expected {type('')}, given {type(val[0])}")
+
+
+def a2s_ip_net(aval):
+    """
+    Convert the given IP Address and Prefix to CIDR representation
+    :param aval: list of IP and Prefix
+    :return: string representation of the CIDR Address
+    """
+    check = _value_check_a2s(aval)
+    if check:
+        raise check
+
     return a2s_ipv6_net(aval) if len(aval[0]) > 4 else a2s_ipv4_net(aval)
 
 
 def a2s_ipv4_net(aval):
-    if aval[1] < 0 or aval[1] > 32:       # Verify prefix length is valid
-        raise ValueError
-    sa = b2s_ipv4_addr(s2b_base64url(aval[0]))  # Convert Binary default string to type-specific string
-    return sa + '/' + str(aval[1])
+    """
+    Convert the given IPv4 Address and Prefix to CIDRv4 representation
+    :param aval: list of IPv4 and Prefix
+    :return: string representation of the CIDRv4 Address
+    """
+    check = _value_check_a2s(aval)
+    if check:
+        raise check
+
+    if aval[1] < 0 or aval[1] > 32:  # Verify prefix length is valid
+        raise ValueError(f'Prefix length not between 0 and 32: {aval[1]}')
+    return f'{b2s_ipv4_addr(s2b_base64url(aval[0]))}/{aval[1]}'  # Convert Binary default string to type-specific string
 
 
 def a2s_ipv6_net(aval):
-    if aval[1] < 0 or aval[1] > 128:       # Verify prefix length is valid
-        raise ValueError
-    sa = b2s_ipv6_addr(s2b_base64url(aval[0]))  # Convert Binary default string to type-specific string
-    return sa + '/' + str(aval[1])
+    """
+    Convert the given IPv6 Address and Prefix to CIDRv6 representation
+    :param aval: list of IPv6 and Prefix
+    :return: string representation of the CIDRv6 Address
+    """
+    check = _value_check_a2s(aval)
+    if check:
+        raise check
+
+    if aval[1] < 0 or aval[1] > 128:  # Verify prefix length is valid
+        raise ValueError(f'Prefix length not between 0 and 128: {aval[1]}')
+    return f'{b2s_ipv6_addr(s2b_base64url(aval[0]))}/{aval[1]}'  # Convert Binary default string to type-specific string
 
 
 FORMAT_CONVERT_BINARY_FUNCTIONS = {
     'b': (b2s_base64url, s2b_base64url),            # Base64url
     'x': (b2s_hex, s2b_hex),                        # Hex
     'ip-addr':  (b2s_ip_addr, s2b_ip_addr),         # IP (v4 or v6) Address, version autodetect
-    'ipv4-addr': (b2s_ipv4_addr, s2b_ipv4_addr),         # IPv4 Address
-    'ipv6-addr': (b2s_ipv6_addr, s2b_ipv6_addr),         # IPv6 Address
+    'ipv4-addr': (b2s_ipv4_addr, s2b_ipv4_addr),    # IPv4 Address
+    'ipv6-addr': (b2s_ipv6_addr, s2b_ipv6_addr),    # IPv6 Address
 }
 
 FORMAT_CONVERT_MULTIPART_FUNCTIONS = {

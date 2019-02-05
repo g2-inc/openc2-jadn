@@ -91,6 +91,7 @@ class JADNtoJSON(object):
             choice=self._optKeys['object'],
             enumerated=self._optKeys['string'],
             map=self._optKeys['object'],
+            number=self._optKeys['integer']
         )
         self._ignoreOpts = [
             'rtype'
@@ -200,25 +201,23 @@ class JADNtoJSON(object):
         :rtype str
         """
         if f in self._customFields:
-            rtn = {
+            return {
                 '$ref': '#definitions/{}'.format(self.formatStr(f))
             }
 
-        elif f in self._fieldMap.keys():
+        elif f in self._fieldMap:
             rtn = {
                 'type': self.formatStr(self._fieldMap.get(f, f))
             }
             if f.lower() == 'binary':
                 rtn['format'] = 'binary'
+            return rtn
 
         else:
             print('unknown type: {}'.format(f))
-            rtn = {
+            return {
                 'type': 'string'
             }
-
-        print(rtn)
-        return rtn
 
     def _formatComment(self, msg, **kargs):
         if self.comments == CommentLevels.NONE:
@@ -226,7 +225,7 @@ class JADNtoJSON(object):
 
         com = ''
         if msg not in ['', None, ' ']:
-            com += ' {msg}'.format(msg=msg)
+            com += '{msg}'.format(msg=msg)
 
         for k, v in kargs.items():
             com += ' #{k}:{v}'.format(
@@ -262,14 +261,15 @@ class JADNtoJSON(object):
             else:
                 required.append(prop['name'])
 
-            properties[prop['name']] = self._fieldType(prop['type'])
+            tmp_def = self._fieldType(prop['type'])
 
-            field_type = properties[prop['name']].get('type', '')
-            field_type = properties[prop['name']].get('$ref', '') if field_type == '' else field_type
+            field_type = tmp_def.get('type', '')
+            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
             field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            properties[prop['name']].update(self._optReformat(field_type, prop['opts']))
+            tmp_def.update(self._optReformat(field_type, prop['opts']))
 
-            properties[prop['name']].update(self._formatComment(prop['desc']))
+            tmp_def.update(self._formatComment(prop['desc']))
+            properties[prop['name']] = tmp_def
 
         type_def = dict(
             type="object",
@@ -303,14 +303,15 @@ class JADNtoJSON(object):
             prop['opts'] = fopts_s2d(prop['opts'])
             fields.append(prop['name'])
 
-            properties[prop['name']] = self._fieldType(prop['type'])
+            tmp_def = self._fieldType(prop['type'])
 
-            field_type = properties[prop['name']].get('type', '')
-            field_type = properties[prop['name']].get('$ref', '') if field_type == '' else field_type
+            field_type = tmp_def.get('type', '')
+            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
             field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            properties[prop['name']].update(self._optReformat(field_type, prop['opts']))
+            tmp_def.update(self._optReformat(field_type, prop['opts']))
 
-            properties[prop['name']].update(self._formatComment(prop['desc']))
+            tmp_def.update(self._formatComment(prop['desc']))
+            properties[prop['name']] = tmp_def
 
         type_def = dict(
             type='object',
@@ -344,14 +345,15 @@ class JADNtoJSON(object):
             prop['opts'] = fopts_s2d(prop['opts'])
             fields.append(prop['name'])
 
-            properties[prop['name']] = self._fieldType(prop['type'])
+            tmp_def = self._fieldType(prop['type'])
 
-            field_type = properties[prop['name']].get('type', '')
-            field_type = properties[prop['name']].get('$ref', '') if field_type == '' else field_type
+            field_type = tmp_def.get('type', '')
+            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
             field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            properties[prop['name']].update(self._optReformat(field_type, prop['opts']))
+            tmp_def.update(self._optReformat(field_type, prop['opts']))
 
-            properties[prop['name']].update(self._formatComment(prop['desc']))
+            tmp_def.update(self._formatComment(prop['desc']))
+            properties[prop['name']] = tmp_def
 
         type_def = dict(
             type='object',
@@ -377,25 +379,29 @@ class JADNtoJSON(object):
         """
         item = dict(zip(self._keys['structure'], itm))
         item['opts'] = topts_s2d(item['opts'])
-        values = []
+        type_def = dict(
+            type='string',
+            enum=[]
+        )
         options = []
 
         for prop in item['fields']:
             prop = dict(zip(self._keys['enum_def'], prop))
-            values.append(prop['value'])
+            if 'compact' in item['opts']:
+                type_def['type'] = 'integer'
+                val = prop['id']
+            else:
+                val = prop['value']
+
+            type_def['enum'].append(val)
             opt = dict(
-                value=prop['value'],
+                value=val,
                 label=prop['value']
             )
             if prop['desc'] != '':
                 opt['description'] = prop['desc']
 
             options.append(opt)
-
-        type_def = dict(
-            type='string',
-            enum=values
-        )
 
         if self.comments != CommentLevels.NONE:
             type_def['options'] = options
@@ -430,14 +436,15 @@ class JADNtoJSON(object):
             else:
                 required.append(prop['name'])
 
-            properties[prop['name']] = self._fieldType(prop['type'])
+            tmp_def = self._fieldType(prop['type'])
 
-            field_type = properties[prop['name']].get('type', '')
-            field_type = properties[prop['name']].get('$ref', '') if field_type == '' else field_type
+            field_type = tmp_def.get('type', '')
+            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
             field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            properties[prop['name']].update(self._optReformat(field_type, prop['opts']))
+            tmp_def.update(self._optReformat(field_type, prop['opts']))
 
-            properties[prop['name']].update(self._formatComment(prop['desc']))
+            tmp_def.update(self._formatComment(prop['desc']))
+            properties[prop['name']] = tmp_def
 
         type_def = dict(
             type='array',
