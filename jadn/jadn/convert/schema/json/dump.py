@@ -254,11 +254,7 @@ class JADNtoJSON(object):
             prop = dict(zip(self._keys['def'], prop))
             prop['opts'] = fopts_s2d(prop['opts'])
 
-            if 'min' in prop['opts']:
-                optional = prop['opts'].get('min', -1) == 0 and prop['opts'].get('max', -1) in [-1, 0]
-                if not optional:
-                    required.append(prop['name'])
-            else:
+            if not self._is_optional(prop['opts']):
                 required.append(prop['name'])
 
             tmp_def = self._fieldType(prop['type'])
@@ -339,13 +335,23 @@ class JADNtoJSON(object):
         item['opts'] = topts_s2d(item['opts'])
         fields = []
         properties = {}
+        required = []
 
         for prop in item['fields']:
             prop = dict(zip(self._keys['def'], prop))
             prop['opts'] = fopts_s2d(prop['opts'])
             fields.append(prop['name'])
 
-            tmp_def = self._fieldType(prop['type'])
+            if not self._is_optional(prop['opts']):
+                required.append(prop['name'])
+
+            if self._is_array(prop['opts']):
+                tmp_def = dict(
+                    type='array',
+                    items=[self._fieldType(prop['type'])]
+                )
+            else:
+                tmp_def = self._fieldType(prop['type'])
 
             field_type = tmp_def.get('type', '')
             field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
@@ -365,6 +371,9 @@ class JADNtoJSON(object):
         )
         type_def.update(self._optReformat('object', item['opts']))
         type_def.update(self._formatComment(item['desc']))
+
+        if len(required) > 0:
+            type_def['required'] = required
 
         return {
             self.formatStr(item['name']): type_def
@@ -429,14 +438,16 @@ class JADNtoJSON(object):
             prop = dict(zip(self._keys['def'], prop))
             prop['opts'] = fopts_s2d(prop['opts'])
 
-            if 'min' in prop['opts']:
-                optional = prop['opts'].get('min', -1) == 0 and prop['opts'].get('max', -1) in [-1, 0]
-                if not optional:
-                    required.append(prop['name'])
-            else:
+            if not self._is_optional(prop['opts']):
                 required.append(prop['name'])
 
-            tmp_def = self._fieldType(prop['type'])
+            if self._is_array(prop['opts']):
+                tmp_def = dict(
+                    type='array',
+                    items=[self._fieldType(prop['type'])]
+                )
+            else:
+                tmp_def = self._fieldType(prop['type'])
 
             field_type = tmp_def.get('type', '')
             field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
@@ -489,6 +500,24 @@ class JADNtoJSON(object):
         }
 
     # Helper Functions
+    def _is_optional(self, opts):
+        """
+        Check if the field is optional
+        :param opts: field options
+        :return: bool - optional
+        """
+        min_size = opts.get('min', 1)
+        return min_size == 0
+
+    def _is_array(self, opts):
+        """
+        Check if the field is an array
+        :param opts: field options
+        :return: bool - optional
+        """
+        max_size = opts.get('max', 1)
+        return max_size != 1
+
     def _getType(self, name):
         """
         Get the type of the field based of the name
@@ -506,17 +535,27 @@ class JADNtoJSON(object):
         :return:
         """
         optType = optType.lower()
+        optKeys = self._optKeys.get(optType, {})
         r_opts = {}
 
-        optKeys = self._optKeys.get(optType, {})
-        for k, v in opts.items():
-            if k in optKeys:
-                r_opts[self._optKeys[optType][k]] = v
-            elif k in self._ignoreOpts:
-                # print(f'option ignored: {k}')
-                pass
-            else:
-                print(f'unknown option for type {optType}: {k} - {v}')
+        def ignore(k, v):
+            if k in ['object', 'array']:
+                return False
+
+            ign = any([
+                k == 'min' and safe_cast(v, int, 1) < 1,
+                k == 'max' and safe_cast(v, int, 1) < 1,
+            ])
+            return ign
+
+        for key, val in opts.items():
+            if not ignore(key, val):
+                if key in self._ignoreOpts:
+                    pass
+                elif key in optKeys:
+                    r_opts[self._optKeys[optType][key]] = val
+                else:
+                    print(f'unknown option for type of {optType}: {key} - {val}')
 
         return r_opts
 
