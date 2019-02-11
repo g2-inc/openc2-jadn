@@ -6,7 +6,6 @@ import re
 from datetime import datetime
 
 from jadn.utils import jadn_format, safe_cast, toStr
-from jadn.jadn_defs import is_structure
 from jadn.jadn_utils import fopts_d2s, topts_d2s
 
 
@@ -32,29 +31,35 @@ class JSONtoJADN(object):
             'binary': 'Binary',
             'integer': 'Integer',
             'null': 'Null',
+            'number': 'Number',
             'string': 'String',
         }
 
         self._optKeys = {
-            'array': {
+            ('array', ): {
                 'minItems': 'min',
                 'maxItems': 'max'
             },
-            'integer': {
+            ('integer', ): {
                 'minimum': 'min',
                 'exclusiveMinimum': 'min',
                 'maximum': 'max',
                 'exclusiveMaximum': 'max',
                 'format': 'format'
             },
-            'object': {},
-            'string': {
+            ('object', ): {},
+            ('string', ): {
                 'format': 'format',
                 'minLength': 'min',
                 'maxLength': 'max',
                 'pattern': 'pattern'
-            },
+            }
         }
+
+        self._binaryFormats = [
+            'binary',
+            'ip-addr'
+        ]
 
     def jadn_dump(self):
         return dict(
@@ -114,7 +119,7 @@ class JSONtoJADN(object):
                     print('---- Array')
                     tmp_types.append(self._formatArray(key, val))
 
-            elif def_type == 'string' and 'enum' in val:
+            elif def_type in ['string', 'integer'] and 'enum' in val:
                 print('-- Structure\n---- Enumerated')
                 tmp_types.append(self._formatEnumerated(key, val))
 
@@ -134,10 +139,28 @@ class JSONtoJADN(object):
         """
         t, d = self._getRef(v['$ref']) if '$ref' in v else (v['type'], {})
 
-        if v.get('type', '') == 'string' and v.get('format', '') == 'binary':
+        if v.get('type', '') == 'string' and v.get('format', '') in self._binaryFormats:
             return 'Binary'
+        elif v.get('type', '') == 'array':
+            itm = v.get('items', [{'type': 'string'}])[0]
+            if '$ref' in itm:
+                return itm['$ref'].split('/')[-1]
+            else:
+                return self._fieldMap.get(itm['type'], t)
         else:
             return self._fieldMap.get(t, t)
+
+    def _getOptKeys(self, _type):
+        """
+        Get the option keys for conversion
+        :param _type: the type to get the keys of
+        :return: dict - option keys for translation
+        """
+        for opts, conv in self._optKeys.items():
+            if _type in opts:
+                return conv
+
+        return {}
 
     # Structure Formats
     def _formatRecord(self, name, itm):
@@ -235,6 +258,9 @@ class JSONtoJADN(object):
                     desc=v.get('description', '').strip(),
                 )
 
+                if k not in itm.get('required', []):
+                    field['opts']['min'] = 0
+
                 field['opts'] = fopts_d2s(field['opts'])
                 tmp_def['fields'].append(field)
                 i += 1
@@ -321,11 +347,11 @@ class JSONtoJADN(object):
             name=name,
             type='ArrayOf',
             opts=dict(
-                rtype=rtype['$ref'].split('/')[-1] if '$ref' in rtype else rtype['type']
+                rtype=rtype['$ref'].split('/')[-1] if '$ref' in rtype else self._fieldType(rtype)
             ),
             desc=itm.get('description', '').strip()
         )
-        tmp_def['opts'].update(self._optReformat('array', itm))
+        tmp_def['opts'].update(self._optReformat('array', itm, True))
 
         tmp_def['opts'] = topts_d2s(tmp_def['opts'])
         return list(tmp_def.values())
@@ -370,27 +396,23 @@ class JSONtoJADN(object):
         else:
             return ref[-1], {}
 
-    def _optReformat(self, optType, opts):
+    def _optReformat(self, optType, opts, _type=False):
         """
         Reformat options for the given schema
-        :param opts:
-        :return:
+        :param optType: type to reformat the options for
+        :param opts: original options to reformat
+        :param _type: is type of field
+        :return: dict - reformatted options
         """
         ignoreKeys = ['description', 'items', 'type', '$ref']
         optType = optType.lower()
         r_opts = {}
 
-        optKeys = self._optKeys.get(optType, {})
+        optKeys = self._getOptKeys(optType)
         for k, v in opts.items():
-            if k in ignoreKeys:
-                # print(f'option ignored for type {optType}: {k}')
-                pass
-            else:
+            if k not in ignoreKeys:
                 if k in optKeys:
-                    r_opts[self._optKeys[optType][k]] = v
-                else:
-                    # print(f'unknown option for type {optType}: {k}')
-                    pass
+                    r_opts[optKeys[k]] = v
 
         return r_opts
 

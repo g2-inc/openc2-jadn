@@ -66,33 +66,26 @@ class JADNtoJSON(object):
         }
 
         self. _optKeys = {
-            'array': {
+            ('array', ): {
                 'min': 'minItems',
                 'max': 'maxItems'
             },
-            'integer': {
+            ('integer', 'number'): {
                 'min': 'minimum',
                 'max': 'maximum',
                 'format': 'format'
             },
-            'object': {
+            ('choice', 'map', 'object'): {
                 'min': 'minItems',
                 'max': 'maxItems'
             },
-            'string': {
+            ('binary', 'enumerated', 'string'): {
                 'format': 'format',
                 'min': 'minLength',
                 'max': 'maxLength',
                 'pattern': 'pattern'
             }
         }
-        self._optKeys.update(
-            binary=self. _optKeys['string'],
-            choice=self._optKeys['object'],
-            enumerated=self._optKeys['string'],
-            map=self._optKeys['object'],
-            number=self._optKeys['integer']
-        )
         self._ignoreOpts = [
             'rtype'
         ]
@@ -128,11 +121,6 @@ class JADNtoJSON(object):
             oneOf=[self._fieldType(f) for f in exports],  # Exports??
             definitions=self.makeStructures()
         )
-        '''
-        patternProperties={
-            f"^({'|'.join(exports)})$": dict()
-        },
-        '''
         rtn['definitions'].update(**self.makeCustom())
 
         return rtn
@@ -187,7 +175,7 @@ class JADNtoJSON(object):
 
             def_field = self._fieldType(field['type'])
             def_field.update(self._formatComment(field['desc']))
-            def_field.update(self._optReformat(field['type'], field['opts']))
+            def_field.update(self._optReformat(field['type'], field['opts'], True))
 
             defs[self.formatStr(field['name'])] = def_field
 
@@ -237,6 +225,18 @@ class JADNtoJSON(object):
             description=com
         )
 
+    def _getOptKeys(self, _type):
+        """
+        Get the option keys for conversion
+        :param _type: the type to get the keys of
+        :return: dict - option keys for translation
+        """
+        for opts, conv in self._optKeys.items():
+            if _type in opts:
+                return conv
+
+        return {}
+
     # Structure Formats
     def _formatRecord(self, itm):
         """
@@ -272,7 +272,7 @@ class JADNtoJSON(object):
             properties=properties,
             additionalProperties=False
         )
-        type_def.update(self._optReformat('object', item['opts']))
+        type_def.update(self._optReformat('object', item['opts'], True))
         type_def.update(self._formatComment(item['desc']))
 
         if len(required) > 0:
@@ -317,7 +317,7 @@ class JADNtoJSON(object):
                 dict(properties=properties)
             ]
         )
-        type_def.update(self._optReformat('object', item['opts']))
+        type_def.update(self._optReformat('object', item['opts'], True))
         type_def.update(self._formatComment(item['desc']))
 
         return {
@@ -369,7 +369,7 @@ class JADNtoJSON(object):
                 dict(properties=properties)
             ]
         )
-        type_def.update(self._optReformat('object', item['opts']))
+        type_def.update(self._optReformat('object', item['opts'], True))
         type_def.update(self._formatComment(item['desc']))
 
         if len(required) > 0:
@@ -415,7 +415,7 @@ class JADNtoJSON(object):
         if self.comments != CommentLevels.NONE:
             type_def['options'] = options
 
-        type_def.update(self._optReformat('string', item['opts']))
+        type_def.update(self._optReformat('string', item['opts'], True))
         type_def.update(self._formatComment(item['desc']))
 
         return {
@@ -468,7 +468,7 @@ class JADNtoJSON(object):
             type_def['items']['required'] = required
 
         type_def.update(self._formatComment(item['desc']))
-        type_def.update(self._optReformat('array', item['opts']))
+        type_def.update(self._optReformat('array', item['opts'], True))
 
         return {
             self.formatStr(itm[0]): type_def
@@ -493,7 +493,7 @@ class JADNtoJSON(object):
         )
 
         type_def.update(self._formatComment(item['desc']))
-        type_def.update(self._optReformat('array', item['opts']))
+        type_def.update(self._optReformat('array', item['opts'], True))
 
         return {
             self.formatStr(item['name']): type_def
@@ -528,14 +528,17 @@ class JADNtoJSON(object):
         type_def = type_def[0] if len(type_def) == 1 else ['oops...', 'String']
         return type_def[1]
 
-    def _optReformat(self, optType, opts):
+    def _optReformat(self, optType, opts, _type=False):
         """
         Reformat options for the given schema
-        :param opts:
-        :return:
+        :param optType: type to reformat the options for
+        :param opts: original options to reformat
+        :param _type: is type of field
+        :return: dict - reformatted options
         """
+        _type = _type if type(_type) is bool else False
         optType = optType.lower()
-        optKeys = self._optKeys.get(optType, {})
+        optKeys = self._getOptKeys(optType)
         r_opts = {}
 
         def ignore(k, v):
@@ -549,11 +552,14 @@ class JADNtoJSON(object):
             return ign
 
         for key, val in opts.items():
-            if not ignore(key, val):
+            if _type:
+                if key in optKeys:
+                    r_opts[optKeys[key]] = val
+            elif not ignore(key, val):
                 if key in self._ignoreOpts:
                     pass
                 elif key in optKeys:
-                    r_opts[self._optKeys[optType][key]] = val
+                    r_opts[optKeys[key]] = val
                 else:
                     print(f'unknown option for type of {optType}: {key} - {val}')
 

@@ -41,14 +41,14 @@ with open(base_schema, 'w+') as jadn_file:
 
 
 # TODO: Add CommentLevels, requires dump.py rewrite
-print('Convert to JSON Schema - All Comments')
-json_dump(schema_json, os.path.join(test_dir, schema + '.all.json'), comm=CommentLevels.ALL)
+# print('Convert to JSON Schema - All Comments')
+# json_dump(schema_json, os.path.join(test_dir, schema + '.all.json'), comm=CommentLevels.ALL)
 
 # print('\nConvert to JSON Schema - No Comments')
 # json_dump(schema_json, os.path.join(test_dir, schema + '.none.json'), comm=CommentLevels.NONE)
 
-# print('\nConvert to JADN Schema from JSON Schema - All Comments')
-# json_load(open(os.path.join(test_dir, schema + '.all.json'), 'rb').read(), os.path.join(test_dir, schema + '.all.json.jadn'))
+print('\nConvert to JADN Schema from JSON Schema - All Comments')
+json_load(open(os.path.join(test_dir, schema + '.all.json'), 'rb').read(), os.path.join(test_dir, schema + '.all.json.jadn'))
 
 # print('\nConvert to JADN Schema from JSON Schema - No Comments')
 # json_load(open(os.path.join(test_dir, schema + '.none.json'), 'rb').read(), os.path.join(test_dir, schema + '.none.json.jadn'))
