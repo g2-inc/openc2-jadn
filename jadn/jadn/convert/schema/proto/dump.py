@@ -6,108 +6,50 @@ from datetime import datetime
 from jadn.jadn_utils import fopts_s2d, topts_s2d
 from jadn.enums import CommentLevels
 from jadn.utils import Utils
+from ..base_dump import JADNConverterBase
 
 
-class JADNtoProto3(object):
-    def __init__(self, jadn):
-        """
-        Schema Converter for JADN to ProtoBuf3
-        :param jadn: str or dict of the JADN schema
-        :type jadn: str or dict
-        """
-        if type(jadn) is str:
-            try:
-                jadn = json.loads(jadn)
-            except Exception as e:
-                raise e
-        elif type(jadn) is dict:
-            pass
+class JADNtoProto3(JADNConverterBase):
+    _fieldMap = {
+        'Binary': 'string',
+        'Boolean': 'bool',
+        'Integer': 'int64',
+        'Number': 'string',
+        'Null': 'string',
+        'String': 'string'
+    }
 
-        else:
-            raise TypeError('JADN improperly formatted')
+    _imports = []
 
-        self.comments = CommentLevels.ALL
-
-        self.indent = ' ' * 4
-
-        self._fieldMap = {
-            'Binary': 'string',
-            'Boolean': 'bool',
-            'Integer': 'int64',
-            'Number': 'string',
-            'Null': 'string',
-            'String': 'string'
-        }
-        self._structFormats = {
-            'Record': self._formatRecord,
-            'Choice': self._formatChoice,
-            'Map': self._formatMap,
-            'Enumerated': self._formatEnumerated,
-            'Array': self._formatArray,
-            'ArrayOf': self._formatArrayOf,
-        }
-
-        self._imports = []
-        self._meta = jadn['meta'] or []
-        self._types = []
-        self._custom = []
-        self._customFields = []  # [t[0] for t in self._types]
-
-        for t in jadn['types']:
-            if t[1] in self._structFormats.keys():
-                self._types.append(t)
-                self._customFields.append(t[0])
-            else:
-                self._custom.append(t)
-
-    def proto_dump(self, comm=CommentLevels.ALL):
+    def proto_dump(self, com=CommentLevels.ALL):
         """
         Converts the JADN schema to ProtoBuf3
-        :param comm: Level of comments to include in converted schema
-        :type comm: str of enums.CommentLevel
+        :param com: Level of comments to include in converted schema
         :return: Protobuf3 schema
-        :rtype str
         """
-        self.comments = comm if comm in CommentLevels.values() else CommentLevels.ALL
+        if com:
+            self.com = com if com in CommentLevels.values() else CommentLevels.ALL
 
-        return '{header}{imports}{defs}\n/* JADN Custom Fields\n[\n{jadn_fields}\n]\n*/'.format(
-            idn=self.indent,
-            header=self.makeHeader(),
-            defs=self.makeStructures(),
-            imports=''.join(['import \"{}\";\n'.format(i) for i in self._imports]),
-            jadn_fields=',\n'.join([self.indent+json.dumps(f) for f in Utils.defaultDecode(self._custom)])
-        )
+        imports = ''.join(['import \"{}\";\n'.format(i) for i in self._imports])
+        jadn_fields = ',\n'.join([self._indent+json.dumps(Utils.defaultDecode(list(field.values()))) for field in self._custom])
 
-    def formatStr(self, s):
-        """
-        Formats the string for use in schema
-        :param s: string to format
-        :type s: str
-        :return: formatted string
-        :rtype str
-        """
-        if s == '*':
-            return 'unknown'
-        else:
-            return re.sub(r'[\- ]', '_', s)
+        return f"{self.makeHeader()}{imports}{self.makeStructures()}\n/* JADN Custom Fields\n[\n{jadn_fields}\n]\n*/"
 
     def makeHeader(self):
         """
         Create the header for the schema
         :return: header for schema
-        :rtype str
         """
+        header_regex = re.compile(r'(^\"|\"$)')
         header = list([
             'syntax = "proto3";',
             '',
-            'package {};'.format(re.sub(r'[.\-/]+', '_', self._meta['module']) or 'JADN_ProtoBuf_Schema'),
+            'package {};'.format(re.sub(r'[.\-/]+', '_', self._meta.get('module', 'JADN_ProtoBuf_Schema'))),
             '',
-            '/*'
+            '/*',
+            *[f" * meta: {k} - {header_regex.sub('', json.dumps(Utils.defaultDecode(v)))}" for k, v in self._meta.items()],
+            '*/'
         ])
-
-        header.extend([' * meta: {} - {}'.format(k, re.sub(r'(^\"|\"$)', '', json.dumps(Utils.defaultDecode(v)))) for k, v in self._meta.items()])
-
-        header.append('*/')
 
         return '\n'.join(header) + '\n\n'
 
@@ -115,17 +57,13 @@ class JADNtoProto3(object):
         """
         Create the type definitions for the schema
         :return: type definitions for the schema
-        :rtype str
         """
         tmp = ''
         for t in self._types:
-            df = self._structFormats.get(t[1], None)
+            df = self._structFun(t.type, None)
 
-            if df is not None and t[1] in ['Record', 'Enumerated', 'Map', 'Array', 'ArrayOf']:
+            if df is not None:
                 tmp += df(t)
-
-            elif df is not None:
-                tmp += self._wrapAsRecord(df(t))
 
         return tmp
 
@@ -133,18 +71,13 @@ class JADNtoProto3(object):
         """
         wraps the given item as a record for the schema
         :param itm: item to wrap
-        :type s: str
-        :return: item wrapped as a record for hte schema
-        :rtype str
+        :return: item wrapped as a record for the schema
         """
         lines = itm.split('\n')[1:-1]
         if len(lines) > 1:
             n = re.search(r'\s[\w\d\_]+\s', lines[0]).group()[1:-1]
-            tmp = "\nmessage {} {{\n".format(self.formatStr(n))
-            for l in lines:
-                tmp += '{}{}\n'.format(self.indent, l)
-            tmp += '}\n'
-            return tmp
+            lines = '\n'.join(f'{self._indent}{l}' for l in lines)
+            return f"\nmessage {self.formatStr(n)} {{\n{lines}\n}}\n"
         return ''
 
     def _fieldType(self, f):
@@ -152,7 +85,6 @@ class JADNtoProto3(object):
         Determines the field type for the schema
         :param f: current type
         :return: type mapped to the schema
-        :rtype str
         """
         rtn = 'string'
         if re.search(r'(datetime|date|time)', f):
@@ -160,7 +92,7 @@ class JADNtoProto3(object):
                 self._imports.append('google/protobuf/timestamp.proto')
             rtn = 'google.protobuf.Timestamp'
 
-        if f in self._customFields:
+        if f in self._customFields and f not in [c.name for c in self._custom]:
             rtn = self.formatStr(f)
 
         elif f in self._fieldMap.keys():
@@ -168,7 +100,13 @@ class JADNtoProto3(object):
         return rtn
 
     def _formatComment(self, msg, **kargs):
-        if self.comments == CommentLevels.NONE:
+        """
+        Format a comment for the given schema
+        :param msg: comment text
+        :param kargs: key/value comments
+        :return: formatted comment
+        """
+        if self.com == CommentLevels.NONE:
             return ''
 
         com = '//'
@@ -188,28 +126,27 @@ class JADNtoProto3(object):
         Formats records for the given schema type
         :param itm: record to format
         :return: formatted record
-        :rtype str
         """
-        lines = []
-        for l in itm[-1]:
-            opts = {'type': l[2]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
+        properties = []
+        for prop in itm.fields:
+            opts = {'type': prop.type}
+            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
 
-            lines.append('{idn}{type} {name} = {num}; {com}\n'.format(
-                idn=self.indent,
-                type=self._fieldType(l[2]),
-                name=self.formatStr(l[1]),
-                num=l[0],
-                com=self._formatComment(l[-1], jadn_opts=opts)
+            properties.append('{idn}{type} {name} = {num}; {com}\n'.format(
+                idn=self._indent,
+                type=self._fieldType(prop.type),
+                name=self.formatStr(prop.name),
+                num=prop.id,
+                com=self._formatComment(prop.desc, jadn_opts=opts)
             ))
 
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
 
         return '\nmessage {name} {{ {com}\n{req}}}\n'.format(
-            name=self.formatStr(itm[0]),
-            req=''.join(lines),
-            com=self._formatComment(itm[-2], jadn_opts=opts)
+            name=self.formatStr(itm.name),
+            req=''.join(properties),
+            com=self._formatComment(itm.desc, jadn_opts=opts)
         )
 
     def _formatChoice(self, itm):
@@ -217,37 +154,35 @@ class JADNtoProto3(object):
         Formats choice for the given schema type
         :param itm: choice to format
         :return: formatted choice
-        :rtype str
         """
-        lines = []
-        for l in itm[-1]:
-            opts = {'type': l[2]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
+        properties = []
+        for prop in itm.fields:
+            opts = {'type': prop.type}
+            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
 
-            lines.append('{idn}{type} {name} = {num}; {com}\n'.format(
-                idn=self.indent,
-                type=self._fieldType(l[2]),
-                name=self.formatStr(l[1]),
-                num=l[0],
-                com=self._formatComment(l[-1], jadn_opts=opts)
+            properties.append('{idn}{type} {name} = {num}; {com}\n'.format(
+                idn=self._indent,
+                type=self._fieldType(prop.type),
+                name=self.formatStr(prop.name),
+                num=prop.id,
+                com=self._formatComment(prop.desc, jadn_opts=opts)
             ))
 
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
 
-        return '\noneof {name} {{ {com}\n{req}}}\n'.format(
-            idn=self.indent,
-            name=self.formatStr(itm[0]),
-            com=self._formatComment(itm[-2], jadn_opts=opts),
-            req=''.join(lines)
-        )
+        return self._wrapAsRecord('\noneof {name} {{ {com}\n{req}}}\n'.format(
+            idn=self._indent,
+            name=self.formatStr(itm.name),
+            com=self._formatComment(itm.desc, jadn_opts=opts),
+            req=''.join(properties)
+        ))
 
     def _formatMap(self, itm):
         """
         Formats map for the given schema type
         :param itm: map to format
         :return: formatted map
-        :rtype str
         """
         return self._formatRecord(itm)
 
@@ -256,28 +191,27 @@ class JADNtoProto3(object):
         Formats enum for the given schema type
         :param itm: enum to format
         :return: formatted enum
-        :rtype str
         """
-        lines = []
+        properties = []
         default = True
-        for l in itm[-1]:
-            if l[0] == 0: default = False
-            lines.append('{idn}{name} = {num}; {com}\n'.format(
-                idn=self.indent,
-                name=self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0])),
-                num=l[0],
-                com=self._formatComment(l[-1])
+        for prop in itm.fields:
+            if prop.id == 0: default = False
+            properties.append('{idn}{name} = {num}; {com}\n'.format(
+                idn=self._indent,
+                name=self.formatStr(prop.value or 'Unknown_{}_{}'.format(self.formatStr(itm.name), prop.id)),
+                num=prop.id,
+                com=self._formatComment(prop.desc)
             ))
 
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
 
         return '\nenum {name} {{ {com}\n{default}{enum}}}\n'.format(
-            idn=self.indent,
-            name=self.formatStr(itm[0]),
-            com=self._formatComment(itm[-2], jadn_opts=opts),
-            default='{}Unknown_{} = 0; // required starting enum number for protobuf3\n'.format(self.indent, itm[0].replace('-', '_')) if default else '',
-            enum=''.join(lines)
+            idn=self._indent,
+            name=self.formatStr(itm.name),
+            com=self._formatComment(itm.desc, jadn_opts=opts),
+            default='{}Unknown_{} = 0; // required starting enum number for protobuf3\n'.format(self._indent, itm.name.replace('-', '_')) if default else '',
+            enum=''.join(properties)
         )
 
     def _formatArray(self, itm):  # TODO: what should this do??
@@ -285,7 +219,6 @@ class JADNtoProto3(object):
         Formats array for the given schema type
         :param itm: array to format
         :return: formatted array
-        :rtype str
         """
         print('Array: {}'.format(itm))
         return ''
@@ -295,20 +228,20 @@ class JADNtoProto3(object):
         Formats arrayof for the given schema type
         :param itm: arrayof to format
         :return: formatted arrayof
-        :rtype str
         """
 
         opts = {
             'type': 'arrayOf',
-            'options': topts_s2d(itm[2])
+            'options': topts_s2d(itm.opts)
         }
+        rtype = opts['options'].setdefault('rtype', 'String')
         
         return '\nmessage {name} {{\n{idn}repeated {type} {field} = 1; {com}\n}}\n'.format(
-            idn=self.indent,
-            name=self.formatStr(itm[0]),
-            type=self.formatStr(opts['options']['rtype']),
-            field=self.formatStr(opts['options']['rtype']).lower(),
-            com=self._formatComment(itm[-1], jadn_opts=opts)
+            idn=self._indent,
+            name=self.formatStr(itm.name),
+            type=self.formatStr(rtype),
+            field=self.formatStr(rtype).lower(),
+            com=self._formatComment(itm.desc, jadn_opts=opts)
         )
 
 
@@ -332,7 +265,7 @@ def proto_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     :param jadn: JADN Schema to convert
     :type jadn: str or dict
     :param fname: Name of file to write
-    :tyoe fname: str
+    :type fname: str
     :param source: Name of the original JADN schema file
     :type source: str
     :param comm: Level of comments to include in converted schema
@@ -342,5 +275,5 @@ def proto_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
     with open(fname, "w") as f:
         if source:
-            f.write("// Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
+            f.write(f"// Generated from {source}, { datetime.ctime(datetime.now())}\n")
         f.write(proto_dumps(jadn, comm))

@@ -6,112 +6,64 @@ from datetime import datetime
 from jadn.jadn_utils import fopts_s2d, topts_s2d
 from jadn.enums import CommentLevels
 from jadn.utils import safe_cast, Utils
+from ..base_dump import JADNConverterBase
 
 
-class JADNtoJSON(object):
-    def __init__(self, jadn):
-        """
-        Schema Converter for JADN to JSON
-        :param jadn: str or dict of the JADN schema
-        :type jadn: str or dict
-        """
-        if type(jadn) is str:
-            try:
-                jadn = json.loads(jadn)
-            except Exception as e:
-                raise e
-        elif type(jadn) is dict:
-            pass
+class JADNtoJSON(JADNConverterBase):
+    _fieldMap = {
+        'Binary': 'string',
+        'Boolean': 'bool',
+        'Integer': 'integer',
+        'Number': 'number',
+        'Null': 'null',
+        'String': 'string'
+    }
 
-        else:
-            raise TypeError('JADN improperly formatted')
+    _ignoreOpts = [
+        'rtype'
+    ]
 
-        self.comments = CommentLevels.ALL
-
-        self._fieldMap = {
-            'Binary': 'string',
-            'Boolean': 'bool',
-            'Integer': 'integer',
-            'Number': 'number',
-            'Null': 'null',
-            'String': 'string'
+    _optKeys = {
+        ('array',): {
+            'min': 'minItems',
+            'max': 'maxItems'
+        },
+        ('integer', 'number'): {
+            'min': 'minimum',
+            'max': 'maximum',
+            'format': 'format'
+        },
+        ('choice', 'map', 'object'): {
+            'min': 'minItems',
+            'max': 'maxItems'
+        },
+        ('binary', 'enumerated', 'string'): {
+            'format': 'format',
+            'min': 'minLength',
+            'max': 'maxLength',
+            'pattern': 'pattern'
         }
+    }
 
-        self._validationMap = {
-            'date-time': 'date-time',
-            'email': 'email',
-            'hostname': 'hostname',
-            'ip-addr': 'ip-addr',  # ipv4/ipv6
-            'json-pointer': 'json-pointer',  # Draft 6
-            'uri': 'uri',
-            'uri-reference': 'uri-reference',  # Draft 6
-            'uri-template': 'uri-template',  # Draft 6
-        }
+    _validationMap = {
+        'date-time': 'date-time',
+        'email': 'email',
+        'hostname': 'hostname',
+        'ip-addr': 'ip-addr',  # ipv4/ipv6
+        'json-pointer': 'json-pointer',  # Draft 6
+        'uri': 'uri',
+        'uri-reference': 'uri-reference',  # Draft 6
+        'uri-template': 'uri-template',  # Draft 6
+    }
 
-        self._structFormats = {
-            'Record': self._formatRecord,
-            'Choice': self._formatChoice,
-            'Map': self._formatMap,
-            'Enumerated': self._formatEnumerated,
-            'Array': self._formatArray,
-            'ArrayOf': self._formatArrayOf,
-        }
-
-        self._keys = {
-            # Structures
-            'structure': ['name', 'type', 'opts', 'desc', 'fields'],
-            # Definitions
-            'def': ['id', 'name', 'type', 'opts', 'desc'],
-            'enum_def': ['id', 'value', 'desc'],
-        }
-
-        self._optKeys = {
-            ('array', ): {
-                'min': 'minItems',
-                'max': 'maxItems'
-            },
-            ('integer', 'number'): {
-                'min': 'minimum',
-                'max': 'maximum',
-                'format': 'format'
-            },
-            ('choice', 'map', 'object'): {
-                'min': 'minItems',
-                'max': 'maxItems'
-            },
-            ('binary', 'enumerated', 'string'): {
-                'format': 'format',
-                'min': 'minLength',
-                'max': 'maxLength',
-                'pattern': 'pattern'
-            }
-        }
-        self._ignoreOpts = [
-            'rtype'
-        ]
-
-        self._meta = jadn['meta'] or []
-        self._types = []
-        self._custom = []
-        self._customFields = []
-
-        for t in jadn['types']:
-            self._customFields.append(t[0])
-            if t[1] in self._structFormats.keys():
-                self._types.append(t)
-
-            else:
-                self._custom.append(t)
-
-    def json_dump(self, comm=CommentLevels.ALL):
+    def json_dump(self, com=None):
         """
         Converts the JADN schema to JSON
-        :param comm: Level of comments to include in converted schema
-        :type comm: str of enums.CommentLevel
+        :param com: Level of comments to include in converted schema
         :return: JSON schema
-        :rtype str
         """
-        self.comments = comm if comm in CommentLevels.values() else CommentLevels.ALL
+        if com:
+            self.com = com if com in CommentLevels.values() else CommentLevels.ALL
         exports = self._meta.get('exports', [])
 
         rtn = self.makeHeader()
@@ -125,21 +77,10 @@ class JADNtoJSON(object):
 
         return rtn
 
-    def formatStr(self, s):
-        """
-        Formats the string for use in schema
-        :param s: string to format
-        :type s: str
-        :return: formatted string
-        :rtype str
-        """
-        return re.sub(r'[\s]', '_', s)
-
     def makeHeader(self):
         """
-        Create the header for the schema
+        Create the headers for the schema
         :return: header for schema
-        :rtype str
         """
         header = {}
         if 'title' in self._meta:
@@ -157,58 +98,376 @@ class JADNtoJSON(object):
         """
         Create the type definitions for the schema
         :return: type definitions for the schema
-        :rtype str
         """
         tmp = dict()
         for t in self._types:
-            df = self._structFormats.get(t[1], lambda d: dict())
+            df = self._structFun(t.type, lambda d: dict())
 
             if df is not None:
                 tmp.update(df(t))
         return tmp
 
     def makeCustom(self):
+        """
+        Create the custom definitions for the schema
+        :return: custom definitions for the schema
+        """
         defs = {}
         for field in self._custom:
-            field = dict(zip(self._keys['structure'], field))
-            field['opts'] = topts_s2d(field['opts'])
+            field_opts = topts_s2d(field.opts)
 
-            def_field = self._fieldType(field['type'])
-            def_field.update(self._formatComment(field['desc']))
-            def_field.update(self._optReformat(field['type'], field['opts'], True))
-
-            defs[self.formatStr(field['name'])] = def_field
+            def_field = self._fieldType(field.type)
+            def_field.update(self._formatComment(field.desc))
+            def_field.update(self._optReformat(field.type, field_opts, True))
+            defs[self.formatStr(field.name)] = def_field
 
         return defs
+
+    # Structure Formats
+    def _formatRecord(self, itm):
+        """
+        Formats records for the given schema type
+        :param itm: record to format
+        :return: formatted record
+        """
+        itm_opts = topts_s2d(itm['opts'])
+        properties = {}
+        required = []
+
+        for prop in itm.fields:
+            prop_opts = fopts_s2d(prop.opts)
+
+            if not self._is_optional(prop_opts):
+                required.append(prop.name)
+
+            tmp_def = self._fieldType(prop.type)
+
+            field_type = tmp_def.get('type', '')
+            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
+            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
+            tmp_def.update(self._optReformat(field_type, prop_opts))
+
+            tmp_def.update(self._formatComment(prop.desc))
+            properties[prop.name] = tmp_def
+
+        type_def = dict(
+            type="object",
+            **self._optReformat('object', itm_opts, True),
+            **self._formatComment(itm.desc),
+            additionalProperties=False
+        )
+        if len(required) > 0:
+            type_def['required'] = required
+
+        type_def['properties'] = properties
+
+        return {
+            self.formatStr(itm.name): type_def
+        }
+
+    def _formatChoice(self, itm):
+        """
+        Formats choice for the given schema type
+        :param itm: choice to format
+        :return: formatted choice
+        """
+        itm_opts = topts_s2d(itm['opts'])
+        fields = []
+        properties = {}
+
+        for prop in itm.fields:
+            prop_opts = fopts_s2d(prop.opts)
+            fields.append(prop.name)
+
+            tmp_def = self._fieldType(prop.type)
+
+            field_type = tmp_def.get('type', '')
+            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
+            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
+            tmp_def.update(self._optReformat(field_type, prop_opts))
+
+            tmp_def.update(self._formatComment(prop.desc))
+            properties[prop.name] = tmp_def
+
+        type_def = dict(
+            type='object',
+            **self._optReformat('object', itm_opts, True),
+            **self._formatComment(itm.desc),
+            additionalProperties=False,
+            patternProperties={"^({})$".format('|'.join(fields)): {}},
+            oneOf=[
+                dict(properties=properties)
+            ]
+        )
+
+        return {
+            self.formatStr(itm.name): type_def
+        }
+
+    def _formatMap(self, itm):
+        """
+        Formats map for the given schema type
+        :param itm: map to format
+        :return: formatted map
+        """
+        itm_opts = topts_s2d(itm['opts'])
+        fields = []
+        properties = {}
+        required = []
+
+        for prop in itm.fields:
+            prop_opts = fopts_s2d(prop.opts)
+            fields.append(prop.name)
+
+            if not self._is_optional(prop_opts):
+                required.append(prop.name)
+
+            if self._is_array(prop_opts):
+                tmp_def = dict(
+                    type='array',
+                    items=[self._fieldType(prop.type)]
+                )
+            else:
+                tmp_def = self._fieldType(prop.type)
+
+            field_type = tmp_def.get('type', '')
+            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
+            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
+            tmp_def.update(self._optReformat(field_type, prop_opts))
+
+            tmp_def.update(self._formatComment(prop.desc))
+            properties[prop.name] = tmp_def
+
+        type_def = dict(
+            type='object',
+            **self._optReformat('object', itm_opts, True),
+            **self._formatComment(itm.desc),
+            additionalProperties=False,
+            patternProperties={"^({})$".format('|'.join(fields)): {}},
+        )
+
+        if len(required) > 0:
+            type_def['required'] = required
+
+        type_def['anyOf'] = [
+            dict(
+                properties=properties
+            )
+        ]
+
+        return {
+            self.formatStr(itm.name): type_def
+        }
+
+    def _formatEnumerated(self, itm):
+        """
+        Formats enum for the given schema type
+        :param itm: enum to format
+        :return: formatted enum
+        """
+        itm_opts = topts_s2d(itm['opts'])
+        enum = []
+        enum_type = 'string'
+        options = []
+
+        for prop in itm.fields:
+            if 'compact' in itm_opts:
+                enum_type = 'integer'
+                val = prop.id
+            else:
+                val = prop.value
+
+            enum.append(val)
+            opt = dict(
+                value=val,
+                label=prop.value
+            )
+            if prop.desc != '':
+                opt['description'] = prop.desc
+
+            options.append(opt)
+
+        type_def = dict(
+            type=enum_type,
+            **self._optReformat(enum_type, itm_opts, True),
+            **self._formatComment(itm.desc),
+            enum=enum
+        )
+
+        if self.com != CommentLevels.NONE:
+            type_def['options'] = options
+
+        return {
+            self.formatStr(itm.name): type_def
+        }
+
+    def _formatArray(self, itm):
+        """
+        Formats array for the given schema type
+        :param itm: array to format
+        :return: formatted array
+        """
+        itm_opts = topts_s2d(itm['opts'])
+        properties = {}
+        required = []
+
+        for prop in itm.fields:
+            prop_opts = fopts_s2d(prop.opts)
+
+            if not self._is_optional(prop_opts):
+                required.append(prop.name)
+
+            if self._is_array(prop_opts):
+                tmp_def = dict(
+                    type='array',
+                    items=[self._fieldType(prop.type)]
+                )
+            else:
+                tmp_def = self._fieldType(prop.type)
+
+            field_type = tmp_def.get('type', '')
+            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
+            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
+            tmp_def.update(self._optReformat(field_type, prop_opts))
+
+            tmp_def.update(self._formatComment(prop.desc))
+            properties[prop.name] = tmp_def
+
+        type_def = dict(
+            type='array',
+            **self._formatComment(itm.desc),
+            **self._optReformat('array', itm_opts, True),
+            items=dict(
+                properties=properties
+            )
+        )
+
+        if len(required) > 0:
+            type_def['items']['required'] = required
+
+        return {
+            self.formatStr(itm.name): type_def
+        }
+
+    def _formatArrayOf(self, itm):
+        """
+        Formats arrayof for the given schema type
+        :param itm: arrayof to format
+        :return: formatted arrayof
+        """
+        itm_opts = topts_s2d(itm['opts'])
+        rtype = itm_opts.get('rtype', 'String')
+
+        type_def = dict(
+            type='array',
+            **self._optReformat('array', itm_opts, True),
+            **self._formatComment(itm.desc),
+            items=[
+                self._fieldType(rtype)
+            ]
+        )
+
+        return {
+            self.formatStr(itm.name): type_def
+        }
+
+    # Helper Functions
+    def _is_optional(self, opts):
+        """
+        Check if the field is optional
+        :param opts: field options
+        :return: bool - optional
+        """
+        return opts.get('min', 1) == 0
+
+    def _is_array(self, opts):
+        """
+        Check if the field is an array
+        :param opts: field options
+        :return: bool - optional
+        """
+        return opts.get('max', 1) != 1
+
+    def _getType(self, name):
+        """
+        Get the type of the field based of the name
+        :param name: name of field to get the type of
+        :return: type of the given field name
+        """
+        type_def = [d for d in self._types if d[0] == name] + [d for d in self._custom if d[0] == name]
+        type_def = type_def[0] if len(type_def) == 1 else ['oops...', 'String']
+        return type_def[1]
+
+    def _optReformat(self, optType, opts, _type=False):
+        """
+        Reformat options for the given schema
+        :param optType: type to reformat the options for
+        :param opts: original options to reformat
+        :param _type: is type of field
+        :return: dict - reformatted options
+        """
+        _type = _type if type(_type) is bool else False
+        optType = optType.lower()
+        optKeys = self._getOptKeys(optType)
+        r_opts = {}
+
+        def ignore(k, v):
+            if k in ['object', 'array']:
+                return False
+
+            return any([
+                k == 'min' and safe_cast(v, int, 1) < 1,
+                k == 'max' and safe_cast(v, int, 1) < 1,
+            ])
+
+        for key, val in opts.items():
+            if _type:
+                if key in optKeys:
+                    r_opts[optKeys[key]] = val
+            elif not ignore(key, val):
+                if key in self._ignoreOpts:
+                    pass
+                elif key in optKeys:
+                    r_opts[optKeys[key]] = val
+                else:
+                    print(f'unknown option for type of {optType}: {key} - {val}')
+
+        return r_opts
 
     def _fieldType(self, f):
         """
         Determines the field type for the schema
         :param f: current type
         :return: type mapped to the schema
-        :rtype str
         """
         if f in self._customFields:
-            return {
+            rtn = {
                 '$ref': '#definitions/{}'.format(self.formatStr(f))
             }
 
         elif f in self._fieldMap:
-            rtn = {
-                'type': self.formatStr(self._fieldMap.get(f, f))
-            }
+            rtn = dict(
+                type=self.formatStr(self._fieldMap.get(f, f))
+            )
             if f.lower() == 'binary':
                 rtn['format'] = 'binary'
-            return rtn
 
         else:
             print('unknown type: {}'.format(f))
-            return {
-                'type': 'string'
-            }
+            rtn = dict(
+                type='string'
+            )
+
+        return rtn
 
     def _formatComment(self, msg, **kargs):
-        if self.comments == CommentLevels.NONE:
+        """
+        Format a comment for the given schema
+        :param msg: comment text
+        :param kargs: key/value comments
+        :return: formatted comment
+        """
+        if self.com == CommentLevels.NONE:
             return {}
 
         com = ''
@@ -237,347 +496,13 @@ class JADNtoJSON(object):
 
         return {}
 
-    # Structure Formats
-    def _formatRecord(self, itm):
-        """
-        Formats records for the given schema type
-        :param itm: record to format
-        :return: formatted record
-        :rtype str
-        """
-        item = dict(zip(self._keys['structure'], itm))
-        item['opts'] = topts_s2d(item['opts'])
-        properties = {}
-        required = []
-
-        for prop in item['fields']:
-            prop = dict(zip(self._keys['def'], prop))
-            prop['opts'] = fopts_s2d(prop['opts'])
-
-            if not self._is_optional(prop['opts']):
-                required.append(prop['name'])
-
-            tmp_def = self._fieldType(prop['type'])
-
-            field_type = tmp_def.get('type', '')
-            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
-            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            tmp_def.update(self._optReformat(field_type, prop['opts']))
-
-            tmp_def.update(self._formatComment(prop['desc']))
-            properties[prop['name']] = tmp_def
-
-        type_def = dict(
-            type="object",
-            **self._optReformat('object', item['opts'], True),
-            **self._formatComment(item['desc']),
-            additionalProperties=False
-        )
-        if len(required) > 0:
-            type_def['required'] = required
-
-        type_def['properties'] = properties
-
-        return {
-            self.formatStr(item['name']): type_def
-        }
-
-    def _formatChoice(self, itm):
-        """
-        Formats choice for the given schema type
-        :param itm: choice to format
-        :return: formatted choice
-        :rtype str
-        """
-        item = dict(zip(self._keys['structure'], itm))
-        item['opts'] = topts_s2d(item['opts'])
-        fields = []
-        properties = {}
-
-        for prop in item['fields']:
-            prop = dict(zip(self._keys['def'], prop))
-            prop['opts'] = fopts_s2d(prop['opts'])
-            fields.append(prop['name'])
-
-            tmp_def = self._fieldType(prop['type'])
-
-            field_type = tmp_def.get('type', '')
-            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
-            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            tmp_def.update(self._optReformat(field_type, prop['opts']))
-
-            tmp_def.update(self._formatComment(prop['desc']))
-            properties[prop['name']] = tmp_def
-
-        type_def = dict(
-            type='object',
-            **self._optReformat('object', item['opts'], True),
-            **self._formatComment(item['desc']),
-            additionalProperties=False,
-            patternProperties={"^({})$".format('|'.join(fields)): {}},
-            oneOf=[
-                dict(properties=properties)
-            ]
-        )
-
-        return {
-            self.formatStr(item['name']): type_def
-        }
-
-    def _formatMap(self, itm):
-        """
-        Formats map for the given schema type
-        :param itm: map to format
-        :return: formatted map
-        :rtype str
-        """
-        item = dict(zip(self._keys['structure'], itm))
-        item['opts'] = topts_s2d(item['opts'])
-        fields = []
-        properties = {}
-        required = []
-
-        for prop in item['fields']:
-            prop = dict(zip(self._keys['def'], prop))
-            prop['opts'] = fopts_s2d(prop['opts'])
-            fields.append(prop['name'])
-
-            if not self._is_optional(prop['opts']):
-                required.append(prop['name'])
-
-            if self._is_array(prop['opts']):
-                tmp_def = dict(
-                    type='array',
-                    items=[self._fieldType(prop['type'])]
-                )
-            else:
-                tmp_def = self._fieldType(prop['type'])
-
-            field_type = tmp_def.get('type', '')
-            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
-            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            tmp_def.update(self._optReformat(field_type, prop['opts']))
-
-            tmp_def.update(self._formatComment(prop['desc']))
-            properties[prop['name']] = tmp_def
-
-        type_def = dict(
-            type='object',
-            **self._optReformat('object', item['opts'], True),
-            **self._formatComment(item['desc']),
-            additionalProperties=False,
-            patternProperties={"^({})$".format('|'.join(fields)): {}},
-        )
-
-        if len(required) > 0:
-            type_def['required'] = required
-
-        type_def['anyOf'] = [
-            dict(
-                properties=properties
-            )
-        ]
-
-        return {
-            self.formatStr(item['name']): type_def
-        }
-
-    def _formatEnumerated(self, itm):
-        """
-        Formats enum for the given schema type
-        :param itm: enum to format
-        :return: formatted enum
-        :rtype str
-        """
-        item = dict(zip(self._keys['structure'], itm))
-        item['opts'] = topts_s2d(item['opts'])
-        enum = []
-        enum_type = 'string'
-        options = []
-
-        for prop in item['fields']:
-            prop = dict(zip(self._keys['enum_def'], prop))
-            if 'compact' in item['opts']:
-                enum_type = 'integer'
-                val = prop['id']
-            else:
-                val = prop['value']
-
-            enum.append(val)
-            opt = dict(
-                value=val,
-                label=prop['value']
-            )
-            if prop['desc'] != '':
-                opt['description'] = prop['desc']
-
-            options.append(opt)
-
-        type_def = dict(
-            type=enum_type,
-            **self._optReformat(enum_type, item['opts'], True),
-            **self._formatComment(item['desc']),
-            enum=enum
-        )
-
-        if self.comments != CommentLevels.NONE:
-            type_def['options'] = options
-
-        return {
-            self.formatStr(item['name']): type_def
-        }
-
-    def _formatArray(self, itm):
-        """
-        Formats array for the given schema type
-        :param itm: array to format
-        :return: formatted array
-        :rtype str
-        """
-        item = dict(zip(self._keys['structure'], itm))
-        item['opts'] = topts_s2d(item['opts'])
-        properties = {}
-        required = []
-
-        for prop in item['fields']:
-            prop = dict(zip(self._keys['def'], prop))
-            prop['opts'] = fopts_s2d(prop['opts'])
-
-            if not self._is_optional(prop['opts']):
-                required.append(prop['name'])
-
-            if self._is_array(prop['opts']):
-                tmp_def = dict(
-                    type='array',
-                    items=[self._fieldType(prop['type'])]
-                )
-            else:
-                tmp_def = self._fieldType(prop['type'])
-
-            field_type = tmp_def.get('type', '')
-            field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
-            field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            tmp_def.update(self._optReformat(field_type, prop['opts']))
-
-            tmp_def.update(self._formatComment(prop['desc']))
-            properties[prop['name']] = tmp_def
-
-        type_def = dict(
-            type='array',
-            **self._formatComment(item['desc']),
-            **self._optReformat('array', item['opts'], True),
-            items=dict(
-                properties=properties
-            )
-        )
-
-        if len(required) > 0:
-            type_def['items']['required'] = required
-
-        return {
-            self.formatStr(itm[0]): type_def
-        }
-
-    def _formatArrayOf(self, itm):
-        """
-        Formats arrayof for the given schema type
-        :param itm: arrayof to format
-        :return: formatted arrayof
-        :rtype str
-        """
-        item = dict(zip(self._keys['structure'], itm))
-        item['opts'] = topts_s2d(item['opts'])
-        rtype = item['opts'].get('rtype', 'String')
-
-        type_def = dict(
-            type='array',
-            **self._optReformat('array', item['opts'], True),
-            **self._formatComment(item['desc']),
-            items=[
-                self._fieldType(rtype)
-            ]
-        )
-
-        return {
-            self.formatStr(item['name']): type_def
-        }
-
-    # Helper Functions
-    def _is_optional(self, opts):
-        """
-        Check if the field is optional
-        :param opts: field options
-        :return: bool - optional
-        """
-        min_size = opts.get('min', 1)
-        return min_size == 0
-
-    def _is_array(self, opts):
-        """
-        Check if the field is an array
-        :param opts: field options
-        :return: bool - optional
-        """
-        max_size = opts.get('max', 1)
-        return max_size != 1
-
-    def _getType(self, name):
-        """
-        Get the type of the field based of the name
-        :param name:
-        :return:
-        """
-        type_def = [d for d in self._types if d[0] == name] + [d for d in self._custom if d[0] == name]
-        type_def = type_def[0] if len(type_def) == 1 else ['oops...', 'String']
-        return type_def[1]
-
-    def _optReformat(self, optType, opts, _type=False):
-        """
-        Reformat options for the given schema
-        :param optType: type to reformat the options for
-        :param opts: original options to reformat
-        :param _type: is type of field
-        :return: dict - reformatted options
-        """
-        _type = _type if type(_type) is bool else False
-        optType = optType.lower()
-        optKeys = self._getOptKeys(optType)
-        r_opts = {}
-
-        def ignore(k, v):
-            if k in ['object', 'array']:
-                return False
-
-            ign = any([
-                k == 'min' and safe_cast(v, int, 1) < 1,
-                k == 'max' and safe_cast(v, int, 1) < 1,
-            ])
-            return ign
-
-        for key, val in opts.items():
-            if _type:
-                if key in optKeys:
-                    r_opts[optKeys[key]] = val
-            elif not ignore(key, val):
-                if key in self._ignoreOpts:
-                    pass
-                elif key in optKeys:
-                    r_opts[optKeys[key]] = val
-                else:
-                    print(f'unknown option for type of {optType}: {key} - {val}')
-
-        return r_opts
-
 
 def json_dumps(jadn, comm=CommentLevels.ALL):
     """
     Produce JSON schema from JADN schema
     :param jadn: JADN Schema to convert
-    :type jadn: str or dict
     :param comm: Level of comments to include in converted schema
-    :type comm: str of enums.CommentLevel
     :return: JSON schema
-    :rtype dict
     """
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
     return JADNtoJSON(jadn).json_dump(comm)
@@ -600,5 +525,5 @@ def json_dump(jadn, fname, source="", comm=CommentLevels.ALL):
 
     with open(fname, "w") as f:
         if source:
-            f.write("; Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
+            f.write(f"; Generated from {source}, {datetime.ctime(datetime.now())}\n")
         f.write(json.dumps(json_dumps(jadn, comm), indent=4))

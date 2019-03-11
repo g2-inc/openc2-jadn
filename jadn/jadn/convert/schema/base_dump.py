@@ -2,6 +2,7 @@
 Base JADN Schema Converter
 """
 import json
+import re
 
 from ...enums import CommentLevels
 from ...utils import FrozenDict
@@ -11,12 +12,24 @@ class JADNConverterBase(object):
     """
     Base JADN Converter
     """
-    _structFormats = dict(
+    _indent = ' ' * 4
+
+    _meta_order = ['title', 'module', 'description', 'exports', 'imports', 'patch']
+
+    _keys = {
+        # Structures
+        'structure': ['name', 'type', 'opts', 'desc', 'fields'],
+        # Definitions
+        'def': ['id', 'name', 'type', 'opts', 'desc'],
+        'enum_def': ['id', 'value', 'desc'],
+    }
+
+    _structure_formats = dict(
         Record='_formatRecord',
         Choice='_formatChoice',
         Map='_formatMap',
         Enumerated='_formatEnumerated',
-        Array='._formatArray',
+        Array='_formatArray',
         ArrayOf='_formatArrayOf'
     )
 
@@ -27,14 +40,6 @@ class JADNConverterBase(object):
         'Name': ('name', 'value'),
         'Type': 'type',
         'Value': 'value'
-    }
-
-    _keys = {
-        # Structures
-        'structure': ['name', 'type', 'opts', 'desc', 'fields'],
-        # Definitions
-        'def': ['id', 'name', 'type', 'opts', 'desc'],
-        'enum_def': ['id', 'value', 'desc'],
     }
 
     def __init__(self, jadn, com=CommentLevels.ALL):
@@ -68,30 +73,33 @@ class JADNConverterBase(object):
             t = FrozenDict(t)
 
             self._customFields[t.name] = t.type
-            if t.type in self._structFormats.keys():
+            if t.type in self._structure_formats.keys():
                 self._types.append(t)
             else:
                 self._custom.append(t)
 
-    def _structFun(self, _type):
+    def _structFun(self, _type, default=None):
         """
         Get the conversion function for the given structure
         :param _type: type of structure
         :return: structure conversion function
         """
-        fun = self._structFormats.get(_type)
+        fun = self._structure_formats.get(_type)
         if fun:
-            return getattr(self, fun, None)
+            return getattr(self, fun, default)
 
         return None
 
     # Helper Functions
     def formatStr(self, s):
         """
-        Formats the given string for use in a schema
+        Formats the string for use in schema
         :param s: string to format
         :type s: str
         :return: formatted string
         :rtype str
         """
-        return 'unknown' if s == '*' else s
+        if s == '*':
+            return 'unknown'
+        else:
+            return re.sub(r'[\- ]', '_', s)
