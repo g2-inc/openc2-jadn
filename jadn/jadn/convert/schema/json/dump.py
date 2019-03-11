@@ -65,7 +65,7 @@ class JADNtoJSON(object):
             'enum_def': ['id', 'value', 'desc'],
         }
 
-        self. _optKeys = {
+        self._optKeys = {
             ('array', ): {
                 'min': 'minItems',
                 'max': 'maxItems'
@@ -149,7 +149,7 @@ class JADNtoJSON(object):
             header['description'] = self._meta['description']
 
         if 'module' in self._meta:
-            header['id'] = ('' if self._meta['module'].startswith('http') else 'http://') +  self._meta['module']
+            header['id'] = ('' if self._meta['module'].startswith('http') else 'http://') + self._meta['module']
 
         return header
 
@@ -269,14 +269,14 @@ class JADNtoJSON(object):
 
         type_def = dict(
             type="object",
-            properties=properties,
+            **self._optReformat('object', item['opts'], True),
+            **self._formatComment(item['desc']),
             additionalProperties=False
         )
-        type_def.update(self._optReformat('object', item['opts'], True))
-        type_def.update(self._formatComment(item['desc']))
-
         if len(required) > 0:
             type_def['required'] = required
+
+        type_def['properties'] = properties
 
         return {
             self.formatStr(item['name']): type_def
@@ -311,14 +311,14 @@ class JADNtoJSON(object):
 
         type_def = dict(
             type='object',
+            **self._optReformat('object', item['opts'], True),
+            **self._formatComment(item['desc']),
             additionalProperties=False,
             patternProperties={"^({})$".format('|'.join(fields)): {}},
             oneOf=[
                 dict(properties=properties)
             ]
         )
-        type_def.update(self._optReformat('object', item['opts'], True))
-        type_def.update(self._formatComment(item['desc']))
 
         return {
             self.formatStr(item['name']): type_def
@@ -363,17 +363,20 @@ class JADNtoJSON(object):
 
         type_def = dict(
             type='object',
+            **self._optReformat('object', item['opts'], True),
+            **self._formatComment(item['desc']),
             additionalProperties=False,
             patternProperties={"^({})$".format('|'.join(fields)): {}},
-            anyOf=[
-                dict(properties=properties)
-            ]
         )
-        type_def.update(self._optReformat('object', item['opts'], True))
-        type_def.update(self._formatComment(item['desc']))
 
         if len(required) > 0:
             type_def['required'] = required
+
+        type_def['anyOf'] = [
+            dict(
+                properties=properties
+            )
+        ]
 
         return {
             self.formatStr(item['name']): type_def
@@ -388,21 +391,19 @@ class JADNtoJSON(object):
         """
         item = dict(zip(self._keys['structure'], itm))
         item['opts'] = topts_s2d(item['opts'])
-        type_def = dict(
-            type='string',
-            enum=[]
-        )
+        enum = []
+        enum_type = 'string'
         options = []
 
         for prop in item['fields']:
             prop = dict(zip(self._keys['enum_def'], prop))
             if 'compact' in item['opts']:
-                type_def['type'] = 'integer'
+                enum_type = 'integer'
                 val = prop['id']
             else:
                 val = prop['value']
 
-            type_def['enum'].append(val)
+            enum.append(val)
             opt = dict(
                 value=val,
                 label=prop['value']
@@ -412,11 +413,15 @@ class JADNtoJSON(object):
 
             options.append(opt)
 
+        type_def = dict(
+            type=enum_type,
+            **self._optReformat(enum_type, item['opts'], True),
+            **self._formatComment(item['desc']),
+            enum=enum
+        )
+
         if self.comments != CommentLevels.NONE:
             type_def['options'] = options
-
-        type_def.update(self._optReformat('string', item['opts'], True))
-        type_def.update(self._formatComment(item['desc']))
 
         return {
             self.formatStr(item['name']): type_def
@@ -459,6 +464,8 @@ class JADNtoJSON(object):
 
         type_def = dict(
             type='array',
+            **self._formatComment(item['desc']),
+            **self._optReformat('array', item['opts'], True),
             items=dict(
                 properties=properties
             )
@@ -466,9 +473,6 @@ class JADNtoJSON(object):
 
         if len(required) > 0:
             type_def['items']['required'] = required
-
-        type_def.update(self._formatComment(item['desc']))
-        type_def.update(self._optReformat('array', item['opts'], True))
 
         return {
             self.formatStr(itm[0]): type_def
@@ -487,13 +491,12 @@ class JADNtoJSON(object):
 
         type_def = dict(
             type='array',
+            **self._optReformat('array', item['opts'], True),
+            **self._formatComment(item['desc']),
             items=[
                 self._fieldType(rtype)
             ]
         )
-
-        type_def.update(self._formatComment(item['desc']))
-        type_def.update(self._optReformat('array', item['opts'], True))
 
         return {
             self.formatStr(item['name']): type_def

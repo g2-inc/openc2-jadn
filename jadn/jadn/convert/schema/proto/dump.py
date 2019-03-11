@@ -28,7 +28,7 @@ class JADNtoProto3(object):
 
         self.comments = CommentLevels.ALL
 
-        self.indent = '  '
+        self.indent = ' ' * 4
 
         self._fieldMap = {
             'Binary': 'string',

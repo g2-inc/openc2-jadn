@@ -15,7 +15,7 @@ class Relax2Jadn(object):
         if type(relax) in [str, bytes]:
             relax = toStr(relax).replace('\n', '')
             relax = re.sub(r'>\s*?<', '><', relax)
-            self.schema = BeautifulSoup(relax, 'lxml')
+            self.schema = BeautifulSoup(relax, 'html.parser')
 
         else:
             raise TypeError('Relax-NG improperly formatted')

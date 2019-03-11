@@ -294,7 +294,8 @@ class JADNtoRelaxNG(object):
         defs = []
         for l in itm[-1]:
             n = self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0]))
-            opts = {'field': l[0], 'type': l[2], 'options': l[3]}
+            opts = {'type': l[2], 'field': l[0]}
+            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
 
             defs.append(self._formatTag(
                 'element',

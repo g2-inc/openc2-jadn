@@ -14,7 +14,9 @@ from jadn.convert import (
     thrift_dump,
     thrift_load,
     jas_dump,
-    jas_load
+    jas_load,
+    json_dump,
+    json_load
 )
 # from libs.schema import relax2jadn_dump, proto2jadn_dump, cddl2jadn_dump, thrift2jadn_dump
 
@@ -34,6 +36,10 @@ jas_load(open(os.path.join(test_dir, schema + '.jas'), 'rb').read(), os.path.joi
 proto_dump(schema_json, os.path.join(test_dir, schema + '.all.proto'), comm=CommentLevels.ALL)
 proto_dump(schema_json, os.path.join(test_dir, schema + '.none.proto'), comm=CommentLevels.NONE)
 proto_load(open(os.path.join(test_dir, schema + '.all.proto'), 'rb').read(), os.path.join(test_dir, schema + '.proto.jadn'))
+
+json_dump(schema_json, os.path.join(test_dir, schema + '.all.json'), comm=CommentLevels.ALL)
+json_dump(schema_json, os.path.join(test_dir, schema + '.none.json'), comm=CommentLevels.NONE)
+# json_load(open(os.path.join(test_dir, schema + '.all.json'), 'rb').read(), os.path.join(test_dir, schema + '.all.json'))
 
 cddl_dump(schema_json, os.path.join(test_dir, schema + '.all.cddl'), comm=CommentLevels.ALL)
 cddl_dump(schema_json, os.path.join(test_dir, schema + '.none.cddl'), comm=CommentLevels.NONE)
