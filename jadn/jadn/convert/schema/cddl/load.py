@@ -336,10 +336,9 @@ class CddlVisitor(PTNodeVisitor):
 
 def cddl_loads(cddl):
     """
-    Produce JADN schema from cddl schema
+    Produce JADN schema from CDDL schema
     :param cddl: CDDL schema to convert
     :return: JADN schema
-    :rtype str
     """
     try:
         parser = ParserPython(CddlRules)
@@ -352,6 +351,13 @@ def cddl_loads(cddl):
 
 
 def cddl_load(cddl, fname, source=""):
+    """
+    Convert the given CDDL to JADN and write output to the specified file
+    :param cddl: CDDL schema to convert
+    :param fname: Name of file to write
+    :param source: Name of the original JADN schema file
+    :return: None
+    """
     with open(fname, "w") as f:
         if source:
             f.write("-- Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))

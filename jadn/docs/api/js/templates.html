@@ -1,27 +1,31 @@
-<script id="toggle_template" type="text/x-jsrender">
-	{{:header}}<button class="btn btn-info float-right" type="button" data-toggle="collapse" data-target="#{{:~under_escape(header)}}-api" aria-expanded="false" aria-controls="{{:~under_escape(header)}}-api">Show API</button>
+<script id="toggle_template" type="text/x-jsrender"> {{:header}}
+	<button class="btn btn-info float-right" type="button" data-toggle="collapse" data-target="#{{:~under_escape(header)}}-api" aria-expanded="false" aria-controls="{{:~under_escape(header)}}-api">Show API</button>
 </script>
-
 <script id="card_template" type="text/x-jsrender">
 	{{if id}}
-	<div id="{{:~under_escape(id)}}" class="collapse card mb-3">
+		<div id="{{:~under_escape(id)}}" class="collapse card mb-3">
 	{{else}}
-	<div class="card mb-3">
+		<div class="card mb-3">
 	{{/if}}
 		<h3 class="card-header">{{:header}}</h3>
 		<div class="card-body">
-			{{if title}}<h4 class="card-title">{{:title}}</h4>{{/if}}
-			{{if text}}{{props text}}
-    			<p class="card-text">{{:prop}}</p>
-			{{/props}}{{/if}}
-			{{if body}}{{:body}}{{/if}}
+			{{if title}}
+				<h4 class="card-title">{{:title}}</h4>
+			{{/if}}
+			{{if text}}
+				{{props text}}
+					<p class="card-text">{{:prop}}</p>
+				{{/props}}
+			{{/if}}
+			{{if body}}
+				{{:body}}
+			{{/if}}
 		</div>
 	</div>
 </script>
-
 <script id="constructor_template" type="text/x-jsrender">
 	<h5 class="mt-4">Constructor</h5>
-    <table class="table table-hover table-striped">
+	<table class="table table-hover table-striped">
 		<thead>
 			<tr>
 				<th scope="col">Constructor and Description</th>
@@ -31,18 +35,19 @@
 			<tr>
 				<td>
 					<p><strong>{{:def}}</strong></p>
-					{{if info}}{{props info}}
-    					<p>{{:prop}}</p>
-					{{/props}}{{/if}}
+					{{if info}}
+						{{props info}}
+							<p>{{:prop}}</p>
+						{{/props}}
+					{{/if}}
 				</td>
 			</tr>
 		</tbody>
 	</table>
 </script>
-
 <script id="function_template" type="text/x-jsrender">
 	<h5 class="mt-4">Functions</h5>
-    <table class="table table-hover table-striped">
+	<table class="table table-hover table-striped">
 		<thead>
 			<tr>
 				<th scope="col">Return type and Info</th>
@@ -50,29 +55,34 @@
 			</tr>
 		</thead>
 		<tbody>
-			{{for function}}
+			{{props function}}
 				<tr>
 					<td>
-						{{if return.type}}<p><strong>{{:return.type}}</strong></p>{{/if}}
-						{{if return.info}}{{props return.info}}
-							<p>{{:prop}}</p>
-						{{/props}}{{/if}}
+						{{if prop.return.type}}
+							<p><strong>{{:prop.return.type}}</strong></p>
+						{{/if}}
+						{{if prop.return.info}}
+							{{props prop.return.info}}
+								<p>{{:prop}}</p>
+							{{/props}}
+						{{/if}}
 					</td>
 					<td>
-						<p><strong>{{:fun_desc.def}}</strong></p>
-						{{if fun_desc.info}}{{props fun_desc.info}}
-							<p>{{:prop}}</p>
-						{{/props}}{{/if}}
+						<p><strong>{{>key}}</strong></p>
+						{{if prop.fun_desc}}
+							{{props prop.fun_desc}}
+								<p>{{:prop}}</p>
+							{{/props}}
+						{{/if}}
 					</td>
-				</tr>
-			{{/for}}
+				</tr>							
+			{{/props}}
 		</tbody>
 	</table>
 </script>
-
 <script id="enum_template" type="text/x-jsrender">
 	<h5 class="mt-4">Enumeration</h5>
-    <table class="table table-hover table-striped">
+	<table class="table table-hover table-striped">
 		<thead>
 			<tr>
 				<th scope="col">Name</th>
@@ -87,10 +97,14 @@
 					</td>
 					<td>
 						{{if info}}
-							{{if info.value}}<p><strong>{{:info.value}}</strong></p>{{/if}}
-							{{if info.info}}{{props info.info}}
-								<p>{{:prop}}</p>
-							{{/props}}{{/if}}
+							{{if info.value}}
+								<p><strong>{{:info.value}}</strong></p>
+							{{/if}}
+							{{if info.info}}
+								{{props info.info}}
+									<p>{{:prop}}</p>
+								{{/props}}
+							{{/if}}
 						{{/if}}
 					</td>
 				</tr>

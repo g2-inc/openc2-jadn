@@ -70,22 +70,28 @@
 						</tr>
 					</thead>
 					<tbody>
-						{{for function}}
+						{{props function}}
 							<tr>
 								<td>
-									{{if return.type}}<p><strong>{{:return.type}}</strong></p>{{/if}}
-									{{if return.info}}{{props return.info}}
-										<p>{{:prop}}</p>
-									{{/props}}{{/if}}
+									{{if prop.return.type}}
+										<p><strong>{{:prop.return.type}}</strong></p>
+									{{/if}}
+									{{if prop.return.info}}
+										{{props prop.return.info}}
+											<p>{{:prop}}</p>
+										{{/props}}
+									{{/if}}
 								</td>
 								<td>
-									<p><strong>{{:fun_desc.def}}</strong></p>
-									{{if fun_desc.info}}{{props fun_desc.info}}
-										<p>{{:prop}}</p>
-									{{/props}}{{/if}}
+									<p><strong>{{>key}}</strong></p>
+									{{if prop.fun_desc}}
+										{{props prop.fun_desc}}
+											<p>{{:prop}}</p>
+										{{/props}}
+									{{/if}}
 								</td>
-							</tr>
-						{{/for}}
+							</tr>							
+						{{/props}}
 					</tbody>
 				</table>
 			</script>
