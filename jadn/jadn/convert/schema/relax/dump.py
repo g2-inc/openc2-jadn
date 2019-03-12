@@ -1,6 +1,5 @@
 import json
 import re
-import sys
 import xml.dom.minidom as md
 
 from datetime import datetime
@@ -8,91 +7,41 @@ from datetime import datetime
 from jadn.jadn_utils import fopts_s2d, topts_s2d
 from jadn.enums import CommentLevels
 from jadn.utils import toStr, Utils
-
-primitives = [str, int, float]
-str_type = str
-
-if sys.version_info.major < 3:
-    primitives.append(unicode)
-    str_type = (str, bytes, unicode)
+from ..base_dump import JADNConverterBase
 
 
-class JADNtoRelaxNG(object):
-    def __init__(self, jadn):
-        """
-        Schema Converter for JADN to CDDL
-        :param jadn: str or dict of the JADN schema
-        :type jadn: str or dict
-        """
-        if type(jadn) is str:
-            try:
-                jadn = json.loads(jadn)
-            except Exception as e:
-                raise e
-        elif type(jadn) is dict:
-            pass
-
-        else:
-            raise TypeError('JADN improperly formatted')
-
-        self.comments = CommentLevels.ALL
-
-        self._fieldMap = {
-            'Binary': 'base64Binary',
-            'Boolean': 'boolean',
-            'Integer': 'integer',
-            'Number': 'float',
-            'Null': '',
-            'String': 'string'
-        }
-
-        self._structFormats = {
-            'Record': self._formatRecord,
-            'Choice': self._formatChoice,
-            'Map': self._formatMap,
-            'Enumerated': self._formatEnumerated,
-            'Array': self._formatArray,
-            'ArrayOf': self._formatArrayOf,
-        }
-
-        self._meta = jadn['meta'] or []
-        self._types = []
-        self._custom = []
-        self._records = []
-        self._customFields = []
-
-        for t in jadn['types']:
-            self._customFields.append(t[0])
-            if t[1] in self._structFormats.keys():
-                self._types.append(t)
-
-                if t[1] == 'Record':
-                    self._records.append(t[0])
-            else:
-                self._custom.append(t)
+class JADNtoRelaxNG(JADNConverterBase):
+    _fieldMap = {
+        'Binary': 'base64Binary',
+        'Boolean': 'boolean',
+        'Integer': 'integer',
+        'Number': 'float',
+        'Null': '',
+        'String': 'string'
+    }
 
     def relax_dump(self, comm=CommentLevels.ALL):
         """
         Converts the JADN schema to RelaxNG
-        :param comm: Level of comments to include in converted schema
-        :type comm: str of enums.CommentLevel
+        :param com: Level of comments to include in converted schema
         :return: RelaxNG schema
-        :rtype str
         """
-        self.comments = comm if comm in CommentLevels.values() else CommentLevels.ALL
-        records = [self._formatTag('element', self._fieldType(r), name='message') for r in self._records]
+        if comm:
+            self.comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
 
-        root_cont = [
+        records = [t.name for t in self._types if t.type == 'Record']  # self._meta.get('exports', [])
+        # TODO: What should be here??
+        exports = [self._formatTag('element', self._fieldType(r), name='message') for r in records]
+
+        root_cont = list(
             self._formatTag(
                 'start',
-                self._formatTag('choice', records)
+                self._formatTag('choice', exports)
             )
-        ]
+        )
 
         root_cont.extend(self.makeStructures())
-
         root_cont.append(self._formatComment('Custom Defined Types'))
-
         root_cont.extend(self.makeCustom())
 
         root = self._formatTag(
@@ -103,31 +52,18 @@ class JADNtoRelaxNG(object):
         )
 
         doubleEmpty = re.compile('^$\n?^$', re.MULTILINE)
-        return re.sub(doubleEmpty, '', '{header}{root}\n'.format(
-            header=self.makeHeader(),
-            root=self._formatPretty(root)
-        ))
-
-    def formatStr(self, s):
-        """
-        Formats the string for use in schema
-        :param s: string to format
-        :type s: str
-        :return: formatted string
-        :rtype str
-        """
-        if s == '*':
-            return 'unknown'
-        else:
-            return re.sub(r'[\- ]', '_', s)
+        return re.sub(doubleEmpty, '', f'{self.makeHeader()}{self._formatPretty(root)}\n')
 
     def makeHeader(self):
         """
         Create the header for the schema
         :return: header for schema
-        :rtype str
         """
-        header = ['<!-- meta: {} - {} -->'.format(k, re.sub(r'(^\"|\"$)', '', json.dumps(Utils.defaultDecode(v)))) for k, v in self._meta.items()]
+        header_regex = re.compile(r'(^\"|\"$)')
+        header = []
+        for k in self._meta_order:
+            if k in self._meta:
+                header.append(f"<!-- meta: {k} - {header_regex.sub('', json.dumps(Utils.defaultDecode(self._meta[k])))} -->")
 
         return '\n'.join(header) + '\n\n'
 
@@ -135,11 +71,10 @@ class JADNtoRelaxNG(object):
         """
         Create the type definitions for the schema
         :return: type definitions for the schema
-        :rtype str
         """
         defs = []
         for t in self._types:
-            df = self._structFormats.get(t[1], None)
+            df = self._structFun(t.type, None)
 
             if df is not None:
                 defs.append(df(t))
@@ -148,82 +83,269 @@ class JADNtoRelaxNG(object):
 
     def makeCustom(self):
         defs = []
-
         for field in self._custom:
-            com = '' if field[-1] == '' else field[-1]
+            com = '' if field.desc == '' else field.desc
 
-            if len(field[-2]) >= 1:
-                opts = {'options': topts_s2d(field[-2])}
-                com += ' #jadn_opts:{}'.format(json.dumps(opts))
+            if len(field.opts) >= 1:
+                opts = {'options': topts_s2d(field.opts)}
+                com += f' #jadn_opts:{json.dumps(opts)}'
 
             c = self._formatTag(
                 'define',
-                self._fieldType(field[1]),
-                name=self.formatStr(field[0]),
+                self._fieldType(field.type),
+                name=self.formatStr(field.name),
                 com=com
             )
             defs.append(c)
 
         return defs
 
-    def _formatPretty(self, xml, indent=1):
-        idn = '  ' * indent
-        rtn_xml = '\n'.join([line for line in md.parseString(xml).toprettyxml(indent=idn).split('\n') if line.strip()])
+    # Structure Formats
+    def _formatRecord(self, itm):
+        """
+        Formats records for the given schema type
+        :param itm: record to format
+        :return: formatted record
+        """
+        properties = []
+        for prop in itm.fields:
+            opts = {'type': prop.type, 'field': prop.id}
+            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+
+            ltmp = self._formatTag(
+                'element',
+                self._fieldType(prop.type),
+                name=self.formatStr(prop.name),
+                com=self._formatComment(prop.desc, jadn_opts=opts)
+            )
+
+            if self._is_optional(opts.get('options', {})):
+                properties.append(self._formatTag('optional', ltmp))
+            else:
+                properties.append(ltmp)
+
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(prop.opts)
+
+        return self._formatTag(
+            'define',
+            self._formatTag('interleave', properties),
+            com=self._formatComment(itm.desc, jadn_opts=opts),
+            name=self.formatStr(itm.name)
+        )
+
+    def _formatChoice(self, itm):
+        """
+        Formats choice for the given schema type
+        :param itm: choice to format
+        :return: formatted choice
+        """
+        properties = []
+        for prop in itm.fields:
+            n = self.formatStr(prop.name or f'Unknown_{self.formatStr(itm.name)}_{prop.id}')
+            opts = {'type': prop.type, 'field': prop.id}
+            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+
+            properties.append(self._formatTag(
+                'element',
+                self._fieldType(prop.type),
+                com=self._formatComment(prop.desc, jadn_opts=opts),
+                name=n
+            ))
+
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+
+        return self._formatTag(
+            'define',
+            self._formatTag('choice', properties),
+            com=self._formatComment(itm.desc, jadn_opts=opts),
+            name=self.formatStr(itm.name)
+        )
+
+    def _formatMap(self, itm):
+        """
+        Formats map for the given schema type
+        :param itm: map to format
+        :return: formatted map
+        """
+        properties = []
+        for prop in itm.fields:
+            opts = {'type': prop.type, 'field': prop.id}
+            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+
+            ltmp = self._formatTag(
+                'element',
+                self._fieldType(prop.type),
+                name=self.formatStr(prop.name),
+                com=self._formatComment(prop.desc, jadn_opts=opts)
+            )
+
+            if self._is_optional(opts.get('options', {})):
+                properties.append(self._formatTag('optional', ltmp))
+            else:
+                properties.append(ltmp)
+
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+
+        return self._formatTag(
+            'define',
+            self._formatTag('interleave', properties),
+            com=self._formatComment(itm.desc, jadn_opts=opts),
+            name=self.formatStr(itm.name)
+        )
+
+    def _formatEnumerated(self, itm):
+        """
+        Formats enum for the given schema type
+        :param itm: enum to format
+        :return: formatted enum
+        """
+        properties = []
+        for prop in itm.fields:
+            opts = {'field': prop.id}
+            properties.append(self._formatTag(
+                'value',
+                self.formatStr(prop.value or f'Unknown_{self.formatStr(itm.name)}_{prop.id}'),
+                com=self._formatComment(prop.desc, jadn_opts=opts)
+            ))
+
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+
+        return self._formatTag(
+            'define',
+            self._formatTag('choice', properties),
+            com=self._formatComment(itm.desc, jadn_opts=opts),
+            name=self.formatStr(itm.name)
+        )
+
+    def _formatArray(self, itm):  # TODO: what should this do??
+        """
+        Formats array for the given schema type
+        :param itm: array to format
+        :return: formatted array
+        """
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+
+        properties = []
+        for prop in itm.fields:
+            opts = {'type': prop.type, 'field': prop.id}
+            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+
+            ltmp = self._formatTag(
+                'element',
+                self._fieldType(prop.type),
+                name=self.formatStr(prop.name),
+                com=self._formatComment(prop.desc, jadn_opts=opts)
+            )
+
+            if self._is_optional(opts.get('options', {})):
+                properties.append(self._formatTag('optional', ltmp))
+            else:
+                properties.append(ltmp)
+
+        return self._formatTag(
+            'define',
+            self._formatTag(
+                'interleave',
+                properties
+            ),
+            com=self._formatComment(itm.desc, jadn_opts=opts),
+            name=self.formatStr(itm.name)
+        )
+
+    def _formatArrayOf(self, itm):  # TODO: what should this do??
+        """
+        Formats arrayof for the given schema type
+        :param itm: arrayof to format
+        :return: formatted arrayof
+        """
+        field_opts = topts_s2d(itm.opts)
+
+        opts = {'type': itm.type}
+        if len(field_opts.keys()) > 0: opts['options'] = field_opts
+
+        return self._formatTag(
+            'define',
+            self._formatTag(
+                'oneOrMore' if opts['options'] and len(opts['options']) > 0 else 'zeroOrMore',
+                self._fieldType(field_opts.get('rtype', 'string'))
+            ),
+            com=self._formatComment(itm.desc, jadn_opts=opts),
+            name=self.formatStr(itm.name)
+        )
+
+    # Helper Functions
+    def _formatPretty(self, xml):
+        """
+        Format the XML in a human readable format
+        :param xml: XML string to format
+        :return: formatted XML
+        """
+        rtn_xml = '\n'.join([line for line in md.parseString(xml).toprettyxml(indent=self._indent).split('\n') if line.strip()])
         rtn_xml = re.sub(r'^<\?xml.*?\?>\n', '', rtn_xml)
         return rtn_xml
 
     def _formatTag(self, tag, contents='', com='', **kargs):
+        """
+        Format a tag using the given information
+        :param tag: tag name
+        :param contents: contents of the tag
+        :param com: comment to add with the tag
+        :param kargs: key/value attributes of the tag
+        :return: formatted tag
+        """
         ign = ['', None]
+        attrs = ''.join([f' {k}={json.dumps(v)}' for k, v in kargs.items()])
 
         if contents in ign and com in ign:
-            elm = '<{tag}{attrs}/>'.format(
-                tag=tag,
-                attrs=''.join([' {k}={v}'.format(k=k, v=json.dumps(v)) for k, v in kargs.items()])
-            )
+            elm = f'<{tag}{attrs}/>'
+
         else:
-            elm = '<{tag}{attrs}>'.format(
-                tag=tag,
-                attrs=''.join([' {k}={v}'.format(k=k, v=json.dumps(v)) for k, v in kargs.items()])
-            )
+            elm = f'<{tag}{attrs}>'
             if com != '' and re.match(r'^<!--.*?-->', com):
                 elm += com
             elif com != '':
                 elm += self._formatComment(com)
 
-            if type(contents) in primitives:
+            if isinstance(contents, (str, int, float, complex)):
                 elm += toStr(contents)
 
-            elif type(contents) is list:
-                for itm in contents:
-                    if type(itm) is str:
-                        elm += itm
+            elif isinstance(contents, list):
+                elm += ''.join(itm for itm in contents if type(itm) is str)
 
-            elif type(contents) is dict:
-                for k, v in contents.items():
-                    elm.append(self._formatTag(k, v))
+            elif isinstance(contents, dict):
+                elm += ''.join(self._formatTag(k, v) for k, v in contents.items())
+
             else:
-                print('unprepared type: {}'.format(type(contents)))
+                print(f'unprepared type: {type(contents)}')
 
-            elm += '</{tag}>'.format(tag=tag)
+            elm += f'</{tag}>'
 
         return elm
 
     def _formatComment(self, msg, **kargs):
-        if self.comments == CommentLevels.NONE:
+        """
+        Format a comment for the given schema
+        :param msg: comment text
+        :param kargs: key/value comments
+        :return: formatted comment
+        """
+        if self.comm == CommentLevels.NONE:
             return ''
 
-        if isinstance(msg, str_type):
+        if isinstance(msg, str):
             msg = re.sub(r'([\w\d])--([\w\d])', r'\1 - \2', msg)
 
         elm = '<!--'
         if msg not in ['', None, ' ']:
-            elm += ' {msg}'.format(msg=msg)
+            elm += f' {msg}'
 
         for k, v in kargs.items():
-            elm += ' #{k}:{v}'.format(
-                k=k,
-                v=json.dumps(v)
-            )
+            elm += f' #{k}:{json.dumps(v)}'
 
         elm += ' -->'
 
@@ -234,7 +356,6 @@ class JADNtoRelaxNG(object):
         Determines the field type for the schema
         :param f: current type
         :return: type mapped to the schema
-        :rtype str
         """
         if f in self._customFields:
             rtn = self._formatTag('ref', name=self.formatStr(f))
@@ -248,204 +369,13 @@ class JADNtoRelaxNG(object):
 
         return rtn
 
-    # Structure Formats
-    def _formatRecord(self, itm):
-        """
-        Formats records for the given schema type
-        :param itm: record to format
-        :return: formatted record
-        :rtype str
-        """
-        defs = []
-        for l in itm[-1]:
-            opts = {'type': l[2], 'field': l[0]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
-
-            ltmp = self._formatTag(
-                'element',
-                self._fieldType(l[2]),
-                name=self.formatStr(l[1]),
-                com=self._formatComment(l[-1], jadn_opts=opts)
-            )
-
-            if '[0' in l[-2]:
-                # optional
-                defs.append(self._formatTag('optional', ltmp))
-            else:
-                defs.append(ltmp)
-
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(l[-2])
-
-        return self._formatTag(
-            'define',
-            self._formatTag('interleave', defs),
-            com=self._formatComment(itm[-2], jadn_opts=opts),
-            name=self.formatStr(itm[0])
-        )
-
-    def _formatChoice(self, itm):
-        """
-        Formats choice for the given schema type
-        :param itm: choice to format
-        :return: formatted choice
-        :rtype str
-        """
-        defs = []
-        for l in itm[-1]:
-            n = self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0]))
-            opts = {'type': l[2], 'field': l[0]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
-
-            defs.append(self._formatTag(
-                'element',
-                self._fieldType(l[2]),
-                com=self._formatComment(l[-1], jadn_opts=opts),
-                name=n
-            ))
-
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
-
-        return self._formatTag(
-            'define',
-            self._formatTag('choice', defs),
-            com=self._formatComment(itm[-2], jadn_opts=opts),
-            name=self.formatStr(itm[0])
-        )
-
-    def _formatMap(self, itm):
-        """
-        Formats map for the given schema type
-        :param itm: map to format
-        :return: formatted map
-        :rtype str
-        """
-        defs = []
-
-        for l in itm[-1]:
-            opts = {'type': l[2], 'field': l[0]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
-
-            ltmp = self._formatTag(
-                'element',
-                self._fieldType(l[2]),
-                name=self.formatStr(l[1]),
-                com=self._formatComment(l[-1], jadn_opts=opts)
-            )
-
-            if '[0' in l[-2]:
-                # optional
-                defs.append(self._formatTag('optional', ltmp))
-            else:
-                defs.append(ltmp)
-
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
-
-        return self._formatTag(
-            'define',
-            self._formatTag('interleave', defs),
-            com=self._formatComment(itm[-2], jadn_opts=opts),
-            name=self.formatStr(itm[0])
-        )
-
-    def _formatEnumerated(self, itm):
-        """
-        Formats enum for the given schema type
-        :param itm: enum to format
-        :return: formatted enum
-        :rtype str
-        """
-        defs = []
-        for l in itm[-1]:
-            opts = {'field': l[0]}
-            defs.append(self._formatTag(
-                'value',
-                self.formatStr(l[1] or 'Unknown_{}_{}'.format(self.formatStr(itm[0]), l[0])),
-                com=self._formatComment(l[-1], jadn_opts=opts)
-            ))
-
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
-
-        return self._formatTag(
-            'define',
-            self._formatTag('choice', defs),
-            com=self._formatComment(itm[-2], jadn_opts=opts),
-            name=self.formatStr(itm[0])
-        )
-
-    def _formatArray(self, itm):  # TODO: what should this do??
-        """
-        Formats array for the given schema type
-        :param itm: array to format
-        :return: formatted array
-        :rtype str
-        """
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
-
-        defs = []
-        for l in itm[-1]:
-            opts = {'type': l[2], 'field': l[0]}
-            if len(l[-2]) > 0: opts['options'] = fopts_s2d(l[-2])
-
-            ltmp = self._formatTag(
-                'element',
-                self._fieldType(l[2]),
-                name=self.formatStr(l[1]),
-                com=self._formatComment(l[-1], jadn_opts=opts)
-            )
-
-            if '[0' in l[-2]:
-                # optional
-                defs.append(self._formatTag('optional', ltmp))
-            else:
-                defs.append(ltmp)
-
-        return self._formatTag(
-            'define',
-            self._formatTag(
-                'interleave',
-                defs
-            ),
-            com=self._formatComment(itm[-2], jadn_opts=opts),
-            name=self.formatStr(itm[0])
-        )
-
-    def _formatArrayOf(self, itm):  # TODO: what should this do??
-        """
-        Formats arrayof for the given schema type
-        :param itm: arrayof to format
-        :return: formatted arrayof
-        :rtype str
-        """
-        field_opts = topts_s2d(itm[2])
-
-        opts = {'type': itm[1]}
-        if len(itm[2]) > 0: opts['options'] = topts_s2d(itm[2])
-
-        return self._formatTag(
-            'define',
-            self._formatTag(
-                'oneOrMore' if opts['options'] and len(opts['options']) > 0 else 'zeroOrMore',
-                self._fieldType(field_opts.get('rtype', 'string'))
-            ),
-            com=self._formatComment(itm[-1], jadn_opts=opts),
-            name=self.formatStr(itm[0])
-        )
-
 
 def relax_dumps(jadn, comm=CommentLevels.ALL):
     """
     Produce CDDL schema from JADN schema
     :param jadn: JADN Schema to convert
-    :type jadn: str or dict
-    :param comm: Level of comments to include in converted schema
-    :type comm: str of enums.CommentLevel
+    :param com: Level of comments to include in converted schema
     :return: Protobuf3 schema
-    :rtype str
     """
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
     return JADNtoRelaxNG(jadn).relax_dump(comm)
@@ -455,17 +385,13 @@ def relax_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     """
     Produce RelaxNG scheema from JADN schema and write to file provided
     :param jadn: JADN Schema to convert
-    :type jadn: str or dict
     :param fname: Name of file to write
-    :tyoe fname: str
     :param source: Name of the original JADN schema file
-    :type source: str
     :param comm: Level of comments to include in converted schema
-    :type comm: str of enums.CommentLevel
-    :return: N/A
+    :return: None
     """
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
     with open(fname, "w") as f:
         if source:
-            f.write("<!-- Generated from {}, {} -->\n".format(source, datetime.ctime(datetime.now())))
+            f.write(f"<!-- Generated from {source}, {datetime.ctime(datetime.now())} -->\n")
         f.write(relax_dumps(jadn, comm))

@@ -63,7 +63,7 @@ class JADNtoJSON(JADNConverterBase):
         :return: JSON schema
         """
         if com:
-            self.com = com if com in CommentLevels.values() else CommentLevels.ALL
+            self.comm = com if com in CommentLevels.values() else CommentLevels.ALL
         exports = self._meta.get('exports', [])
 
         rtn = self.makeHeader()
@@ -194,7 +194,7 @@ class JADNtoJSON(JADNConverterBase):
             **self._optReformat('object', itm_opts, True),
             **self._formatComment(itm.desc),
             additionalProperties=False,
-            patternProperties={"^({})$".format('|'.join(fields)): {}},
+            patternProperties={f"^({'|'.join(fields)})$": {}},
             oneOf=[
                 dict(properties=properties)
             ]
@@ -243,7 +243,7 @@ class JADNtoJSON(JADNConverterBase):
             **self._optReformat('object', itm_opts, True),
             **self._formatComment(itm.desc),
             additionalProperties=False,
-            patternProperties={"^({})$".format('|'.join(fields)): {}},
+            patternProperties={f"^({'|'.join(fields)})$": {}},
         )
 
         if len(required) > 0:
@@ -294,7 +294,7 @@ class JADNtoJSON(JADNConverterBase):
             enum=enum
         )
 
-        if self.com != CommentLevels.NONE:
+        if self.comm != CommentLevels.NONE:
             type_def['options'] = options
 
         return {
@@ -372,22 +372,6 @@ class JADNtoJSON(JADNConverterBase):
         }
 
     # Helper Functions
-    def _is_optional(self, opts):
-        """
-        Check if the field is optional
-        :param opts: field options
-        :return: bool - optional
-        """
-        return opts.get('min', 1) == 0
-
-    def _is_array(self, opts):
-        """
-        Check if the field is an array
-        :param opts: field options
-        :return: bool - optional
-        """
-        return opts.get('max', 1) != 1
-
     def _getType(self, name):
         """
         Get the type of the field based of the name
@@ -442,7 +426,7 @@ class JADNtoJSON(JADNConverterBase):
         """
         if f in self._customFields:
             rtn = {
-                '$ref': '#definitions/{}'.format(self.formatStr(f))
+                '$ref': f'#definitions/{self.formatStr(f)}'
             }
 
         elif f in self._fieldMap:
@@ -453,7 +437,7 @@ class JADNtoJSON(JADNConverterBase):
                 rtn['format'] = 'binary'
 
         else:
-            print('unknown type: {}'.format(f))
+            print(f'unknown type: {f}')
             rtn = dict(
                 type='string'
             )
@@ -467,18 +451,15 @@ class JADNtoJSON(JADNConverterBase):
         :param kargs: key/value comments
         :return: formatted comment
         """
-        if self.com == CommentLevels.NONE:
+        if self.comm == CommentLevels.NONE:
             return {}
 
         com = ''
         if msg not in ['', None, ' ']:
-            com += '{msg}'.format(msg=msg)
+            com += f'{msg}'
 
         for k, v in kargs.items():
-            com += ' #{k}:{v}'.format(
-                k=k,
-                v=json.dumps(v)
-            )
+            com += f' #{k}:{json.dumps(v)}'
 
         return {} if re.match(r'^\s*$', com) else dict(
             description=com

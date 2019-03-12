@@ -14,7 +14,9 @@ class JADNConverterBase(object):
     """
     _indent = ' ' * 4
 
-    _meta_order = ['title', 'module', 'description', 'exports', 'imports', 'patch']
+    _escape_chars = ['-', ' ']
+
+    _meta_order = ['title', 'module', 'description', 'imports', 'exports', 'patch']
 
     _keys = {
         # Structures
@@ -42,11 +44,11 @@ class JADNConverterBase(object):
         'Value': 'value'
     }
 
-    def __init__(self, jadn, com=CommentLevels.ALL):
+    def __init__(self, jadn, comm=CommentLevels.ALL):
         """
         Schema Converter Init
         :param jadn: str or dict of the JADN schema
-        :param com: Comment level
+        :param comm: Comment level
         """
         if type(jadn) is str:
             try:
@@ -59,7 +61,7 @@ class JADNConverterBase(object):
         else:
             raise TypeError('JADN improperly formatted')
 
-        self.com = com if com in CommentLevels.values() else CommentLevels.ALL
+        self.comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
 
         self._meta = jadn.get('meta', {})
         self._types = []
@@ -99,7 +101,27 @@ class JADNConverterBase(object):
         :return: formatted string
         :rtype str
         """
+        escape_chars = list(filter(None, self._escape_chars))
         if s == '*':
             return 'unknown'
+        elif len(escape_chars) > 0:
+            escape_regex = re.compile(rf"[{''.join(escape_chars)}]")
+            return escape_regex.sub('_', s)
         else:
-            return re.sub(r'[\- ]', '_', s)
+            return s
+
+    def _is_optional(self, opts):
+        """
+        Check if the field is optional
+        :param opts: field options
+        :return: bool - optional
+        """
+        return opts.get('min', 1) == 0
+
+    def _is_array(self, opts):
+        """
+        Check if the field is an array
+        :param opts: field options
+        :return: bool - optional
+        """
+        return opts.get('max', 1) != 1

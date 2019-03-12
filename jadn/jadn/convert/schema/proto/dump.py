@@ -28,9 +28,9 @@ class JADNtoProto3(JADNConverterBase):
         :return: Protobuf3 schema
         """
         if com:
-            self.com = com if com in CommentLevels.values() else CommentLevels.ALL
+            self.comm = com if com in CommentLevels.values() else CommentLevels.ALL
 
-        imports = ''.join(['import \"{}\";\n'.format(i) for i in self._imports])
+        imports = ''.join([f'import \"{imp}\";\n' for imp in self._imports])
         jadn_fields = ',\n'.join([self._indent+json.dumps(Utils.defaultDecode(list(field.values()))) for field in self._custom])
 
         return f"{self.makeHeader()}{imports}{self.makeStructures()}\n/* JADN Custom Fields\n[\n{jadn_fields}\n]\n*/"
@@ -41,15 +41,16 @@ class JADNtoProto3(JADNConverterBase):
         :return: header for schema
         """
         header_regex = re.compile(r'(^\"|\"$)')
-        header = list([
+        pkg_regex = re.compile(r'[.\-/]+')
+        header = [
             'syntax = "proto3";',
             '',
-            'package {};'.format(re.sub(r'[.\-/]+', '_', self._meta.get('module', 'JADN_ProtoBuf_Schema'))),
+            f"package {pkg_regex.sub('_', self._meta.get('module', 'JADN_ProtoBuf_Schema'))};",
             '',
             '/*',
             *[f" * meta: {k} - {header_regex.sub('', json.dumps(Utils.defaultDecode(v)))}" for k, v in self._meta.items()],
             '*/'
-        ])
+        ]
 
         return '\n'.join(header) + '\n\n'
 
@@ -67,19 +68,102 @@ class JADNtoProto3(JADNConverterBase):
 
         return tmp
 
-    def _wrapAsRecord(self, itm):
+    # Structure Formats
+    def _formatRecord(self, itm):
         """
-        wraps the given item as a record for the schema
-        :param itm: item to wrap
-        :return: item wrapped as a record for the schema
+        Formats records for the given schema type
+        :param itm: record to format
+        :return: formatted record
         """
-        lines = itm.split('\n')[1:-1]
-        if len(lines) > 1:
-            n = re.search(r'\s[\w\d\_]+\s', lines[0]).group()[1:-1]
-            lines = '\n'.join(f'{self._indent}{l}' for l in lines)
-            return f"\nmessage {self.formatStr(n)} {{\n{lines}\n}}\n"
+        properties = []
+        for prop in itm.fields:
+            opts = {'type': prop.type}
+            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+
+            comment = self._formatComment(prop.desc, jadn_opts=opts)
+            properties.append(f'{self._indent}{self._fieldType(prop.type)} {self.formatStr(prop.name)} = {prop.id}; {comment}\n')
+
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+
+        comment = self._formatComment(itm.desc, jadn_opts=opts)
+        properties = ''.join(properties)
+        return f'\nmessage {self.formatStr(itm.name)} {{ {comment}\n{properties}}}\n'
+
+    def _formatChoice(self, itm):
+        """
+        Formats choice for the given schema type
+        :param itm: choice to format
+        :return: formatted choice
+        """
+        properties = []
+        for prop in itm.fields:
+            opts = {'type': prop.type}
+            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+
+            comment = self._formatComment(prop.desc, jadn_opts=opts)
+            properties.append(f'{self._indent}{self._fieldType(prop.type)} {self.formatStr(prop.name)} = {prop.id}; {comment}\n')
+
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+
+        comment = self._formatComment(itm.desc, jadn_opts=opts)
+        properties = ''.join(properties)
+        return self._wrapAsRecord(f'\noneof {self.formatStr(itm.name)} {{ {comment}\n{properties}}}\n')
+
+    def _formatMap(self, itm):
+        """
+        Formats map for the given schema type
+        :param itm: map to format
+        :return: formatted map
+        """
+        return self._formatRecord(itm)
+
+    def _formatEnumerated(self, itm):
+        """
+        Formats enum for the given schema type
+        :param itm: enum to format
+        :return: formatted enum
+        """
+        properties = []
+        default = True
+        for prop in itm.fields:
+            if prop.id == 0: default = False
+            prop_name = self.formatStr(prop.value or f'Unknown_{self.formatStr(itm.name)}_{prop.id}')
+            properties.append(f'{self._indent}{prop_name} = {prop.id}; {self._formatComment(prop.desc)}\n')
+
+        opts = {'type': itm.type}
+        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+
+        default = f"{self._indent}Unknown_{itm.name.replace('-', '_')} = 0; // required starting enum number for protobuf3\n" if default else ''
+        comment = self._formatComment(itm.desc, jadn_opts=opts)
+        properties = ''.join(properties)
+        return f'\nenum {self.formatStr(itm.name)} {{ {comment}\n{default}{properties}}}\n'
+
+    def _formatArray(self, itm):  # TODO: what should this do??
+        """
+        Formats array for the given schema type
+        :param itm: array to format
+        :return: formatted array
+        """
+        print(f'Array: {itm}')
         return ''
 
+    def _formatArrayOf(self, itm):  # TODO: what should this do??
+        """
+        Formats arrayof for the given schema type
+        :param itm: arrayof to format
+        :return: formatted arrayof
+        """
+        opts = {
+            'type': 'arrayOf',
+            'options': topts_s2d(itm.opts)
+        }
+        rtype = self.formatStr(opts['options'].setdefault('rtype', 'String'))
+        comment = self._formatComment(itm.desc, jadn_opts=opts)
+        return f'\nmessage {self.formatStr(itm.name)} {{\n{self._indent}repeated {rtype} {rtype.lower()} = 1; {comment}\n}}\n'
+
+    # Helper Functions
     def _fieldType(self, f):
         """
         Determines the field type for the schema
@@ -106,154 +190,37 @@ class JADNtoProto3(JADNConverterBase):
         :param kargs: key/value comments
         :return: formatted comment
         """
-        if self.com == CommentLevels.NONE:
+        if self.comm == CommentLevels.NONE:
             return ''
 
         com = '//'
         if msg not in ['', None, ' ']:
-            com += ' {msg}'.format(msg=msg)
+            com += f' {msg}'
 
         for k, v in kargs.items():
-            com += ' #{k}:{v}'.format(
-                k=k,
-                v=json.dumps(v)
-            )
+            com += f' #{k}:{json.dumps(v)}'
         return '' if re.match(r'^\/\/\s+$', com) else com
 
-    # Structure Formats
-    def _formatRecord(self, itm):
+    def _wrapAsRecord(self, itm):
         """
-        Formats records for the given schema type
-        :param itm: record to format
-        :return: formatted record
+        wraps the given item as a record for the schema
+        :param itm: item to wrap
+        :return: item wrapped as a record for the schema
         """
-        properties = []
-        for prop in itm.fields:
-            opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
-
-            properties.append('{idn}{type} {name} = {num}; {com}\n'.format(
-                idn=self._indent,
-                type=self._fieldType(prop.type),
-                name=self.formatStr(prop.name),
-                num=prop.id,
-                com=self._formatComment(prop.desc, jadn_opts=opts)
-            ))
-
-        opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
-
-        return '\nmessage {name} {{ {com}\n{req}}}\n'.format(
-            name=self.formatStr(itm.name),
-            req=''.join(properties),
-            com=self._formatComment(itm.desc, jadn_opts=opts)
-        )
-
-    def _formatChoice(self, itm):
-        """
-        Formats choice for the given schema type
-        :param itm: choice to format
-        :return: formatted choice
-        """
-        properties = []
-        for prop in itm.fields:
-            opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
-
-            properties.append('{idn}{type} {name} = {num}; {com}\n'.format(
-                idn=self._indent,
-                type=self._fieldType(prop.type),
-                name=self.formatStr(prop.name),
-                num=prop.id,
-                com=self._formatComment(prop.desc, jadn_opts=opts)
-            ))
-
-        opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
-
-        return self._wrapAsRecord('\noneof {name} {{ {com}\n{req}}}\n'.format(
-            idn=self._indent,
-            name=self.formatStr(itm.name),
-            com=self._formatComment(itm.desc, jadn_opts=opts),
-            req=''.join(properties)
-        ))
-
-    def _formatMap(self, itm):
-        """
-        Formats map for the given schema type
-        :param itm: map to format
-        :return: formatted map
-        """
-        return self._formatRecord(itm)
-
-    def _formatEnumerated(self, itm):
-        """
-        Formats enum for the given schema type
-        :param itm: enum to format
-        :return: formatted enum
-        """
-        properties = []
-        default = True
-        for prop in itm.fields:
-            if prop.id == 0: default = False
-            properties.append('{idn}{name} = {num}; {com}\n'.format(
-                idn=self._indent,
-                name=self.formatStr(prop.value or 'Unknown_{}_{}'.format(self.formatStr(itm.name), prop.id)),
-                num=prop.id,
-                com=self._formatComment(prop.desc)
-            ))
-
-        opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
-
-        return '\nenum {name} {{ {com}\n{default}{enum}}}\n'.format(
-            idn=self._indent,
-            name=self.formatStr(itm.name),
-            com=self._formatComment(itm.desc, jadn_opts=opts),
-            default='{}Unknown_{} = 0; // required starting enum number for protobuf3\n'.format(self._indent, itm.name.replace('-', '_')) if default else '',
-            enum=''.join(properties)
-        )
-
-    def _formatArray(self, itm):  # TODO: what should this do??
-        """
-        Formats array for the given schema type
-        :param itm: array to format
-        :return: formatted array
-        """
-        print('Array: {}'.format(itm))
+        lines = itm.split('\n')[1:-1]
+        if len(lines) > 1:
+            n = re.search(r'\s[\w\d\_]+\s', lines[0]).group()[1:-1]
+            lines = '\n'.join(f'{self._indent}{l}' for l in lines)
+            return f"\nmessage {self.formatStr(n)} {{\n{lines}\n}}\n"
         return ''
-
-    def _formatArrayOf(self, itm):  # TODO: what should this do??
-        """
-        Formats arrayof for the given schema type
-        :param itm: arrayof to format
-        :return: formatted arrayof
-        """
-
-        opts = {
-            'type': 'arrayOf',
-            'options': topts_s2d(itm.opts)
-        }
-        rtype = opts['options'].setdefault('rtype', 'String')
-        
-        return '\nmessage {name} {{\n{idn}repeated {type} {field} = 1; {com}\n}}\n'.format(
-            idn=self._indent,
-            name=self.formatStr(itm.name),
-            type=self.formatStr(rtype),
-            field=self.formatStr(rtype).lower(),
-            com=self._formatComment(itm.desc, jadn_opts=opts)
-        )
 
 
 def proto_dumps(jadn, comm=CommentLevels.ALL):
     """
     Produce Protobuf3 schema from JADN schema
     :param jadn: JADN Schema to convert
-    :type jadn: str or dict
     :param comm: Level of comments to include in converted schema
-    :type comm: str of enums.CommentLevel
     :return: Protobuf3 schema
-    :rtype str
     """
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
     return JADNtoProto3(jadn).proto_dump(comm)
@@ -263,13 +230,9 @@ def proto_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     """
     Produce ProtoBuf schema from JADN schema and write to file provided
     :param jadn: JADN Schema to convert
-    :type jadn: str or dict
     :param fname: Name of file to write
-    :type fname: str
     :param source: Name of the original JADN schema file
-    :type source: str
     :param comm: Level of comments to include in converted schema
-    :type comm: str of enums.CommentLevel
     :return: N/A
     """
     comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
