@@ -39,7 +39,7 @@ proto_load(open(os.path.join(test_dir, schema + '.all.proto'), 'rb').read(), os.
 
 json_dump(schema_json, os.path.join(test_dir, schema + '.all.json'), comm=CommentLevels.ALL)
 json_dump(schema_json, os.path.join(test_dir, schema + '.none.json'), comm=CommentLevels.NONE)
-# json_load(open(os.path.join(test_dir, schema + '.all.json'), 'rb').read(), os.path.join(test_dir, schema + '.all.json'))
+json_load(open(os.path.join(test_dir, schema + '.all.json'), 'rb').read(), os.path.join(test_dir, schema + '.all.jadn'))
 
 cddl_dump(schema_json, os.path.join(test_dir, schema + '.all.cddl'), comm=CommentLevels.ALL)
 cddl_dump(schema_json, os.path.join(test_dir, schema + '.none.cddl'), comm=CommentLevels.NONE)
@@ -55,4 +55,4 @@ thrift_load(open(os.path.join(test_dir, schema + '.all.thrift'), 'rb').read(), o
 
 md_dump(schema_json, os.path.join(test_dir, schema + '.md'))
 
-html_dump(schema_json, os.path.join(test_dir, schema + '.html'), styles='theme.css')
+html_dump(schema_json, os.path.join(test_dir, schema + '.html'))

@@ -1,10 +1,10 @@
-from jadn.utils import FrozenDict
+from ...utils import FrozenDict
 
 
-class OpenC2MessageFormats(FrozenDict):
+class MessageFormats(FrozenDict):
     def __init__(self, *args, **kwargs):
         self._hash = None
-        super(FrozenDict, self).__init__(
+        super(MessageFormats, self).__init__(
             JSON='json',
             CBOR='cbor',
             ProtoBuf='proto',
@@ -19,10 +19,10 @@ class OpenC2MessageFormats(FrozenDict):
         :rtype: list
         """
         tmp = []
-        for f in dir(OpenC2MessageFormats):
+        for f in dir(MessageFormats):
             if not f.startswith(('_', 'dict', 'list')):
                 if val:
-                   tmp.append(getattr(OpenC2MessageFormats, f))
+                   tmp.append(getattr(MessageFormats, f))
                 else:
                     tmp.append(f)
 
@@ -36,11 +36,11 @@ class OpenC2MessageFormats(FrozenDict):
         :return:
         """
         tmp = {}
-        for f in dir(OpenC2MessageFormats):
+        for f in dir(MessageFormats):
             if not f.startswith(('_', 'dict', 'list')):
                 if valKey:
-                    tmp[getattr(OpenC2MessageFormats, f)] = f
+                    tmp[getattr(MessageFormats, f)] = f
                 else:
-                    tmp[f] = getattr(OpenC2MessageFormats, f)
+                    tmp[f] = getattr(MessageFormats, f)
 
         return tmp

@@ -12,56 +12,54 @@ from .... import (
 
 
 class JSONtoJADN(object):
+    _fieldMap = {
+        'binary': 'Binary',
+        'integer': 'Integer',
+        'null': 'Null',
+        'number': 'Number',
+        'string': 'String',
+    }
+
+    _optKeys = {
+        ('array',): {
+            'minItems': 'min',
+            'maxItems': 'max'
+        },
+        ('integer',): {
+            'minimum': 'min',
+            'exclusiveMinimum': 'min',
+            'maximum': 'max',
+            'exclusiveMaximum': 'max',
+            'format': 'format'
+        },
+        ('object',): {},
+        ('string',): {
+            'format': 'format',
+            'minLength': 'min',
+            'maxLength': 'max',
+            'pattern': 'pattern'
+        }
+    }
+
+    _binaryFormats = [
+        'binary',
+        'ip-addr'
+    ]
+
     def __init__(self, jsn):
         """
-        Schema Converter for JADN to JSON
-        :param jadn: str or dict of the JADN schema
-        :type jadn: str or dict
+        Schema Converter for JSON to JADN
+        :param jsn: str or dict of the JSON schema
         """
-        if type(jsn) in [str, bytes]:
+        if isinstance(jsn, (str, bytes)):
             try:
                 self._schema = json.loads(jsn)
             except Exception as e:
                 raise e
-        elif type(jsn) is dict:
+        elif isinstance(jsn, dict):
             self._schema = jsn
-
         else:
             raise TypeError('JSON improperly formatted')
-
-        self._fieldMap = {
-            'binary': 'Binary',
-            'integer': 'Integer',
-            'null': 'Null',
-            'number': 'Number',
-            'string': 'String',
-        }
-
-        self._optKeys = {
-            ('array', ): {
-                'minItems': 'min',
-                'maxItems': 'max'
-            },
-            ('integer', ): {
-                'minimum': 'min',
-                'exclusiveMinimum': 'min',
-                'maximum': 'max',
-                'exclusiveMaximum': 'max',
-                'format': 'format'
-            },
-            ('object', ): {},
-            ('string', ): {
-                'format': 'format',
-                'minLength': 'min',
-                'maxLength': 'max',
-                'pattern': 'pattern'
-            }
-        }
-
-        self._binaryFormats = [
-            'binary',
-            'ip-addr'
-        ]
 
     def jadn_dump(self):
         return dict(
@@ -73,7 +71,6 @@ class JSONtoJADN(object):
         """
         Create the header for the schema
         :return: header for schema
-        :rtype dict
         """
         module = self._schema['id'] if 'id' in self._schema else (self._schema['$id'] if '$id' in self._schema else '')
         module = re.sub(r'^https?:\/\/', '', module)
@@ -81,9 +78,7 @@ class JSONtoJADN(object):
                 module=module,
                 title=self._schema.get('title', ''),
                 description=self._schema.get('description', ''),
-                imports=[
-                    # ["jadn", "oasis-open.org/openc2/jadn/v1.0"]
-                ],
+                imports=[],
                 exports=[e.get('$ref', '').split('/')[-1] for e in self._schema.get('oneOf', {})]
             )
 
@@ -91,64 +86,48 @@ class JSONtoJADN(object):
         """
         Create the type definitions for the schema
         :return: type definitions for the schema
-        :rtype str
         """
         tmp_types = []
         # TODO: process definitions
         for key, val in self._schema.get('definitions', {}).items():
-            print(key)
             def_type = val.get('type', '')
             if def_type == 'object':
-                print('-- Structure')
                 if 'patternProperties' not in val:
-                    print('---- Record')
                     tmp_types.append(self._formatRecord(key, val))
                 elif 'oneOf' in val:
-                    print('---- Choice')
                     tmp_types.append(self._formatChoice(key, val))
                 elif 'anyOf' in val:
-                    print('---- Map')
                     tmp_types.append(self._formatMap(key, val))
                 else:
-                    print('---- Unknown')
+                    print(f'Unknown Type: {key}')
 
             elif def_type == 'array':
-                print('-- Structure')
                 if len(val['items']) == 1:
-                    print('---- ArrayOf')
                     tmp_types.append(self._formatArrayOf(key, val))
                 else:
-                    print('---- Array')
                     tmp_types.append(self._formatArray(key, val))
 
             elif def_type in ['string', 'integer'] and 'enum' in val:
-                print('-- Structure\n---- Enumerated')
                 tmp_types.append(self._formatEnumerated(key, val))
 
             else:
-                print('-- Custom Type')
                 tmp_types.append(self._formatCustom(key, val))
-            print('')
 
         return tmp_types
 
     def _fieldType(self, v):
         """
         Determines the field type for the schema
-        :param f: current type
         :return: type mapped to the schema
-        :rtype str
         """
         t, d = self._getRef(v['$ref']) if '$ref' in v else (v['type'], {})
+        _type = v.get('type', '')
 
-        if v.get('type', '') == 'string' and v.get('format', '') in self._binaryFormats:
+        if _type == 'string' and v.get('format', '') in self._binaryFormats:
             return 'Binary'
-        elif v.get('type', '') == 'array':
+        elif _type == 'array':
             itm = v.get('items', [{'type': 'string'}])[0]
-            if '$ref' in itm:
-                return itm['$ref'].split('/')[-1]
-            else:
-                return self._fieldMap.get(itm['type'], t)
+            return itm['$ref'].split('/')[-1] if '$ref' in itm else self._fieldMap.get(itm['type'], t)
         else:
             return self._fieldMap.get(t, t)
 
@@ -170,7 +149,6 @@ class JSONtoJADN(object):
         Formats records for the given schema type
         :param itm: record to format
         :return: formatted record
-        :rtype list
         """
         tmp_def = dict(
             name=name,
@@ -205,7 +183,6 @@ class JSONtoJADN(object):
         Formats choice for the given schema type
         :param itm: choice to format
         :return: formatted choice
-        :rtype list
         """
         tmp_def = dict(
             name=name,
@@ -239,7 +216,6 @@ class JSONtoJADN(object):
         Formats map for the given schema type
         :param itm: map to format
         :return: formatted map
-        :rtype list
         """
         tmp_def = dict(
             name=name,
@@ -276,7 +252,6 @@ class JSONtoJADN(object):
         Formats enum for the given schema type
         :param itm: enum to format
         :return: formatted enum
-        :rtype list
         """
         tmp_def = dict(
             name=name,
@@ -305,7 +280,6 @@ class JSONtoJADN(object):
         Formats array for the given schema type
         :param itm: array to format
         :return: formatted array
-        :rtype list
         """
         tmp_def = dict(
             name=name,
@@ -341,7 +315,6 @@ class JSONtoJADN(object):
         Formats arrayof for the given schema type
         :param itm: arrayof to format
         :return: formatted arrayof
-        :rtype list
         """
         rtype = itm.get('items', [])[0]
 
@@ -363,7 +336,6 @@ class JSONtoJADN(object):
         Formats custom type for the given schema type
         :param itm: custom type to format
         :return: formatted custom type
-        :rtype list
         """
         def_type = self._fieldType(itm)
 
@@ -415,7 +387,6 @@ class JSONtoJADN(object):
             if k not in ignoreKeys:
                 if k in optKeys:
                     r_opts[optKeys[k]] = v
-
         return r_opts
 
 
@@ -424,7 +395,6 @@ def json_loads(json):
     Produce JADN schema from JSON schema
     :param json: JSON schema to convert
     :return: JADN schema
-    :rtype str
     """
     return utils.jadn_format(JSONtoJADN(json).jadn_dump())
 
@@ -432,5 +402,5 @@ def json_loads(json):
 def json_load(jsn, fname, source=""):
     with open(fname, "w") as f:
         if source:
-            f.write("-- Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
+            f.write(f"-- Generated from {source}, {datetime.ctime(datetime.now())}\n")
         f.write(json_loads(jsn))

@@ -4,26 +4,25 @@ import sys
 from dicttoxml import dicttoxml
 from xml.dom.minidom import parseString
 
-from .load import OpenC2MessageLoader
+from .load import MessageLoader
+from ...enums import MessageFormats
 
-from jadn.enums import OpenC2MessageFormats
 
-
-class OpenC2Message(object):
+class Message(object):
     """
     Translate a JSON Encoded message to other formats
     """
-    def __init__(self, msg='', msgType=OpenC2MessageFormats.JSON):
+    def __init__(self, msg='', msgType=MessageFormats.JSON):
         """
         :param msg: Dictionary representation of the message
         :type msg: dict
         :raise TypeError: Dictionary not given
         """
         self._msgType = msgType
-        if msgType in OpenC2MessageFormats.values():
-            self._msg = OpenC2MessageLoader(msg, msgType)
+        if msgType in MessageFormats.values():
+            self._msg = MessageLoader(msg, msgType)
         else:
-            raise ValueError("Message Type is not a Valid OpenC2 Message Format")
+            raise ValueError("Message Type is not a Valid Message Format")
 
     def original_dump(self):
         """

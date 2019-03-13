@@ -1,5 +1,5 @@
-from .message import OpenC2Message
+from .message import Message
 
 __all__ = [
-    'OpenC2Message'
+    'Message'
 ]

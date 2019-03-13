@@ -1,9 +1,8 @@
 import os
 
-from jadn import OpenC2MessageFormats
-from jadn.codec import Codec
-from jadn.jadnschema import jadn_load
-from jadn.message import OpenC2Message
+from jadnschema import jadn_load, MessageFormats
+from jadnschema.codec import Codec
+from jadnschema.message import Message
 
 msgs = {}
 dir = './message/'
@@ -14,7 +13,7 @@ for msg_file in os.listdir(dir):
 
     n, t = msg_file.split('.')
     k = "{}-{}".format(t, n)
-    msgs[k] = t, OpenC2Message(os.path.join(dir, msg_file), OpenC2MessageFormats.get(t.upper()))
+    msgs[k] = t, Message(os.path.join(dir, msg_file), MessageFormats.get(t.upper()))
 
 print("Load Schema")
 schema = jadn_load('schema/oc2ls-csdpr01.jadn')

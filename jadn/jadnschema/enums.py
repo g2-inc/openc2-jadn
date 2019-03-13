@@ -1,7 +1,7 @@
 from .utils import FrozenDict
 
 # Message Formats for OpenC2
-OpenC2MessageFormats = FrozenDict(
+MessageFormats = FrozenDict(
     CBOR='cbor',
     JSON='json',
     PROTO='proto',
@@ -9,7 +9,7 @@ OpenC2MessageFormats = FrozenDict(
 )
 
 # Schema Formats for OpenC2
-OpenC2SchemaFormats = FrozenDict(
+SchemaFormats = FrozenDict(
     CDDL='cddl',
     HTML='html',
     JADN='jadn',

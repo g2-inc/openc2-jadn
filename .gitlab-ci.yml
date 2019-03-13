@@ -24,7 +24,7 @@ Test-Scripts:
   stage: test
 
   script:
-    - cd jadn
+    - cd jadn/tests
     - python3 test_codec.py
     - python3 test_openc2.py
 

@@ -13,8 +13,8 @@ def b_ip_addr(bval):
     """
     Check if valid IP Address
     Length of IP addr must be 32 or 128 bits
-    :param bval: MAC Address to validate
-    :return: given MAC Address
+    :param bval: IP Address to validate
+    :return: given IP Address
     :raises: TypeError, ValueError
     """
     if not isinstance(bval, bytes):
@@ -96,8 +96,8 @@ def _value_check_b2s(val):
     :param val: value to validate the type
     :raises: TypeError - Invalid type given
     """
-    if isinstance(type(val), type(b'')):
-        raise TypeError(f"IP Address given is not expected {type(b'')}, given {type(val)}")
+    if isinstance(type(val), bytes):
+        raise TypeError(f"IP Address given is not expected {bytes}, given {type(val)}")
 
 
 def b2s_ip_addr(bval):

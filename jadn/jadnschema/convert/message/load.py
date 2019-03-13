@@ -6,9 +6,13 @@ import json
 import os
 import xmltodict
 
-from jadn.enums import OpenC2MessageFormats
-from jadn.utils import Utils, isBase64
-from jadn.codec.codec_format import s2b_ip_addr
+
+from ...codec.codec_format import s2b_ip_addr
+from ... import (
+    enums,
+    utils
+)
+
 
 try:
     from StringIO import StringIO
@@ -22,7 +26,7 @@ def jsonWalk(node):
         if isinstance(item, (int, str, float)):
             if key in ['src_addr', 'dst_addr']:
                 tmp_ip = item + ((4 - len(item) % 4) % 4) * '='
-                if isBase64(tmp_ip):
+                if utils.isBase64(tmp_ip):
                     tmp_item = item
                 else:
                     tmp_item = base64.b64encode(s2b_ip_addr(item))
@@ -41,7 +45,7 @@ def jsonWalk(node):
     return tmp_node
 
 
-def OpenC2MessageLoader(msg='', msgType=OpenC2MessageFormats.JSON):
+def essageLoader(msg='', msgType=enums.MessageFormats.JSON):
     def load_json(m):
         """
         :param m: JSON Encoded message
@@ -99,7 +103,7 @@ def OpenC2MessageLoader(msg='', msgType=OpenC2MessageFormats.JSON):
         else:
             raise Exception('Cannot load cbor, improperly formatted')
 
-        return Utils.defaultEncode(rtn)
+        return utils.default_encode(rtn)
 
     def load_protobuf(m):
         """
@@ -153,10 +157,10 @@ def OpenC2MessageLoader(msg='', msgType=OpenC2MessageFormats.JSON):
         'proto': load_protobuf,
         'xml': load_xml
     }
-    if msgType in OpenC2MessageFormats.values():
+    if msgType in enums.MessageFormats.values():
         tmp = load.get(msgType, load['json'])(msg)
         # tmp = Utils.defaultDecode(Utils.defaultEncode(jsonWalk(tmp)))
         # print(tmp)
         return tmp
     else:
-        raise ValueError("Message Type is not a Valid OpenC2 Message Format")
+        raise ValueError("Message Type is not a Valid Message Format")

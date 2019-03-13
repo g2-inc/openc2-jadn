@@ -15,13 +15,7 @@ from .... import (
 
 
 class JADNtoHTML(JADNConverterBase):
-    def __init__(self, jadn):
-        """
-        Schema Converter Init
-        :param jadn: str or dict of the JADN schema
-        """
-        super(JADNtoHTML, self).__init__(jadn)
-        self._themeFile = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'theme.css')  # Default theme
+    _themeFile = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'theme.css')  # Default theme
 
     def html_dump(self, styles=''):
         """
