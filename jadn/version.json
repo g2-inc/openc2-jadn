@@ -1,6 +1,6 @@
 {
-  "name" : "JADN",
-  "pkg_name": "jadn",
+  "name" : "JADN Schema",
+  "pkg_name": "jadnschema",
   "version" : {
     "number" : {
       "major": 0,
