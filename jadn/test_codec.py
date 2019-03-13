@@ -6,8 +6,8 @@ import os
 import binascii
 import unittest
 
-from jadn.codec.codec import Codec
-from jadn.jadn import jadn_load, jadn_check, jadn_analyze
+from jadnschema.codec.codec import Codec
+from jadnschema import jadn_load, jadn_check, jadn_analyze
 
 
 # Encode and decode data to verify that numeric object keys work properly when JSON converts them to strings

@@ -5,11 +5,12 @@ import re
 
 from arpeggio import EOF, Optional, OneOrMore, OrderedChoice, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, UnorderedGroup, ZeroOrMore
 from datetime import datetime
-from jadn.utils import jadn_format, toStr
-from jadn.jadn_defs import is_structure
-from jadn.jadn_utils import fopts_d2s, topts_d2s
 
-# For windows
+from .... import (
+    jadn_defs,
+    jadn_utils,
+    utils
+)
 lineSep = '\\r?\\n'
 
 
@@ -156,7 +157,7 @@ class ThriftVisitor(PTNodeVisitor):
     }
 
     def load_jadnOpts(self, jadnString, defaultDict):
-        jadnString = toStr(jadnString)
+        jadnString = utils.toStr(jadnString)
         defType = defaultDict['type'] if 'type' in defaultDict else 'String'
         optDict = {
             'type': 'String',
@@ -173,7 +174,7 @@ class ThriftVisitor(PTNodeVisitor):
                 optDict['type'] = optDict['type'] if 'type' in optDict else defType
                 if 'options' in optDict:
                     options = optDict['options'] if type(optDict['options']) is dict else {}
-                    optDict['options'] = topts_d2s(options) if is_structure(optDict['type']) else fopts_d2s(options)
+                    optDict['options'] = jadn_utils.topts_d2s(options) if jadn_defs.is_structure(optDict['type']) else jadn_utils.fopts_d2s(options)
                 else:
                     optDict['options'] = []
             except Exception as e:
@@ -352,22 +353,20 @@ def thrift_loads(thrift):
     """
     Produce jadn schema from thrift schema
     :arg thrift: Thrift Schema to convert
-    :type thrift: str
     :return: jadn schema
-    :rtype str
     """
     try:
         parser = ParserPython(ThriftRules)
-        parse_tree = parser.parse(toStr(thrift))
+        parse_tree = parser.parse(utils.toStr(thrift))
         result = visit_parse_tree(parse_tree, ThriftVisitor())
-        return jadn_format(result, indent=2)
+        return utils.jadn_format(result, indent=2)
 
     except Exception as e:
-        raise Exception('Thrift parsing error has occurred: {}'.format(e))
+        raise Exception(f"Thrift parsing error has occurred: {e}")
 
 
 def thrift_load(thrift, fname, source=""):
     with open(fname, "w") as f:
         if source:
-            f.write("-- Generated from {}, {}\n".format(source, datetime.ctime(datetime.now())))
+            f.write(f"-- Generated from {source}, {datetime.ctime(datetime.now())}\n")
         f.write(thrift_loads(thrift))

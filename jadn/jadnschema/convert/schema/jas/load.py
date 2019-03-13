@@ -8,8 +8,10 @@ import os
 
 from datetime import datetime
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
-from jadn.utils import jadn_format, safe_cast, toStr, Utils
-from jadn.jadn_utils import fopts_d2s, topts_d2s
+
+from .... import (
+    utils
+)
 
 lineSep = '\\r?\\n'
 
@@ -28,8 +30,8 @@ stype_map = {                   # Map JAS type names to JAS built-in types (Equi
     'RECORD': 'Record'            # SEQUENCE
 }
 
-def JasRules():
 
+def JasRules():
     def endLine():
         return RegExMatch(r'({})?'.format(os.linesep))
 
@@ -44,7 +46,7 @@ def JasRules():
     def headerComments():
         return OrderedChoice(
                 ZeroOrMore(commentBlock)
-                #ZeroOrMore(commentLine)         
+                # ZeroOrMore(commentLine)
             )
 
     def header():
@@ -144,10 +146,10 @@ def JasRules():
         typeDefs
     )
 
-    
 
 class JasVisitor(PTNodeVisitor):
     data = {}
+
     repeatedTypes = {
         'arrayOf': 'ArrayOf',
         'array': 'Array'
@@ -180,12 +182,12 @@ class JasVisitor(PTNodeVisitor):
             line[1] = re.sub(r'[\s]{2,}', '', str(line[1]))
 
             # Construct list of exports
-            if(line[0] == 'exports'):
+            if line[0] == 'exports':
                 line[1] = line[1].split(', ')    
                 line[1][0] = re.sub(r'[\s]{2,}', '', str(line[1][0]))
 
             # Construct list of imports
-            elif(line[0] == 'imports'):
+            elif line[0] == 'imports':
                 imports = []
                 line[1] = re.sub(r'[\s]{2,}', '', str(line[1]))
                 imports.append([line[1], line[2]])
@@ -193,7 +195,7 @@ class JasVisitor(PTNodeVisitor):
                 continue
 
             # Imports continued, since they do not reside on a single line
-            elif(line[0] not in hdr_list):
+            elif line[0] not in hdr_list:
                 self.data['meta']['imports'].append([line[0], line[1]])
                 continue
 
@@ -216,7 +218,7 @@ class JasVisitor(PTNodeVisitor):
         if children[3] == 'OPTIONAL':
             opt.append("[0")
             match = re.search(r'\'max\':\s+(\d+)', children[-1])
-            if match != None:
+            if match is not None:
                 opt.append("]" + match.group(1))
                 children[-1] = re.sub(r'\s*\%\{\S+\s*\d+\}', '', children[-1])
         item.append(opt)
@@ -227,12 +229,12 @@ class JasVisitor(PTNodeVisitor):
     def visit_repeatedDef(self, node, children):
         # TODO: update how optional parameters and * translate
         compact = []
-        if re.search(r'\.\w+', children[2]) != None:
+        if re.search(r'\.\w+', children[2]) is not None:
             children[2] = re.sub(r'\.ID', '', children[2])
             compact = ["="]
 
         try:
-            comment =  re.sub(r'--\s+', '', children[4][:-1])
+            comment = re.sub(r'--\s+', '', children[4][:-1])
             items = children[5:-1]
         except:
             comment = ""
@@ -259,7 +261,7 @@ class JasVisitor(PTNodeVisitor):
         if children[2] == 'OPTIONAL':
             opt.append("[0")
             match = re.search(r'\'max\':\s+(\d+)', children[-1])
-            if match != None:
+            if match is not None:
                 opt.append("]" + match.group(1))
                 children[-1] = re.sub(r'\s*\%\{\S+\s*\d+\}', '', children[-1])
         item.append(opt)
@@ -270,12 +272,12 @@ class JasVisitor(PTNodeVisitor):
     def visit_recordDef(self, node, children):
         self.record_index = 1
         compact = []
-        if re.search(r'\.\w+', children[2]) != None:
+        if re.search(r'\.\w+', children[2]) is not None:
             children[2] = re.sub(r'\.ID', '', children[2])
             compact = ["="]
 
         try:
-            comment =  re.sub(r'--\s+', '', children[4][:-1])
+            comment = re.sub(r'--\s+', '', children[4][:-1])
             items = children[5:-1]
         except:
             comment = ""
@@ -298,13 +300,13 @@ class JasVisitor(PTNodeVisitor):
 
     def visit_enumDef(self, node, children):
         compact = []
-        if re.search(r'\.\w+', children[2]) != None:
+        if re.search(r'\.\w+', children[2]) is not None:
             children[2] = re.sub(r'\.ID', '', children[2])
             compact = ["="]
 
         comment = ""
         match = re.search('--', str(children[4]))
-        if match != None:
+        if match is not None:
             comment = re.sub(r'--\s+', '', children[4][:-1])
             items = children[5:-1]
         else:
@@ -323,12 +325,12 @@ class JasVisitor(PTNodeVisitor):
 
         # check array type
         match = re.match(r'\((\w+)\)', children[3])
-        if match != None:
+        if match is not None:
             arrayInfo.append(['*' + match.group(1)])
         
         # check array size
         match = re.search(r'(\d+)\.\.(\d+)', children[4])
-        if match != None:
+        if match is not None:
             arrayInfo.append('[' + match.group(1))
             arrayInfo.append(']' + match.group(2))
 
@@ -350,7 +352,7 @@ class JasVisitor(PTNodeVisitor):
         if children[2] == 'INTEGER':
             # match: [min]..[max]
             constraint = re.search(r'\s*(\d*)\.\.(\d*)', children[3])
-            if constraint != None:
+            if constraint is not None:
                 constraint = [constraint.group(1), constraint.group(2)]
                 constraint[0] = '[' + constraint[0]
                 constraint[1] = ']' + constraint[1]
@@ -359,7 +361,7 @@ class JasVisitor(PTNodeVisitor):
         else:
             # match: {constraint}
             constraint = re.search(r'CONSTRAINED\s*BY\s*\{(\S+)\}', children[3])
-            if constraint != None:
+            if constraint is not None:
                 constraint = ['@' + constraint.group(1)]
             else:
                 constraint = []
@@ -397,15 +399,16 @@ def jas_loads(jas):
     """
     try:
         parser = ParserPython(JasRules)
-        parse_tree = parser.parse(toStr(jas))
+        parse_tree = parser.parse(utils.toStr(jas))
         result = visit_parse_tree(parse_tree, JasVisitor())
-        return jadn_format(result, indent=2)
+        return utils.jadn_format(result, indent=2)
 
     except Exception as e:
-        raise Exception('JAS parsing error has occurred: {}'.format(e))
+        raise Exception(f"JAS parsing error has occurred: {e}")
+
 
 def jas_load(jas, fname, source=""):
     with open(fname, "w") as f:
         if source:
-            f.write("-- Generated from " + source + ", " + datetime.ctime(datetime.now()) + "\n\n")
+            f.write(f"-- Generated from {source}, {datetime.ctime(datetime.now())}\n\n")
         f.write(jas_loads(jas))

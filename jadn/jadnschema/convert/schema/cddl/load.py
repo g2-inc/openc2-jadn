@@ -6,14 +6,16 @@ from datetime import datetime
 
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 
-from jadn.utils import jadn_format, safe_cast, toStr
-from jadn.jadn_defs import is_structure
-from jadn.jadn_utils import fopts_d2s, topts_d2s
+from .... import (
+    jadn_defs,
+    jadn_utils,
+    utils
+)
+
 lineSep = '\\r?\\n'
 
 
 def CddlRules():
-
     def endLine():
         return RegExMatch(r'({})?'.format(lineSep))
 
@@ -97,6 +99,7 @@ def CddlRules():
             ),
             OneOrMore(endLine)
         )
+
     def customFields():
             return (
             OneOrMore(RegExMatch(r'[\w-]*')),  # name
@@ -128,7 +131,6 @@ def CddlRules():
 
 
 class CddlVisitor(PTNodeVisitor):
-
     data = {}
     repeatedTypes = {
         'arrayOf': 'ArrayOf',
@@ -136,7 +138,7 @@ class CddlVisitor(PTNodeVisitor):
     }
 
     def load_jadnOpts(self, jadnString, defaultDict):
-        jadnString = toStr(jadnString)
+        jadnString = utils.toStr(jadnString)
         defType = defaultDict['type'] if 'type' in defaultDict else 'String'
         optDict = {
             'type': 'String',
@@ -152,7 +154,7 @@ class CddlVisitor(PTNodeVisitor):
 
                 if 'options' in optDict:
                     options = optDict['options'] if type(optDict['options']) is dict else {}
-                    optDict['options'] = topts_d2s(options) if is_structure(optDict['type']) else fopts_d2s(options)
+                    optDict['options'] = jadn_utils.topts_d2s(options) if jadn_defs.is_structure(optDict['type']) else jadn_utils.fopts_d2s(options)
                 else:
                     optDict['options'] = []
 
@@ -301,8 +303,8 @@ class CddlVisitor(PTNodeVisitor):
         data_dict = re.match(r'\[(?P<min>\d+)?(?P<expr>.)(?P<max>\d+)?\s(?P<type>[\w]+)\]', data_values).groupdict()
 
         # parse out ex: 0*3 Query_Item
-        min = safe_cast(data_dict.get('min', '0'), int, 0)
-        max = safe_cast(data_dict.get('max', '1'), int, 1)
+        min = utils.safe_cast(data_dict.get('min', '0'), int, 0)
+        max = utils.safe_cast(data_dict.get('max', '1'), int, 1)
 
         # result looks like ["*Query-Item", "[0", "]3"]
         values.append(data_dict.get('expr', '*') + data_dict.get('type', 'string'))
@@ -342,9 +344,9 @@ def cddl_loads(cddl):
     """
     try:
         parser = ParserPython(CddlRules)
-        parse_tree = parser.parse(toStr(cddl))
+        parse_tree = parser.parse(utils.toStr(cddl))
         result = visit_parse_tree(parse_tree, CddlVisitor())
-        return jadn_format(result, indent=2)
+        return utils.jadn_format(result, indent=2)
 
     except Exception as e:
         raise Exception('CDDL parsing error has occurred: {}'.format(e))

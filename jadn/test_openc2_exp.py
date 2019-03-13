@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 import os
 import unittest
 
-from jadn.codec.codec import Codec
-from jadn.jadn import jadn_load, jadn_analyze
+from jadnschema.codec.codec import Codec
+from jadnschema import jadn_load, jadn_analyze
 
 # These unit tests include features that are not currently used in the OpenC2 Language Specification or
 # any actuator profile.  They demonstrate that potential features work and show how to use them, to

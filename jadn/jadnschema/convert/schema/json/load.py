@@ -5,8 +5,10 @@ import re
 
 from datetime import datetime
 
-from jadn.utils import jadn_format, safe_cast, toStr
-from jadn.jadn_utils import fopts_d2s, topts_d2s
+from .... import (
+    jadn_utils,
+    utils
+)
 
 
 class JSONtoJADN(object):
@@ -190,11 +192,11 @@ class JSONtoJADN(object):
             if k not in itm.get('required', []):
                 field['opts']['min'] = 0
 
-            field['opts'] = fopts_d2s(field['opts'])
+            field['opts'] = jadn_utils.fopts_d2s(field['opts'])
             tmp_def['fields'].append(field)
             i += 1
 
-        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['opts'] = jadn_utils.topts_d2s(tmp_def['opts'])
         tmp_def['fields'] = [list(field.values()) for field in tmp_def['fields']]
         return list(tmp_def.values())
 
@@ -224,11 +226,11 @@ class JSONtoJADN(object):
                     desc=v.get('description', '').strip(),
                 )
 
-                field['opts'] = fopts_d2s(field['opts'])
+                field['opts'] = jadn_utils.fopts_d2s(field['opts'])
                 tmp_def['fields'].append(field)
                 i += 1
 
-        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['opts'] = jadn_utils.topts_d2s(tmp_def['opts'])
         tmp_def['fields'] = [list(field.values()) for field in tmp_def['fields']]
         return list(tmp_def.values())
 
@@ -261,11 +263,11 @@ class JSONtoJADN(object):
                 if k not in itm.get('required', []):
                     field['opts']['min'] = 0
 
-                field['opts'] = fopts_d2s(field['opts'])
+                field['opts'] = jadn_utils.fopts_d2s(field['opts'])
                 tmp_def['fields'].append(field)
                 i += 1
 
-        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['opts'] = jadn_utils.topts_d2s(tmp_def['opts'])
         tmp_def['fields'] = [list(field.values()) for field in tmp_def['fields']]
         return list(tmp_def.values())
 
@@ -288,14 +290,14 @@ class JSONtoJADN(object):
         if 'options' in itm:
             if str(itm['options'][0]['value']).isdigit(): tmp_def['opts']['compact'] = True
             for field in itm['options']:
-                tmp_def['fields'].append([safe_cast(field['value'], int, i), field['label'], field['description']])
+                tmp_def['fields'].append([utils.safe_cast(field['value'], int, i), field['label'], field['description']])
                 i += 1
         else:
             for field in itm['enum']:
                 tmp_def['fields'].append([i, field, ''])
                 i += 1
 
-        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['opts'] = jadn_utils.topts_d2s(tmp_def['opts'])
         return list(tmp_def.values())
 
     def _formatArray(self, name, itm):  # TODO: what should this do??
@@ -326,11 +328,11 @@ class JSONtoJADN(object):
             if k not in itm.get('items', {}).get('required', []):
                 field['opts']['min'] = 0
 
-            field['opts'] = fopts_d2s(field['opts'])
+            field['opts'] = jadn_utils.fopts_d2s(field['opts'])
             tmp_def['fields'].append(field)
             i += 1
 
-        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['opts'] = jadn_utils.topts_d2s(tmp_def['opts'])
         tmp_def['fields'] = [list(field.values()) for field in tmp_def['fields']]
         return list(tmp_def.values())
 
@@ -353,7 +355,7 @@ class JSONtoJADN(object):
         )
         tmp_def['opts'].update(self._optReformat('array', itm, True))
 
-        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['opts'] = jadn_utils.topts_d2s(tmp_def['opts'])
         return list(tmp_def.values())
 
     def _formatCustom(self, name, itm):
@@ -374,7 +376,7 @@ class JSONtoJADN(object):
         if 'format' in itm and itm['format'] != 'binary':
             tmp_def['opts']['format'] = itm['format']
 
-        tmp_def['opts'] = topts_d2s(tmp_def['opts'])
+        tmp_def['opts'] = jadn_utils.topts_d2s(tmp_def['opts'])
         return list(tmp_def.values())
 
     # Helper Functions
@@ -424,7 +426,7 @@ def json_loads(json):
     :return: JADN schema
     :rtype str
     """
-    return jadn_format(JSONtoJADN(json).jadn_dump())
+    return utils.jadn_format(JSONtoJADN(json).jadn_dump())
 
 
 def json_load(jsn, fname, source=""):

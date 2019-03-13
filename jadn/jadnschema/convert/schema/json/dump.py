@@ -3,10 +3,13 @@ import re
 
 from datetime import datetime
 
-from jadn.jadn_utils import fopts_s2d, topts_s2d
-from jadn.enums import CommentLevels
-from jadn.utils import safe_cast, Utils
+
 from ..base_dump import JADNConverterBase
+from .... import (
+    enums,
+    jadn_utils,
+    utils
+)
 
 
 class JADNtoJSON(JADNConverterBase):
@@ -63,7 +66,7 @@ class JADNtoJSON(JADNConverterBase):
         :return: JSON schema
         """
         if com:
-            self.comm = com if com in CommentLevels.values() else CommentLevels.ALL
+            self.comm = com if com in enums.CommentLevels.values() else enums.CommentLevels.ALL
         exports = self._meta.get('exports', [])
 
         rtn = self.makeHeader()
@@ -114,7 +117,7 @@ class JADNtoJSON(JADNConverterBase):
         """
         defs = {}
         for field in self._custom:
-            field_opts = topts_s2d(field.opts)
+            field_opts = jadn_utils.topts_s2d(field.opts)
 
             def_field = self._fieldType(field.type)
             def_field.update(self._formatComment(field.desc))
@@ -130,12 +133,12 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: record to format
         :return: formatted record
         """
-        itm_opts = topts_s2d(itm['opts'])
+        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         properties = {}
         required = []
 
         for prop in itm.fields:
-            prop_opts = fopts_s2d(prop.opts)
+            prop_opts = jadn_utils.fopts_s2d(prop.opts)
 
             if not self._is_optional(prop_opts):
                 required.append(prop.name)
@@ -171,12 +174,12 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: choice to format
         :return: formatted choice
         """
-        itm_opts = topts_s2d(itm['opts'])
+        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         fields = []
         properties = {}
 
         for prop in itm.fields:
-            prop_opts = fopts_s2d(prop.opts)
+            prop_opts = jadn_utils.fopts_s2d(prop.opts)
             fields.append(prop.name)
 
             tmp_def = self._fieldType(prop.type)
@@ -210,13 +213,13 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: map to format
         :return: formatted map
         """
-        itm_opts = topts_s2d(itm['opts'])
+        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         fields = []
         properties = {}
         required = []
 
         for prop in itm.fields:
-            prop_opts = fopts_s2d(prop.opts)
+            prop_opts = jadn_utils.fopts_s2d(prop.opts)
             fields.append(prop.name)
 
             if not self._is_optional(prop_opts):
@@ -265,7 +268,7 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: enum to format
         :return: formatted enum
         """
-        itm_opts = topts_s2d(itm['opts'])
+        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         enum = []
         enum_type = 'string'
         options = []
@@ -294,7 +297,7 @@ class JADNtoJSON(JADNConverterBase):
             enum=enum
         )
 
-        if self.comm != CommentLevels.NONE:
+        if self.comm != enums.CommentLevels.NONE:
             type_def['options'] = options
 
         return {
@@ -307,12 +310,12 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: array to format
         :return: formatted array
         """
-        itm_opts = topts_s2d(itm['opts'])
+        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         properties = {}
         required = []
 
         for prop in itm.fields:
-            prop_opts = fopts_s2d(prop.opts)
+            prop_opts = jadn_utils.fopts_s2d(prop.opts)
 
             if not self._is_optional(prop_opts):
                 required.append(prop.name)
@@ -355,7 +358,7 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: arrayof to format
         :return: formatted arrayof
         """
-        itm_opts = topts_s2d(itm['opts'])
+        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         rtype = itm_opts.get('rtype', 'String')
 
         type_def = dict(
@@ -400,8 +403,8 @@ class JADNtoJSON(JADNConverterBase):
                 return False
 
             return any([
-                k == 'min' and safe_cast(v, int, 1) < 1,
-                k == 'max' and safe_cast(v, int, 1) < 1,
+                k == 'min' and utils.safe_cast(v, int, 1) < 1,
+                k == 'max' and utils.safe_cast(v, int, 1) < 1,
             ])
 
         for key, val in opts.items():
@@ -451,7 +454,7 @@ class JADNtoJSON(JADNConverterBase):
         :param kargs: key/value comments
         :return: formatted comment
         """
-        if self.comm == CommentLevels.NONE:
+        if self.comm == enums.CommentLevels.NONE:
             return {}
 
         com = ''
@@ -478,18 +481,18 @@ class JADNtoJSON(JADNConverterBase):
         return {}
 
 
-def json_dumps(jadn, comm=CommentLevels.ALL):
+def json_dumps(jadn, comm=enums.CommentLevels.ALL):
     """
     Produce JSON schema from JADN schema
     :param jadn: JADN Schema to convert
     :param comm: Level of comments to include in converted schema
     :return: JSON schema
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
     return JADNtoJSON(jadn).json_dump(comm)
 
 
-def json_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+def json_dump(jadn, fname, source="", comm=enums.CommentLevels.ALL):
     """
     Produce JSON schema from JADN schema and write to file provided
     :param jadn: JADN Schema to convert
@@ -502,7 +505,7 @@ def json_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     :type comm: str of enums.CommentLevel
     :return: N/A
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
     with open(fname, "w") as f:
         if source:

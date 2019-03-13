@@ -3,10 +3,12 @@ import re
 
 from datetime import datetime
 
-from jadn.jadn_utils import fopts_s2d, topts_s2d
-from jadn.enums import CommentLevels
-from jadn.utils import Utils
 from ..base_dump import JADNConverterBase
+from .... import (
+    enums,
+    jadn_utils,
+    utils
+)
 
 
 class JADNtoProto3(JADNConverterBase):
@@ -21,17 +23,17 @@ class JADNtoProto3(JADNConverterBase):
 
     _imports = []
 
-    def proto_dump(self, com=CommentLevels.ALL):
+    def proto_dump(self, com=enums.CommentLevels.ALL):
         """
         Converts the JADN schema to ProtoBuf3
         :param com: Level of comments to include in converted schema
         :return: Protobuf3 schema
         """
         if com:
-            self.comm = com if com in CommentLevels.values() else CommentLevels.ALL
+            self.comm = com if com in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
         imports = ''.join([f'import \"{imp}\";\n' for imp in self._imports])
-        jadn_fields = ',\n'.join([self._indent+json.dumps(Utils.defaultDecode(list(field.values()))) for field in self._custom])
+        jadn_fields = ',\n'.join([self._indent+json.dumps(utils.default_decode(list(field.values()))) for field in self._custom])
 
         return f"{self.makeHeader()}{imports}{self.makeStructures()}\n/* JADN Custom Fields\n[\n{jadn_fields}\n]\n*/"
 
@@ -48,7 +50,7 @@ class JADNtoProto3(JADNConverterBase):
             f"package {pkg_regex.sub('_', self._meta.get('module', 'JADN_ProtoBuf_Schema'))};",
             '',
             '/*',
-            *[f" * meta: {k} - {header_regex.sub('', json.dumps(Utils.defaultDecode(v)))}" for k, v in self._meta.items()],
+            *[f" * meta: {k} - {header_regex.sub('', json.dumps(utils.default_decode(v)))}" for k, v in self._meta.items()],
             '*/'
         ]
 
@@ -78,13 +80,13 @@ class JADNtoProto3(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             comment = self._formatComment(prop.desc, jadn_opts=opts)
             properties.append(f'{self._indent}{self._fieldType(prop.type)} {self.formatStr(prop.name)} = {prop.id}; {comment}\n')
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = ''.join(properties)
@@ -99,13 +101,13 @@ class JADNtoProto3(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             comment = self._formatComment(prop.desc, jadn_opts=opts)
             properties.append(f'{self._indent}{self._fieldType(prop.type)} {self.formatStr(prop.name)} = {prop.id}; {comment}\n')
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = ''.join(properties)
@@ -133,7 +135,7 @@ class JADNtoProto3(JADNConverterBase):
             properties.append(f'{self._indent}{prop_name} = {prop.id}; {self._formatComment(prop.desc)}\n')
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         default = f"{self._indent}Unknown_{itm.name.replace('-', '_')} = 0; // required starting enum number for protobuf3\n" if default else ''
         comment = self._formatComment(itm.desc, jadn_opts=opts)
@@ -157,7 +159,7 @@ class JADNtoProto3(JADNConverterBase):
         """
         opts = {
             'type': 'arrayOf',
-            'options': topts_s2d(itm.opts)
+            'options': jadn_utils.topts_s2d(itm.opts)
         }
         rtype = self.formatStr(opts['options'].setdefault('rtype', 'String'))
         comment = self._formatComment(itm.desc, jadn_opts=opts)
@@ -190,7 +192,7 @@ class JADNtoProto3(JADNConverterBase):
         :param kargs: key/value comments
         :return: formatted comment
         """
-        if self.comm == CommentLevels.NONE:
+        if self.comm == enums.CommentLevels.NONE:
             return ''
 
         com = '//'
@@ -215,18 +217,18 @@ class JADNtoProto3(JADNConverterBase):
         return ''
 
 
-def proto_dumps(jadn, comm=CommentLevels.ALL):
+def proto_dumps(jadn, comm=enums.CommentLevels.ALL):
     """
     Produce Protobuf3 schema from JADN schema
     :param jadn: JADN Schema to convert
     :param comm: Level of comments to include in converted schema
     :return: Protobuf3 schema
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
     return JADNtoProto3(jadn).proto_dump(comm)
 
 
-def proto_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+def proto_dump(jadn, fname, source="", comm=enums.CommentLevels.ALL):
     """
     Produce ProtoBuf schema from JADN schema and write to file provided
     :param jadn: JADN Schema to convert
@@ -235,7 +237,7 @@ def proto_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     :param comm: Level of comments to include in converted schema
     :return: N/A
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
     with open(fname, "w") as f:
         if source:
             f.write(f"// Generated from {source}, { datetime.ctime(datetime.now())}\n")

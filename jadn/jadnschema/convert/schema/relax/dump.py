@@ -4,10 +4,12 @@ import xml.dom.minidom as md
 
 from datetime import datetime
 
-from jadn.jadn_utils import fopts_s2d, topts_s2d
-from jadn.enums import CommentLevels
-from jadn.utils import toStr, Utils
 from ..base_dump import JADNConverterBase
+from .... import (
+    enums,
+    jadn_utils,
+    utils
+)
 
 
 class JADNtoRelaxNG(JADNConverterBase):
@@ -20,14 +22,14 @@ class JADNtoRelaxNG(JADNConverterBase):
         'String': 'string'
     }
 
-    def relax_dump(self, comm=CommentLevels.ALL):
+    def relax_dump(self, comm=enums.CommentLevels.ALL):
         """
         Converts the JADN schema to RelaxNG
         :param com: Level of comments to include in converted schema
         :return: RelaxNG schema
         """
         if comm:
-            self.comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+            self.comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
         records = [t.name for t in self._types if t.type == 'Record']  # self._meta.get('exports', [])
         # TODO: What should be here??
@@ -63,7 +65,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         header = []
         for k in self._meta_order:
             if k in self._meta:
-                header.append(f"<!-- meta: {k} - {header_regex.sub('', json.dumps(Utils.defaultDecode(self._meta[k])))} -->")
+                header.append(f"<!-- meta: {k} - {header_regex.sub('', json.dumps(utils.default_decode(self._meta[k])))} -->")
 
         return '\n'.join(header) + '\n\n'
 
@@ -87,7 +89,7 @@ class JADNtoRelaxNG(JADNConverterBase):
             com = '' if field.desc == '' else field.desc
 
             if len(field.opts) >= 1:
-                opts = {'options': topts_s2d(field.opts)}
+                opts = {'options': jadn_utils.topts_s2d(field.opts)}
                 com += f' #jadn_opts:{json.dumps(opts)}'
 
             c = self._formatTag(
@@ -110,7 +112,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             ltmp = self._formatTag(
                 'element',
@@ -125,7 +127,7 @@ class JADNtoRelaxNG(JADNConverterBase):
                 properties.append(ltmp)
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(prop.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(prop.opts)
 
         return self._formatTag(
             'define',
@@ -144,7 +146,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         for prop in itm.fields:
             n = self.formatStr(prop.name or f'Unknown_{self.formatStr(itm.name)}_{prop.id}')
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             properties.append(self._formatTag(
                 'element',
@@ -154,7 +156,7 @@ class JADNtoRelaxNG(JADNConverterBase):
             ))
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         return self._formatTag(
             'define',
@@ -172,7 +174,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             ltmp = self._formatTag(
                 'element',
@@ -187,7 +189,7 @@ class JADNtoRelaxNG(JADNConverterBase):
                 properties.append(ltmp)
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         return self._formatTag(
             'define',
@@ -212,7 +214,7 @@ class JADNtoRelaxNG(JADNConverterBase):
             ))
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         return self._formatTag(
             'define',
@@ -228,12 +230,12 @@ class JADNtoRelaxNG(JADNConverterBase):
         :return: formatted array
         """
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             ltmp = self._formatTag(
                 'element',
@@ -263,7 +265,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         :param itm: arrayof to format
         :return: formatted arrayof
         """
-        field_opts = topts_s2d(itm.opts)
+        field_opts = jadn_utils.topts_s2d(itm.opts)
 
         opts = {'type': itm.type}
         if len(field_opts.keys()) > 0: opts['options'] = field_opts
@@ -312,7 +314,7 @@ class JADNtoRelaxNG(JADNConverterBase):
                 elm += self._formatComment(com)
 
             if isinstance(contents, (str, int, float, complex)):
-                elm += toStr(contents)
+                elm += utils.toStr(contents)
 
             elif isinstance(contents, list):
                 elm += ''.join(itm for itm in contents if type(itm) is str)
@@ -334,7 +336,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         :param kargs: key/value comments
         :return: formatted comment
         """
-        if self.comm == CommentLevels.NONE:
+        if self.comm == enums.CommentLevels.NONE:
             return ''
 
         if isinstance(msg, str):
@@ -370,18 +372,18 @@ class JADNtoRelaxNG(JADNConverterBase):
         return rtn
 
 
-def relax_dumps(jadn, comm=CommentLevels.ALL):
+def relax_dumps(jadn, comm=enums.CommentLevels.ALL):
     """
     Produce CDDL schema from JADN schema
     :param jadn: JADN Schema to convert
     :param com: Level of comments to include in converted schema
     :return: Protobuf3 schema
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
     return JADNtoRelaxNG(jadn).relax_dump(comm)
 
 
-def relax_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+def relax_dump(jadn, fname, source="", comm=enums.CommentLevels.ALL):
     """
     Produce RelaxNG scheema from JADN schema and write to file provided
     :param jadn: JADN Schema to convert
@@ -390,7 +392,7 @@ def relax_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     :param comm: Level of comments to include in converted schema
     :return: None
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
     with open(fname, "w") as f:
         if source:
             f.write(f"<!-- Generated from {source}, {datetime.ctime(datetime.now())} -->\n")

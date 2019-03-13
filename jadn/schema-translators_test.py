@@ -2,8 +2,8 @@ import json
 import os
 import re
 
-from jadn.enums import CommentLevels
-from jadn.convert import (
+from jadnschema.enums import CommentLevels
+from jadnschema.convert import (
     json_dump,
     json_load
 )

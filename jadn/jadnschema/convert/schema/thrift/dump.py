@@ -2,10 +2,12 @@ import datetime
 import json
 import re
 
-from jadn.jadn_utils import fopts_s2d, topts_s2d
-from jadn.enums import CommentLevels
-from jadn.utils import Utils
 from ..base_dump import JADNConverterBase
+from .... import (
+    enums,
+    jadn_utils,
+    utils
+)
 
 
 class JADNtoThrift(JADNConverterBase):
@@ -20,17 +22,17 @@ class JADNtoThrift(JADNConverterBase):
 
     _imports = []
 
-    def thrift_dump(self, comm=CommentLevels.ALL):
+    def thrift_dump(self, comm=enums.CommentLevels.ALL):
         """
         Converts the JADN schema to Thrift
         :param comm: Level of comments to include in converted schema
         :return: Thrift schema
         """
         if comm:
-            self.comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+            self.comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
         imports = ''.join([f'import \"{imp}\";\n' for imp in self._imports])
-        jadn_fields = ',\n'.join([self._indent+json.dumps(Utils.defaultDecode(list(field.values()))) for field in self._custom])
+        jadn_fields = ',\n'.join([self._indent+json.dumps(utils.default_decode(list(field.values()))) for field in self._custom])
 
         return f'{self.makeHeader()}{imports}{self.makeStructures()}\n/* JADN Custom Fields\n[\n{jadn_fields}\n]\n*/'
 
@@ -42,7 +44,7 @@ class JADNtoThrift(JADNConverterBase):
         header_regex = re.compile(r'(^\"|\"$)')
         header = [
             '/*',
-            *[f" * meta: {k} - {header_regex.sub('', json.dumps(Utils.defaultDecode(v)))}" for k, v in self._meta.items()],
+            *[f" * meta: {k} - {header_regex.sub('', json.dumps(utils.default_decode(v)))}" for k, v in self._meta.items()],
             '*/'
         ]
 
@@ -73,14 +75,14 @@ class JADNtoThrift(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = topts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.topts_s2d(prop.opts)
 
             optional = 'optional' if self._is_optional(opts.get('options', {})) else 'required'
             comment = self._formatComment(prop.desc, jadn_opts=opts)
             properties.append(f'{self._indent}{prop.id}: {optional} {self._fieldType(prop.type)} {self.formatStr(prop.name)}; {comment}\n')
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment('' if itm.desc == '' else itm.desc, jadn_opts=opts)
         properties = ''.join(properties)
@@ -96,13 +98,13 @@ class JADNtoThrift(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             comment = self._formatComment(prop.desc, jadn_opts=opts)
             properties.append(f'{self._indent}{prop.id}: optional {self._fieldType(prop.type)} {self.formatStr(prop.name)}; {comment}\n')
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment('' if itm.desc == '' else itm.desc, jadn_opts=opts)
         properties = ''.join(properties)
@@ -129,7 +131,7 @@ class JADNtoThrift(JADNConverterBase):
             properties.append(f'{self._indent}{prop_name} = {prop.id}; {self._formatComment(prop.desc)}\n')
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = ''.join(properties)
@@ -152,7 +154,7 @@ class JADNtoThrift(JADNConverterBase):
         :return: formatted arrayof
         """
         # Best method for creating some type of array
-        field_opts = topts_s2d(itm.opts)
+        field_opts = jadn_utils.topts_s2d(itm.opts)
         opts = {
             'type': itm.type,
             'options': field_opts
@@ -187,7 +189,7 @@ class JADNtoThrift(JADNConverterBase):
         :param kargs: key/value comments
         :return: formatted comment
         """
-        if self.comm == CommentLevels.NONE:
+        if self.comm == enums.CommentLevels.NONE:
             return ''
 
         com = '//'
@@ -199,18 +201,18 @@ class JADNtoThrift(JADNConverterBase):
         return '' if re.match(r'^\/\/\s+$', com) else com
 
 
-def thrift_dumps(jadn, comm=CommentLevels.ALL):
+def thrift_dumps(jadn, comm=enums.CommentLevels.ALL):
     """
     Produce Thrift schema from JADN schema
     :param jadn: JADN Schema to convert
     :param comm: Level of comments to include in converted schema
     :return: Thrift schema
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
     return JADNtoThrift(jadn).thrift_dump(comm)
 
 
-def thrift_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+def thrift_dump(jadn, fname, source="", comm=enums.CommentLevels.ALL):
     """
     Produce Thrift scheema from JADN schema and write to file provided
     :param jadn: JADN Schema to convert
@@ -219,7 +221,7 @@ def thrift_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     :param comm: Level of comments to include in converted schema
     :return: None
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
     with open(fname, "w") as f:
         if source:
             f.write(f"// Generated from {source}, {datetime.ctime(datetime.now())}\n")

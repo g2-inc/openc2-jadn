@@ -7,8 +7,11 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from html5print import CSSBeautifier
 
-from jadn.jadn_utils import fopts_s2d, topts_s2d
+
 from ..base_dump import JADNConverterBase
+from .... import (
+    jadn_utils
+)
 
 
 class JADNtoHTML(JADNConverterBase):
@@ -124,7 +127,7 @@ class JADNtoHTML(JADNConverterBase):
 
         body = []
         for row in self._custom:
-            opts = topts_s2d(row.opts)
+            opts = jadn_utils.topts_s2d(row.opts)
             fmt = f" ({opts['format']})" if 'format' in opts else ''
 
             body.append(dict(
@@ -193,7 +196,7 @@ class JADNtoHTML(JADNConverterBase):
         fields_table = choice_html.new_tag('table')
 
         field_caption = choice_html.new_tag('caption')
-        opts = topts_s2d(itm.opts)
+        opts = jadn_utils.topts_s2d(itm.opts)
         field_caption.string = f"{self.formatStr(itm.name)} (Choice{'' if len(opts.keys()) == 0 else f' {json.dumps(opts)}'})"
         fields_table.append(field_caption)
 
@@ -229,7 +232,7 @@ class JADNtoHTML(JADNConverterBase):
         fields_table = map_html.new_tag('table')
 
         field_caption = map_html.new_tag('caption')
-        opts = topts_s2d(itm.opts)
+        opts = jadn_utils.topts_s2d(itm.opts)
         field_caption.string = f"{self.formatStr(itm.name)} (Map{'' if len(opts.keys()) == 0 else f' {json.dumps(opts)}'})"
         fields_table.append(field_caption)
 
@@ -266,7 +269,7 @@ class JADNtoHTML(JADNConverterBase):
         fields_table = enumerated_html.new_tag('table')
 
         field_caption = enumerated_html.new_tag('caption')
-        opts = topts_s2d(itm.opts)
+        opts = jadn_utils.topts_s2d(itm.opts)
         field_caption.string = f"{self.formatStr(itm.name)} (Enumerated{'.Tag' if 'compact' in opts else ''})"
         fields_table.append(field_caption)
 
@@ -343,7 +346,7 @@ class JADNtoHTML(JADNConverterBase):
             arrayOf_html.append(comment)
 
         options = arrayOf_html.new_tag('p')
-        field_opts = topts_s2d(itm.opts)
+        field_opts = jadn_utils.topts_s2d(itm.opts)
         options.string = f"{self.formatStr(itm.name)} (ArrayOf.{self.formatStr(field_opts.get('rtype', 'string'))} [\'{field_opts.get('max', '')}\', \'{field_opts.get('min', '')}\'])"
 
         arrayOf_html.append(options)
@@ -460,7 +463,7 @@ class JADNtoHTML(JADNConverterBase):
                 row_cell = _table.new_tag('td')
 
                 if type(cell) is list:
-                    opts = fopts_s2d(cell)
+                    opts = jadn_utils.fopts_s2d(cell)
                     tmp_str = str(opts['min']) if 'min' in opts else '1'
                     tmp_str += ('..' + str('n' if opts['max'] == 0 else opts['max'])) if 'max' in opts else ('..1' if 'min' in opts else '')
                     # TODO: More options

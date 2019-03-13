@@ -5,7 +5,7 @@ Merge a JSON Abstract Data Notation (JADN) module and its imported modules into 
 from __future__ import print_function
 import os
 
-from jadn.jadn import jadn_load, jadn_dump, jadn_merge
+from jadnschema import jadn_load, jadn_dump, jadn_merge
 
 
 def merge(idir):

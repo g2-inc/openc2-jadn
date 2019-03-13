@@ -2,7 +2,7 @@ import os
 
 from jadn import OpenC2MessageFormats
 from jadn.codec import Codec
-from jadn.jadn import jadn_load
+from jadn.jadnschema import jadn_load
 from jadn.message import OpenC2Message
 
 msgs = {}

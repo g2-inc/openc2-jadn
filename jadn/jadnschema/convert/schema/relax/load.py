@@ -5,15 +5,17 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup, Comment
 
-from jadn.utils import jadn_format, toStr
-from jadn.jadn_defs import is_structure
-from jadn.jadn_utils import fopts_d2s, topts_d2s, fopts_s2d, topts_s2d
+from .... import (
+    jadn_defs,
+    jadn_utils,
+    utils
+)
 
 
 class Relax2Jadn(object):
     def __init__(self, relax):
         if type(relax) in [str, bytes]:
-            relax = toStr(relax).replace('\n', '')
+            relax = utils.toStr(relax).replace('\n', '')
             relax = re.sub(r'>\s*?<', '><', relax)
             self.schema = BeautifulSoup(relax, 'html.parser')
 
@@ -35,7 +37,7 @@ class Relax2Jadn(object):
             'types': self.makeTypes()
         }
 
-        return jadn_format(jadn, indent=2)
+        return utils.jadn_format(jadn, indent=2)
 
     def makeMeta(self):
         meta = {}
@@ -67,11 +69,11 @@ class Relax2Jadn(object):
 
                 if 'options' in opts:
                     options = opts['options'] if type(opts['options']) is dict else {}
-                    tmp_type.append(topts_d2s(options))
+                    tmp_type.append(jadn_utils.topts_d2s(options))
                 else:
                     tmp_type.append([])
 
-                tmp_type.append(topts_d2s(opts['options']) if 'options' in opts else [])
+                tmp_type.append(jadn_utils.topts_d2s(opts['options']) if 'options' in opts else [])
 
                 tmp_type.append(com)
                 children = children[1:]
@@ -142,7 +144,7 @@ class Relax2Jadn(object):
 
                     if 'options' in opts:
                         options = opts['options'] if type(opts['options']) is dict else {}
-                        tmp_def.append(topts_d2s(options) if is_structure(opts['type']) else fopts_d2s(options))
+                        tmp_def.append(jadn_utils.topts_d2s(options) if jadn_defs.is_structure(opts['type']) else jadn_utils.fopts_d2s(options))
                     else:
                         tmp_def.append([])
 

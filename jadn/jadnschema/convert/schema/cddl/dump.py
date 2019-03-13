@@ -3,10 +3,12 @@ import re
 
 from datetime import datetime
 
-from jadn.jadn_utils import fopts_s2d, topts_s2d
-from jadn.enums import CommentLevels
-from jadn.utils import Utils
 from ..base_dump import JADNConverterBase
+from .... import (
+    enums,
+    jadn_utils,
+    utils
+)
 
 
 class JADNtoCDDL(JADNConverterBase):
@@ -21,14 +23,14 @@ class JADNtoCDDL(JADNConverterBase):
         'String': 'bstr'
     }
 
-    def cddl_dump(self, comm=CommentLevels.ALL):
+    def cddl_dump(self, comm=enums.CommentLevels.ALL):
         """
         Converts the JADN schema to CDDL
         :param comm: Level of comments to include in converted schema
         :return: CDDL schema
         """
         if comm:
-            self.comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+            self.comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
         doubleEmpty = re.compile('^$\n?^$', re.MULTILINE)
         return re.sub(doubleEmpty, '', f'{self.makeHeader()}{self.makeStructures()}\n{self.makeCustom()}\n')
@@ -39,7 +41,7 @@ class JADNtoCDDL(JADNConverterBase):
         :return: header for schema
         """
         header_regex = re.compile(r'(^\"|\"$)')
-        header = [f"; meta: {k} - {header_regex.sub('', json.dumps(Utils.defaultDecode(v)))}" for k, v in self._meta.items()]
+        header = [f"; meta: {k} - {header_regex.sub('', json.dumps(utils.default_decode(v)))}" for k, v in self._meta.items()]
 
         return '\n'.join(header) + '\n'
 
@@ -71,7 +73,7 @@ class JADNtoCDDL(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             optional = '? ' if self._is_optional(opts.get('options', {})) else ''
             comment = (', ' if i > 1 else ' ') + self._formatComment(prop.desc, jadn_opts=opts)
@@ -79,7 +81,7 @@ class JADNtoCDDL(JADNConverterBase):
             i -= 1
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = ''.join(properties)
@@ -95,14 +97,14 @@ class JADNtoCDDL(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             comment = ('// ' if i > 1 else '') + self._formatComment(prop.desc, jadn_opts=opts)
             properties.append(f"{self.formatStr(prop.name)}: {self._fieldType(prop.type)} {comment}")
             i -= 1
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = f'\n{self._indent}'.join(properties)
@@ -118,7 +120,7 @@ class JADNtoCDDL(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             optional = '? ' if self._is_optional(opts.get('options', {})) else ''
             comment = (', ' if i > 1 else ' ') + self._formatComment(prop.desc, jadn_opts=opts)
@@ -126,7 +128,7 @@ class JADNtoCDDL(JADNConverterBase):
             i -= 1
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = ''.join(properties)
@@ -147,7 +149,7 @@ class JADNtoCDDL(JADNConverterBase):
             properties.append(f'\"{value}\" {self._formatComment(prop.desc, jadn_opts=opts)}\n')
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = f'{enum_name} /= '.join(properties)
@@ -160,13 +162,13 @@ class JADNtoCDDL(JADNConverterBase):
         :return: formatted array
         """
         type_opts = {'type': itm.type}
-        if len(itm.opts) > 0: type_opts['options'] = fopts_s2d(itm.opts)
+        if len(itm.opts) > 0: type_opts['options'] = jadn_utils.fopts_s2d(itm.opts)
 
         i = len(itm.fields)
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             optional = '? ' if self._is_optional(opts.get('options', {})) else ''
             comment = (', ' if i > 1 else ' ') + self._formatComment(prop.desc, jadn_opts=opts)
@@ -183,7 +185,7 @@ class JADNtoCDDL(JADNConverterBase):
         :param itm: arrayof to format
         :return: formatted arrayof
         """
-        field_opts = topts_s2d(itm.opts)
+        field_opts = jadn_utils.topts_s2d(itm.opts)
 
         field_type = f"[{field_opts.get('min', '')}*{field_opts.get('max', '')} {self.formatStr(field_opts.get('rtype', 'string'))}]"
 
@@ -215,7 +217,7 @@ class JADNtoCDDL(JADNConverterBase):
         :param kargs: key/value comments
         :return: formatted comment
         """
-        if self.comm == CommentLevels.NONE:
+        if self.comm == enums.CommentLevels.NONE:
             return ''
 
         com = ';'
@@ -227,18 +229,18 @@ class JADNtoCDDL(JADNConverterBase):
         return '' if re.match(r'^;\s+$', com) else com
 
 
-def cddl_dumps(jadn, comm=CommentLevels.ALL):
+def cddl_dumps(jadn, comm=enums.CommentLevels.ALL):
     """
     Produce CDDL schema from JADN schema
     :param jadn: JADN Schema to convert
     :param comm: Level of comments to include in converted schema
     :return: CDDL schema
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
     return JADNtoCDDL(jadn).cddl_dump(comm)
 
 
-def cddl_dump(jadn, fname, source="", comm=CommentLevels.ALL):
+def cddl_dump(jadn, fname, source="", comm=enums.CommentLevels.ALL):
     """
     Produce CDDL schema from JADN schema and write to file provided
     :param jadn: JADN Schema to convert
@@ -247,7 +249,7 @@ def cddl_dump(jadn, fname, source="", comm=CommentLevels.ALL):
     :param comm: Level of comments to include in converted schema
     :return: None
     """
-    comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+    comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
     with open(fname, "w") as f:
         if source:
