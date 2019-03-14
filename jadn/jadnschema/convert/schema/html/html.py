@@ -5,7 +5,6 @@ import os
 
 from bs4 import BeautifulSoup
 from datetime import datetime
-from html5print import CSSBeautifier
 
 
 from ..base_dump import JADNConverterBase
@@ -151,11 +150,7 @@ class JADNtoHTML(JADNConverterBase):
             comment.string = itm.desc
             record_html.append(comment)
 
-        fields_table = record_html.new_tag('table')
-
-        field_caption = record_html.new_tag('caption')
-        field_caption.string = f'{self.formatStr(itm.name)} (Record)'
-        fields_table.append(field_caption)
+        caption = f'{self.formatStr(itm.name)} (Record)'
 
         table_opts = {
             'ID': {'class': 'n'},
@@ -165,8 +160,7 @@ class JADNtoHTML(JADNConverterBase):
             'Description': {'class': 's'},
         }
 
-        fields_table.append(self._makeTable(table_opts, itm.fields))
-
+        fields_table = self._makeTable(table_opts, itm.fields, caption)
         record_html.append(fields_table)
         return record_html
 
@@ -187,12 +181,8 @@ class JADNtoHTML(JADNConverterBase):
             comment.string = itm.desc
             choice_html.append(comment)
 
-        fields_table = choice_html.new_tag('table')
-
-        field_caption = choice_html.new_tag('caption')
         opts = jadn_utils.topts_s2d(itm.opts)
-        field_caption.string = f"{self.formatStr(itm.name)} (Choice{'' if len(opts.keys()) == 0 else f' {json.dumps(opts)}'})"
-        fields_table.append(field_caption)
+        caption = f"{self.formatStr(itm.name)} (Choice{'' if len(opts.keys()) == 0 else f' {json.dumps(opts)}'})"
 
         table_opts = {
             'ID': {'class': 'n'},
@@ -201,8 +191,7 @@ class JADNtoHTML(JADNConverterBase):
             'Description': {'class': 's'}
         }
 
-        fields_table.append(self._makeTable(table_opts, itm.fields))
-
+        fields_table = self._makeTable(table_opts, itm.fields, caption)
         choice_html.append(fields_table)
         return choice_html
 
@@ -223,12 +212,8 @@ class JADNtoHTML(JADNConverterBase):
             comment.string = itm.desc
             map_html.append(comment)
 
-        fields_table = map_html.new_tag('table')
-
-        field_caption = map_html.new_tag('caption')
         opts = jadn_utils.topts_s2d(itm.opts)
-        field_caption.string = f"{self.formatStr(itm.name)} (Map{'' if len(opts.keys()) == 0 else f' {json.dumps(opts)}'})"
-        fields_table.append(field_caption)
+        caption = f"{self.formatStr(itm.name)} (Map{'' if len(opts.keys()) == 0 else f' {json.dumps(opts)}'})"
 
         table_opts = {
             'ID': {'class': 'n'},
@@ -238,7 +223,7 @@ class JADNtoHTML(JADNConverterBase):
             'Description': {'class': 's'},
         }
 
-        fields_table.append(self._makeTable(table_opts, itm.fields))
+        fields_table = self._makeTable(table_opts, itm.fields, caption)
 
         map_html.append(fields_table)
         return map_html
@@ -260,12 +245,8 @@ class JADNtoHTML(JADNConverterBase):
             comment.string = itm.desc
             enumerated_html.append(comment)
 
-        fields_table = enumerated_html.new_tag('table')
-
-        field_caption = enumerated_html.new_tag('caption')
         opts = jadn_utils.topts_s2d(itm.opts)
-        field_caption.string = f"{self.formatStr(itm.name)} (Enumerated{'.Tag' if 'compact' in opts else ''})"
-        fields_table.append(field_caption)
+        caption = f"{self.formatStr(itm.name)} (Enumerated{'.Tag' if 'compact' in opts else ''})"
 
         if 'compact' in opts:
             table_opts = dict(
@@ -282,7 +263,7 @@ class JADNtoHTML(JADNConverterBase):
             )
             body = [{'ID': row.id, 'Name': row.value, 'Description': row.desc} for row in itm.fields]
 
-        fields_table.append(self._makeTable(table_opts, body))
+        fields_table = self._makeTable(table_opts, body, caption)
         enumerated_html.append(fields_table)
         return enumerated_html
 
@@ -303,11 +284,7 @@ class JADNtoHTML(JADNConverterBase):
             comment.string = itm.desc
             array_html.append(comment)
 
-        fields_table = array_html.new_tag('table')
-
-        field_caption = array_html.new_tag('caption')
-        field_caption.string = f'{self.formatStr(itm.name)} (Array)'
-        fields_table.append(field_caption)
+        caption = f'{self.formatStr(itm.name)} (Array)'
 
         table_opts = {
             'ID': {'class': 'n'},
@@ -317,7 +294,7 @@ class JADNtoHTML(JADNConverterBase):
         }
         body = [{'ID': row.id, 'Type': row.type, '#': row.opts, 'Description': f'"{row.name}": {row.desc}'} for row in itm.fields]
 
-        fields_table.append(self._makeTable(table_opts, body))
+        fields_table = self._makeTable(table_opts, body, caption)
 
         array_html.append(fields_table)
         return array_html
@@ -353,7 +330,7 @@ class JADNtoHTML(JADNConverterBase):
         :param html: HTML string to format
         :return: formatted HTML
         """
-        formatted = ''
+        html_formatted = ''
         nested_tags = []
 
         tmp_format = []
@@ -370,32 +347,45 @@ class JADNtoHTML(JADNConverterBase):
 
             if tag == 'style':
                 styles = line[line.index('>')+1:line.rindex('<')]
-                styles_formatted = CSSBeautifier.beautify(styles, 5)
+                styles_formatted = self._format_css(styles)
                 if styles_formatted == '':
-                    formatted += f'{indent}{line}</style>\n'
+                    html_formatted += f'{indent}{line}</style>\n'
                     i += 1
                 else:
                     styles_indent = '\t' * (len(nested_tags) + 1)
                     styles = re.sub(r'^(?P<start>.)', f"{styles_indent}\g<start>", str(styles_formatted), flags=re.M)
-                    formatted += f"{indent}{line[:line.index('>')+1]}\n{styles}\n{indent}{line[line.rindex('<'):]}\n"
+                    html_formatted += f"{indent}{line[:line.index('>')+1]}\n{styles}\n{indent}{line[line.rindex('<'):]}\n"
 
             elif re.match(rf'^<{tag}.*?<\/{tag}>$', str(line)):
-                formatted += f'{indent}{line}\n'
+                html_formatted += f'{indent}{line}\n'
 
             elif line.startswith('<!') or line.endswith('/>'):
-                formatted += f'{indent}{line}\n'
+                html_formatted += f'{indent}{line}\n'
 
             elif line.endswith('</' + (nested_tags[-1] if len(nested_tags) > 0 else '') + '>'):
                 nested_tags.pop()
-                formatted += f'{indent}{line}\n'
+                indent = '\t' * len(nested_tags)
+                html_formatted += f'{indent}{line}\n'
 
             else:
-                formatted += f'{indent}{line}\n'
+                html_formatted += f'{indent}{line}\n'
                 if not line.endswith(f'{tag}/>'):
                     nested_tags.append(tag)
             i += 1
 
-        return formatted
+        return html_formatted
+
+    def _format_css(self, css):
+        """
+        Format the CSS to a predefined standard
+        :param css: CSS string to format
+        :return: formatted CSS
+        """
+        line_breaks = ('\*/', '{', '}', ';')
+        css_formatted = re.sub(rf"(?P<term>{'|'.join(line_breaks)})", '\g<term>\n', css)
+        css_formatted = css_formatted[:-1]
+
+        return '\n'.join(re.sub(r'\s{4}', '\t', line) for line in css_formatted.split('\n'))
 
     def _loadStyles(self, styles):
         """
@@ -420,7 +410,7 @@ class JADNtoHTML(JADNConverterBase):
         else:
             raise IOError(f'The style file specified does not exist: {styles}')
 
-    def _makeTable(self, headers={}, rows=[]):
+    def _makeTable(self, headers={}, rows=[], caption=''):
         """
         Create a table using the given header and row values
         :param headers: table header names and attributes
@@ -429,6 +419,12 @@ class JADNtoHTML(JADNConverterBase):
         """
         _table = BeautifulSoup('', 'html.parser')
         table_html = _table.new_tag('table')
+
+        # Caption
+        if caption not in ['', ' ', None]:
+            table_caption = _table.new_tag('caption')
+            table_caption.string = caption
+            table_html.append(table_caption)
 
         # Headers
         table_head = _table.new_tag('thead')
