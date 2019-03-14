@@ -4,8 +4,9 @@ from .utils import FrozenDict
 MessageFormats = FrozenDict(
     CBOR='cbor',
     JSON='json',
-    PROTO='proto',
     XML='xml',
+    Proto='proto',
+    YAML='yaml'
 )
 
 # Schema Formats for OpenC2

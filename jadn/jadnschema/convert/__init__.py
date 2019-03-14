@@ -1,9 +1,8 @@
-# from .message import *
-
+from .message import Message
 from .schema import *
 
 __all__ = [
-    # Convert to ...
+    # Schema Covert to ...
     'cddl_dump',
     'cddl_dumps',
     'html_dump',
@@ -18,7 +17,7 @@ __all__ = [
     'relax_dumps',
     'thrift_dump',
     'thrift_dumps',
-    # Convert From ...for
+    # Schema Convert from ...
     'cddl_load',
     'cddl_loads',
     # 'jas_load',
@@ -28,5 +27,7 @@ __all__ = [
     'relax_load',
     'relax_load',
     'thrift_load',
-    'thrift_loads'
+    'thrift_loads',
+    # Message Convert to
+    'Message'
 ]

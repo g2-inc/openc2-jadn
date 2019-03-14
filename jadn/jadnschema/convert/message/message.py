@@ -1,79 +1,57 @@
-import cbor2
-import sys
+import os
 
-from dicttoxml import dicttoxml
-from xml.dom.minidom import parseString
+from functools import partial
+from typing import Union
 
-from .load import MessageLoader
-from ...enums import MessageFormats
+from .conversions import Conversions
+
+from ... import (
+    enums
+)
 
 
 class Message(object):
     """
-    Translate a JSON Encoded message to other formats
+    Load and dump a message to other formats
     """
-    def __init__(self, msg='', msgType=MessageFormats.JSON):
+
+    def __init__(self, msg: Union[str, bytes, dict], fmt: str = enums.MessageFormats.JSON):
         """
-        :param msg: Dictionary representation of the message
-        :type msg: dict
-        :raise TypeError: Dictionary not given
+        :param msg: message to load
+        :param fmt: format of the message to load
         """
-        self._msgType = msgType
-        if msgType in MessageFormats.values():
-            self._msg = MessageLoader(msg, msgType)
+        self._fmt = fmt
+        if self._fmt in enums.MessageFormats.values():
+            self._msg = self._load(msg) if isinstance(msg, str) and os.path.isfile(msg) else self._load(msg)
         else:
-            raise ValueError("Message Type is not a Valid Message Format")
+            raise ValueError("Message format is not known")
 
-    def original_dump(self):
-        """
-        returns the formatted original message
-        :return: original version of message
-        :rtype: dict/str
-        """
-        original = {
-            'json': self.json_dump,
-            'cbor': self.cbor_dump,
-            'proto': self.protobuf_dump,
-            'xml': self.xml_dump
-        }
-        return original.get(self._msgType, lambda: 'Error')()
+        for k, v in Conversions.items():
+            if 'dump' in v:
+                setattr(self, f'{k}_dump', partial(v['dump'], self._msg))
+            if 'dumps' in v:
+                setattr(self, f'{k}_dumps', partial(v['dumps'], self._msg))
 
-    def json_dump(self):
-        """
-        translate the message to json
-        :return: json version of message
-        :rtype: dict
-        """
-        return self._msg
+    def dump(self, fname: str):
+        json_conv = Conversions.get(enums.MessageFormats.JSON)
+        if json_conv:
+            if 'dump' in json_conv:
+                json_conv['dump'](self._msg, fname)
 
-    def protobuf_dump(self):
-        """
-        translate the message to protobuff
-        :return: protobuff version of message
-        :rtype: ??
-        """
-        return self._msg
+    def dumps(self):
+        json_conv = Conversions.get(enums.MessageFormats.JSON)
+        if json_conv:
+            if 'dumps' in json_conv:
+                json_conv['dumps'](self._msg)
 
-    def xml_dump(self, pretty=False):
-        """
-        translate the message to xml
-        :param pretty: bool for pretty print
-        :return: xml version of message
-        :rtype: str
-        """
-        xml = dicttoxml(self._msg, custom_root='message', attr_type=False)
-        if pretty:
-            return parseString(xml).toprettyxml()
-        else:
-            return xml
+    # Helper Functions
+    def _load(self, fname):
+        if self._fmt not in Conversions:
+            raise ValueError("Message format is not known")
+        with open(fname, 'rb') as f:
+            return Conversions[self._fmt].load(f)
 
-    def cbor_dump(self):
-        """
-        translate the message to cbor
-        :return: cbor version of message
-        :rtype: str
-        """
-        if sys.version_info.major >= 3:
-            return cbor2.dumps(self._msg).decode('utf-8', 'backslashreplace')
-        else:
-            return ''.join(["\\x{}".format(c.encode('hex')) if ord(c) >= 128 else c for c in cbor2.dumps(self._msg)])
+    def _loads(self, val):
+        if self._fmt not in Conversions:
+            raise ValueError("Message format is not known")
+        return Conversions[self._fmt].loads(f)
