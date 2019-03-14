@@ -3,8 +3,7 @@ beautifulsoup4==4.7.1
 cbor2==4.1.2
 dicttoxml==1.7.4
 html5print==0.1.2
-jsonschema==2.6.0
+jsonschema==3.0.1
 lesscpy==0.13.0
-lxml==4.3.0
-protobuf==3.5.2.post1
+protobuf==3.7.0
 xmltodict==0.11.0
