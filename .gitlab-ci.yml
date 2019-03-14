@@ -23,8 +23,7 @@ Test-Scripts:
   stage: test
 
   script:
-    - ls -ahl ./jadn
-    - cd ./jadn/tests
+    - cd tests
     - python3 test_codec.py
     - python3 test_openc2.py
 
@@ -32,8 +31,7 @@ Translate-Schemas:
   stage: test
 
   script:
-    - ls -ahl ./jadn
-    - cd ./jadn/tests
+    - cd tests
     - python3 schema-translators.py
     - $(rm -r ../../schema_gen && mkdir -p ../../schema_gen) || mkdir -p ../../schema_gen
     - mv ./schema_gen_test/* ../../schema_gen
@@ -49,7 +47,6 @@ Build-Wheel:
   stage: deploy
 
   script:
-    - cd jadn
     - cp ../LICENSE ./
     # - pip3 wheel . -w ./dist
     - python3 setup.py sdist bdist_wheel
