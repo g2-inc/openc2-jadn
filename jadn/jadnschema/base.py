@@ -1,7 +1,7 @@
 """
 Basic functions
 """
-from typing import List
+from typing import List, Tuple, Union
 
 from .codec.codec import Codec
 from . import (
@@ -9,29 +9,40 @@ from . import (
 )
 
 
-def validate_schema(schema: dict):
+def validate_schema(schema: Union[bytearray, dict, str]) -> Union[dict, List[Exception]]:
     """
     Validate a JADN Schema
     :param schema: JADN schema to validate
-    :return: list of errors
+    :return: list of errors or valid schema
     """
-    schema = jadn.jadn_loads(schema)
+    if isinstance(schema, (bytearray, str)):
+        schema = jadn.jadn_loads(schema)
     jadn_analysis = jadn.jadn_analyze(schema)
-    rtn = []
 
     if len(jadn_analysis['undefined']):
-        rtn.append(ReferenceError(f"schema contains undefined types: {', '.join(jadn_analysis['undefined'])}"))
+        return [ReferenceError(f"schema contains undefined types: {', '.join(jadn_analysis['undefined'])}")]
+    return schema
 
-    return rtn
 
-
-def validate_instance(schema: dict, instance: dict, _type: str = None) -> List[Exception]:
+def validate_instance(schema: dict, instance: dict, _type: str = None) -> Union[Tuple[dict, str], List[Exception]]:
     schema_validate = validate_schema(schema)
     rtn = []
 
-    if len(schema_validate) > 0:
+    if isinstance(schema_validate, list):
         rtn.extend(schema_validate)
     else:
-        pass
+        schema_codec = Codec(schema, True, True)
+        if _type:
+            try:
+                return schema_codec.decode(_type, instance)
+            except TypeError as e:
+                rtn.extend(e)
+        else:
+            meta = schema.get('meta', {})
+            for exp in meta.get('exports', []):
+                try:
+                    return schema_codec.decode(exp, instance), exp
+                except (TypeError, ValueError) as e:
+                    rtn.append(TypeError(f'instance not valid as {exp}'))
 
     return rtn

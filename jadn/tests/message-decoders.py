@@ -1,7 +1,6 @@
 import os
 
-from jadnschema import jadn_load, MessageFormats
-from jadnschema.codec import Codec
+from jadnschema import jadn_load, MessageFormats, validate_schema, validate_instance
 from jadnschema.convert import Message
 
 msgs = {}
@@ -17,7 +16,6 @@ for msg_file in os.listdir(dir):
 
 print("Load Schema")
 schema = jadn_load('schema/oc2ls-csdpr02.jadn')
-tc = Codec(schema, True, True)
 
 print("Validate Messages\n")
 for n, tup in msgs.items():
@@ -28,5 +26,5 @@ for n, tup in msgs.items():
     if t != 'json':
         print("json_dumps -> {}\n".format(o.json_dumps()))
 
-    m = tc.decode('OpenC2-Command', o.json_dumps())
-    # print("Decoded Msg -> {}\n\n".format(m))
+    msg = validate_instance(schema, o.json_dumps())
+    print("Decoded Msg -> {}\n\n".format(msg))

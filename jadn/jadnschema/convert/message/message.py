@@ -5,9 +5,7 @@ from typing import Union
 
 from .conversions import Conversions
 
-from ... import (
-    enums
-)
+from ... import enums
 
 
 class Message(object):
@@ -33,12 +31,21 @@ class Message(object):
                 setattr(self, f'{k}_dumps', partial(v['dumps'], self._msg))
 
     def dump(self, fname: str):
+        """
+        Dump the message in json format
+        :param fname: file name to write to
+        :return: None
+        """
         json_conv = Conversions.get(enums.MessageFormats.JSON)
         if json_conv:
             if 'dump' in json_conv:
                 json_conv['dump'](self._msg, fname)
 
     def dumps(self):
+        """
+        Dump the message in json format
+        :return: json formatted message
+        """
         json_conv = Conversions.get(enums.MessageFormats.JSON)
         if json_conv:
             if 'dumps' in json_conv:

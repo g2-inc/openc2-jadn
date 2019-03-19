@@ -1,46 +1,42 @@
 import argparse
-import cbor2
-import json
 import os
 import sys
 
-from .codec.codec import Codec
 from . import (
+    base,
+    enums,
     jadn
 )
-
-instance_exts = {
-    'cbor': lambda f: cbor2.load(f),
-    'json': lambda f: json.load(f)
-}
+from .convert.message import Message
 
 
 def schema_file(path):
     fname, ext = os.path.splitext(path)
+    schema = None
+
     if ext == '.jadn':
         try:
-            with open(path, 'r') as f:
-                return dict(
-                    path=path,
-                    schema=json.load(f)
-                )
-        except Exception as e:
-            pass
-    raise TypeError("Invalid instance given")
+            schema = jadn.jadn_load(path)
+        except (IOError, TypeError, ValueError) as e:
+            raise TypeError("Invalid instance given")
+
+    return dict(
+        path=path,
+        schema=schema
+    )
 
 
 def instance_file(path):
     fname, ext = os.path.splitext(path)
     ext = ext[1:]
 
-    if ext in instance_exts:
+    if ext in enums.MessageFormats.values():
         try:
-            with open(path, 'rb') as f:
-                return dict(
-                    path=path,
-                    instance=instance_exts[ext](f)
-                )
-        except Exception as e:
+            return dict(
+                path=path,
+                instance=Message(path, ext)
+            )
+        except (IOError, TypeError, ValueError) as e:
             pass
 
     raise TypeError("Invalid schema given")
@@ -53,7 +49,7 @@ parser.add_argument(
     action="append",
     dest="instance",
     type=instance_file,
-    help=f"JSON instance to validate (i.e. filename.[{','.join(instance_exts.keys())}])(may be specified multiple times)",
+    help=f"instance to validate (i.e. filename.[{','.join(enums.MessageFormats.values())}])(may be specified multiple times)",
 )
 
 parser.add_argument(
@@ -63,52 +59,27 @@ parser.add_argument(
 )
 
 
-def validate_msg(codec, _types, msg):
-    valid = {}
-    for t in _types:
-        try:
-            codec.decode(t, msg)
-            valid[t] = True
-        except (ValueError, TypeError) as e:
-            # print(f'{e}\n')
-            valid[t] = False
-    return valid
-
-
 def main(args=sys.argv[1:]):
     arguments = vars(parser.parse_args(args=args or ["--help"]))
     sys.exit(run(args=arguments))
 
 
 def run(args, stdout=sys.stdout, stderr=sys.stderr):
-    jadn_analysis = jadn.jadn_analyze(args['schema']['schema'])
+    schema = base.validate_schema(args.get('schema', {}).get('schema', {}))
 
-    if len(jadn_analysis['undefined']):
-        stderr.write(f"Invalid Schema, {len(jadn_analysis['undefined'])} undefined types:\n")
-        stderr.write(', '.join(jadn_analysis['undefined']) + '\n')
+    if schema and isinstance(schema, list):
+        for err in schema:
+            stderr.write(f'{err}\n')
         exit(1)
-    else:
-        stdout.write(f"Valid schema at {args['schema']['path']}\n")
-
-    codec = None
-    try:
-        codec = Codec(args['schema']['schema'], True, True)
-    except Exception as e:
-        stderr.write(f"Schema Error: {e}\n")
-        exit(1)
+    elif schema:
+        stdout.write(f"Valid schema at {args.get('schema', {}).get('path', '')}\n")
 
     if len(args['instance']) > 0:
-        stdout.write(f"\nValidating using schema at {args['schema']['path']}\n")
-        exports = args['schema']['schema'].get('meta', {}).get('exports', [])
-
         for instance in args['instance']:
-            path = instance['path']
-            valid = validate_msg(codec, exports, instance['instance'])
-
-            if any(valid.values()):
-                val_types = ', '.join({k: v for k, v in valid.items() if v}.keys())
-                stdout.write(f"Instance '{path}' is valid as {val_types}\n")
-            else:
-                stderr.write(f"Instance '{path}' is invalid\n")
-
-    return ''
+            stdout.write(f"\nValidating instance at {instance.get('path', '')} using schema at {args.get('schema', {}).get('path', '')}\n")
+            val_msg = base.validate_instance(schema, instance.get('instance', {}))
+            if isinstance(val_msg, list):
+                for err in val_msg:
+                    stdout.write(f"{err}\n")
+            elif isinstance(val_msg, tuple):
+                stdout.write(f"Instance '{instance.get('path', '')}' is valid as {val_msg[1]}\n")

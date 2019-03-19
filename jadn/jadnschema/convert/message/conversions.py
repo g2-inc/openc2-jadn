@@ -19,12 +19,24 @@ from ... import (
 )
 
 
+def _xml_root(msg):
+    if 'message' in msg:
+        return msg.get('message', {})
+    elif 'response' in msg:
+        return msg.get('response', {})
+    elif 'action' in msg:
+        return 'message'
+    elif 'status' in msg:
+        return 'response'
+
+
 def _xml_to_dict(xml):
     tmp = {}
     for k, v in xml.items():
         a = k[1:] if k.startswith("@") else k
         tmp[a] = _xml_to_dict(v) if isinstance(v, collections.OrderedDict) else v
     return tmp
+
 
 """
 Conversions Docs
@@ -33,7 +45,7 @@ Conversions Docs
         dumps - convert a dict to FORMAT and write it to a file
         load - load FORMAT from a str/bytestring and convert to a dict
         loads - load FORMAT from a file and convert it to a dict
-    }         
+    }
 """
 Conversions = utils.FrozenDict(
     cbor=utils.FrozenDict(
@@ -49,10 +61,10 @@ Conversions = utils.FrozenDict(
         loads=lambda v: json.loads(v),
     ),
     xml=utils.FrozenDict(
-        dump=lambda v, f: f.write(dicttoxml(v, custom_root='message', attr_type=False)),
-        dumps=lambda v: dicttoxml(v, custom_root='message', attr_type=False),
-        load=lambda f: _xml_to_dict(xmltodict.parse(f.read()))['message'],
-        loads=lambda v: _xml_to_dict(xmltodict.parse(v))['message'],
+        dump=lambda v, f: f.write(dicttoxml(v, custom_root=_xml_root(v), attr_type=False)),
+        dumps=lambda v: dicttoxml(v, custom_root=_xml_root(v), attr_type=False),
+        load=lambda f: _xml_root(_xml_to_dict(xmltodict.parse(f.read()))),
+        loads=lambda v: _xml_root(_xml_to_dict(xmltodict.parse(v))),
     ),
     yaml=utils.FrozenDict(
         dump=lambda v, f: f.write(yaml.dump(v, Dumper=Dumper)),

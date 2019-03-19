@@ -1,0 +1,27 @@
+CDDL_DEF <- header typeDef customDefs !.
+
+# Header Meta
+header <- headerComments*
+headerComments <- metaLine*
+metaLine <- '\s*;\smeta:\s*(.*)' EOL+
+
+# Type Definitions
+typeDef <- (recordDef / enumDef / arrayOfDef)+
+
+recordDef <- defHeader defField+ ('}' / ')' / ']')+
+enumDef <- defHeader enumField+ EOL+
+arrayOfDef <- '[\w]+'+ '.*\]'+ ';[\s\w]+'* (('.*?' ('#' / EOL)) jadnOpts)? EOL+
+
+defHeader <- '^[\S]+'* '.*?(#|{})'* jadnOpts EOL+
+defField <- '\?'? '\s*[\w]+' ':\s*[\S]+\s*,*' '//'? ';' ('.*?' ('#' / EOL) jadnOpts)? EOL+
+enumField <- '[\S]+' '/='? '\"[\w\s*]+\"' ';' ('.*?' ('# '/ EOL) jadnOpts)? EOL+
+
+jadnOpts <- 'jadn_opts:{.*}+'
+
+# Custom Types
+customDefs <- (commentLine? customFields+)
+commentLine <- '\s*;.*'*
+customFields <- '[\w-]*'+ '='+ '[\w]+'+ ';.*'*
+
+# Helpers
+EOL <- '\n' / '\r\n' / '\r'
