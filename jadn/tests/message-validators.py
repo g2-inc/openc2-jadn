@@ -8,14 +8,13 @@ dir = './message/'
 
 print("Load Messages")
 for msg_file in os.listdir(dir):
-    if msg_file.startswith(('.', '_')): continue
-
-    n, t = msg_file.split('.')
-    k = "{}-{}".format(t, n)
-    msgs[k] = t, Message(os.path.join(dir, msg_file), MessageFormats.get(t.upper()))
+    if not msg_file.startswith(('.', '_')):
+        n, t = msg_file.split('.')
+        k = "{}-{}".format(t, n)
+        msgs[k] = t, Message(os.path.join(dir, msg_file), MessageFormats.get(t.upper()))
 
 print("Load Schema")
-schema = jadn_load('schema/oc2ls-csdpr02.jadn')
+schema = jadn_load('schema/oc2ls-csdpr02_reorg.jadn')
 
 print("Validate Messages\n")
 for n, tup in msgs.items():
@@ -27,4 +26,5 @@ for n, tup in msgs.items():
         print("json_dumps -> {}\n".format(o.json_dumps()))
 
     msg = validate_instance(schema, o.json_dumps())
-    print("Decoded Msg -> {}\n\n".format(msg))
+    msg = '\n'.join(str(m) for m in msg) if isinstance(msg, list) else "Decoded Msg -> {}".format(msg)
+    print(f'{msg}\n')

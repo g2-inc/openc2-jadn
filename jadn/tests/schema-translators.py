@@ -1,58 +1,72 @@
 import json
 import os
 
-from jadnschema.enums import CommentLevels
-from jadnschema.convert import (
-    cddl_dump,
-    cddl_load,
-    html_dump,
-    md_dump,
-    proto_dump,
-    proto_load,
-    relax_dump,
-    relax_load,
-    thrift_dump,
-    thrift_load,
-    jas_dump,
-    jas_load,
-    json_dump,
-    json_load
+from datetime import datetime
+
+from jadnschema import (
+    convert,
+    enums
 )
-# from libs.schema import relax2jadn_dump, proto2jadn_dump, cddl2jadn_dump, thrift2jadn_dump
 
-schema = 'oc2ls-csdpr02'
-base_schema = 'schema/{}.jadn'.format(schema)
-test_dir = 'schema_gen_test'
-
-if not os.path.isdir(test_dir):
-    os.makedirs(test_dir)
-
-schema_json = json.loads(open(base_schema, 'rb').read())
 
 # TODO: Add CommentLevels, requires dump.py rewrite
-jas_dump(schema_json, os.path.join(test_dir, schema + '.jas'))
-jas_load(open(os.path.join(test_dir, schema + '.jas'), 'rb').read(), os.path.join(test_dir, schema + '.jas.jadn'))
+class Conversions(object):
+    _test_dir = 'schema_gen_test'
 
-proto_dump(schema_json, os.path.join(test_dir, schema + '.all.proto'), comm=CommentLevels.ALL)
-proto_dump(schema_json, os.path.join(test_dir, schema + '.none.proto'), comm=CommentLevels.NONE)
-proto_load(open(os.path.join(test_dir, schema + '.all.proto'), 'rb').read(), os.path.join(test_dir, schema + '.proto.jadn'))
+    def __init__(self, schema):
+        self._schema = schema
+        self._base_schema = f'schema/{self._schema}.jadn'
 
-json_dump(schema_json, os.path.join(test_dir, schema + '.all.json'), comm=CommentLevels.ALL)
-json_dump(schema_json, os.path.join(test_dir, schema + '.none.json'), comm=CommentLevels.NONE)
-json_load(open(os.path.join(test_dir, schema + '.all.json'), 'rb').read(), os.path.join(test_dir, schema + '.all.jadn'))
+        if not os.path.isdir(self._test_dir):
+            os.makedirs(self._test_dir)
 
-cddl_dump(schema_json, os.path.join(test_dir, schema + '.all.cddl'), comm=CommentLevels.ALL)
-cddl_dump(schema_json, os.path.join(test_dir, schema + '.none.cddl'), comm=CommentLevels.NONE)
-cddl_load(open(os.path.join(test_dir, schema + '.all.cddl'), 'rb').read(), os.path.join(test_dir, schema + '.cddl.jadn'))
+        with open(self._base_schema, 'rb') as f:
+            self._schema_json = json.loads(f.read())
 
-relax_dump(schema_json, os.path.join(test_dir, schema + '.all.rng'), comm=CommentLevels.ALL)
-relax_dump(schema_json, os.path.join(test_dir, schema + '.none.rng'), comm=CommentLevels.NONE)
-relax_load(open(os.path.join(test_dir, schema + '.all.rng'), 'rb').read(), os.path.join(test_dir, schema + '.rng.jadn'))
+    def CDDL(self):
+        convert.cddl_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.all.cddl'), comm=enums.CommentLevels.ALL)
+        convert.cddl_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.none.cddl'), comm=enums.CommentLevels.NONE)
+        convert.cddl_load(open(os.path.join(self._test_dir, self._schema + '.all.cddl'), 'rb').read(), os.path.join(self._test_dir, self._schema + '.cddl.jadn'))
 
-thrift_dump(schema_json, os.path.join(test_dir, schema + '.all.thrift'), comm=CommentLevels.ALL)
-thrift_dump(schema_json, os.path.join(test_dir, schema + '.none.thrift'), comm=CommentLevels.NONE)
-thrift_load(open(os.path.join(test_dir, schema + '.all.thrift'), 'rb').read(), os.path.join(test_dir, schema + '.thrift.jadn'))
+    def HTML(self):
+        convert.html_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.html'))
 
-md_dump(schema_json, os.path.join(test_dir, schema + '.md'))
+    def JAS(self):
+        convert.jas_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.jas'))
+        convert.jas_load(open(os.path.join(self._test_dir, self._schema + '.jas'), 'rb').read(), os.path.join(self._test_dir, self._schema + '.jas.jadn'))
 
-html_dump(schema_json, os.path.join(test_dir, schema + '.html'))
+    def JSON(self):
+        convert.json_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.all.json'), comm=enums.CommentLevels.ALL)
+        convert.json_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.none.json'), comm=enums.CommentLevels.NONE)
+        convert.json_load(open(os.path.join(self._test_dir, self._schema + '.all.json'), 'rb').read(), os.path.join(self._test_dir, self._schema + '.json.jadn'))
+
+    def MarkDown(self):
+        convert.md_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.md'))
+
+    def ProtoBuf(self):
+        convert.proto_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.all.proto'), comm=enums.CommentLevels.ALL)
+        convert.proto_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.none.proto'), comm=enums.CommentLevels.NONE)
+        convert.proto_load(open(os.path.join(self._test_dir, self._schema + '.all.proto'), 'rb').read(), os.path.join(self._test_dir, self._schema + '.proto.jadn'))
+
+    def Relax_NG(self):
+        convert.relax_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.all.rng'), comm=enums.CommentLevels.ALL)
+        convert.relax_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.none.rng'), comm=enums.CommentLevels.NONE)
+        convert.relax_load(open(os.path.join(self._test_dir, self._schema + '.all.rng'), 'rb').read(), os.path.join(self._test_dir, self._schema + '.rng.jadn'))
+
+    def Thrift(self):
+        convert.thrift_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.all.thrift'), comm=enums.CommentLevels.ALL)
+        convert.thrift_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.none.thrift'), comm=enums.CommentLevels.NONE)
+        convert.thrift_load(open(os.path.join(self._test_dir, self._schema + '.all.thrift'), 'rb').read(), os.path.join(self._test_dir, self._schema + '.thrift.jadn'))
+
+
+if __name__ == '__main__':
+    schema = 'oc2ls-csdpr02'
+    conversions = Conversions(schema)
+
+    for conv in dir(conversions):
+        if not conv.startswith('_'):
+            print(f'Convert To/From: {conv}')
+            t = datetime.now()
+            getattr(conversions, conv)()
+            t = datetime.now() - t
+            print(f'{t.seconds}s {t.microseconds}ms\n')
