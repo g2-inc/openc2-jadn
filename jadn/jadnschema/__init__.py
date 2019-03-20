@@ -3,6 +3,9 @@ from .enums import CommentLevels, MessageFormats, SchemaFormats
 from .jadn import jadn_analyze, jadn_check, jadn_dump, jadn_dumps, jadn_load, jadn_loads, jadn_merge, jadn_strip
 from .utils import jadn_format
 
+# Needed for Package NameSpace - DO NOT REMOVE
+__import__('pkg_resources').declare_namespace(__name__)
+
 __all__ = [
     'CommentLevels',
     'MessageFormats',

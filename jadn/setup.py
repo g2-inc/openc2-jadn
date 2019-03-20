@@ -23,6 +23,8 @@ setup(
 
     packages=find_packages(),
 
+    namespace_packages=["jadnschema"],
+
     classifiers=[
         "Development Status :: 5 - Development/Beta",
         "Intended Audience :: Developers",
