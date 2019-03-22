@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import re
 import sys
 
@@ -32,6 +33,16 @@ elif sys.version_info.major < 3:
     def toStr(s):
         return str(s)
 
+_meta_order = ('title', 'module', 'description', 'imports', 'exports', 'patch')
+
+_keys = {
+    # Structures
+    'structure': ('name', 'type', 'opts', 'desc', 'fields'),
+    # Definitions
+    'def': ('id', 'name', 'type', 'opts', 'desc'),
+    'enum_def': ('id', 'value', 'desc'),
+}
+
 
 # Util Functions
 def safe_cast(val, to_type, default=None):
@@ -55,10 +66,14 @@ def isBase64(sb):
         return False
 
 
-def jadn_format(jadn, indent=1):
-    if type(jadn) is not dict:
+def jadn_format(jadn, indent=2):
+    if not isinstance(jadn, dict):
         try:
-            jadn = json.load(jadn)
+            if os.path.isfile(jadn):
+                with open(jadn, 'rb') as f:
+                    jadn = json.load(f)
+            else:
+                jadn = json.loads(jadn)
         except Exception as e:
             print(e)
             raise TypeError("JADN improperly formatted")
@@ -66,63 +81,51 @@ def jadn_format(jadn, indent=1):
     idn = ' ' * (indent if type(indent) is int else 2)
 
     meta_opts = []
-    if 'meta' in jadn:
-        for key, val in jadn['meta'].items():
-            if type(val) is list:
+    schema_meta = jadn.get("meta", {})
+    for key in _meta_order:
+        if key in schema_meta:
+            val = schema_meta[key]
+            if isinstance(val, list):
                 obj = []
 
                 for itm in val:
-                    obj.append('{idn}\"{val}\"'.format(
-                        idn=idn * 3,
-                        val='[{v}]'.format(v='\", \"'.join(itm)) if type(itm) is list else itm
-                    ))
+                    v = "[{}]".format(", ".join(f"\"{i}\"" for i in itm)) if isinstance(itm, list) else f"\"{itm}\""
+                    obj.append(f"{idn * 3}{v}")
 
-                meta_opts.append('{idn}\"{key}\": [\n{val}\n{idn}]'.format(
-                    idn=idn * 2,
-                    key=key,
-                    val=',\n'.join(obj)
-                ))
+                v = ",\n".join(obj)
+                meta_opts.append(f"{idn * 2}\"{key}\": [\n{v}\n{idn * 2}]")
             else:
-                meta_opts.append('{idn}\"{key}\": \"{val}\"'.format(
-                    idn=idn * 2,
-                    key=key,
-                    val=val
-                ))
+                meta_opts.append(f"{idn * 2}\"{key}\": \"{val}\"")
 
-    meta = "{idn}\"meta\": {{\n{obj}\n{idn}}}".format(idn=idn, obj=',\n'.join(meta_opts))
+    meta = ",\n".join(meta_opts)
 
     type_defs = []
-    if 'types' in jadn:
-        for itm in jadn['types']:
-            # print(itm)
-            header = []
-            for h in itm[0: -1]:
-                if type(h) is list:
-                    header.append("[{obj}]".format(obj=', '.join(['\"{}\"'.format(i) for i in h])))
-                else:
-                    header.append('\"{}\"'.format(h))
-            defs = []
+    for itm in jadn.get("types", []):
+        itm = dict(zip(_keys['structure'], itm))
+        type_opts = ", ".join(f"\"{o}\"" for o in itm['opts'])
+        header = f"\"{itm['name']}\", \"{itm['type']}\", [{type_opts}], \"{itm['desc']}\""
+        fields = []
 
-            if type(itm[-1]) is list:
-                for def_itm in itm[-1]:
-                    defs.append('{itm}'.format(itm=json.dumps(def_itm) if type(def_itm) is list else def_itm))
+        i = 1
+        for field in itm.get("fields", []):
+            if itm['type'] == 'Enumerated':
+                field = dict(zip(_keys['enum_def'], field))
+                fields.append(f"[{safe_cast(field['id'], int, i)}, \"{field['value']}\", \"{field['desc']}\"]")
             else:
-                defs.append("\"{itm}\"".format(itm=itm[-1]))
+                field = dict(zip(_keys['def'], field))
+                field_opts = ", ".join(f"\"{o}\"" for o in field['opts'])
+                fields.append(f"[{safe_cast(field['id'], int, i)}, \"{field['name']}\", \"{field['type']}\", [{field_opts}], \"{field['desc']}\"]")
 
-            defs = ',\n'.join(defs)  # .replace('\'', '\"')
+        if len(fields) >= 1:
+            fields = f",\n{idn * 3}".join(fields)
+            fields = f", [\n{idn * 3}{fields}\n{idn * 2}]"
+        else:
+            fields = ''
 
-            if re.match(r'^\s*?\[', defs):
-                defs = "[\n{defs}\n{idn}{idn}]".format(idn=idn, defs=re.sub(re.compile(r'^', re.MULTILINE), '{idn}'.format(idn=idn*3), defs))
+        type_defs.append(f"\n{idn * 2}[{header}{fields}]")
 
-            type_defs.append("\n{idn}{idn}[{header}{defs}]".format(
-                idn=idn,
-                header=', '.join(header),
-                defs='' if defs == '' else ', {}'.format(defs)
-            ))
-
-    types = "[{obj}\n{idn}]".format(idn=idn, obj=','.join(type_defs))
-
-    return "{{\n{meta},\n{idn}\"types\": {types}\n}}".format(idn=idn, meta=meta, types=types)
+    types = ",".join(type_defs)
+    return f"{{\n{idn}\"meta\": {{\n{meta}\n{idn}}},\n{idn}\"types\": [{types}\n{idn}]\n}}"
 
 
 def default_encode(itm):

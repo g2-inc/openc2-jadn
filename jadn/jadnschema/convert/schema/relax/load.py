@@ -14,7 +14,7 @@ from .... import (
 
 class Relax2Jadn(object):
     def __init__(self, relax):
-        if type(relax) in [str, bytes]:
+        if isinstance(relax, (str, bytes)):
             relax = utils.toStr(relax).replace('\n', '')
             relax = re.sub(r'>\s*?<', '><', relax)
             self.schema = BeautifulSoup(relax, 'html.parser')
@@ -65,7 +65,7 @@ class Relax2Jadn(object):
             if isinstance(children[0], Comment):
                 com, opts = self._loadCommentDefs(children[0].string)
 
-                tmp_type.append(opts['type'] if 'type' in opts else 'String')
+                tmp_type.append(opts.get('type', 'String'))
 
                 if 'options' in opts:
                     options = opts['options'] if type(opts['options']) is dict else {}
@@ -73,13 +73,13 @@ class Relax2Jadn(object):
                 else:
                     tmp_type.append([])
 
-                tmp_type.append(jadn_utils.topts_d2s(opts['options']) if 'options' in opts else [])
-
                 tmp_type.append(com)
                 children = children[1:]
 
             if children[0].name == 'data':
-                tmp_type.insert(1, self._fieldType(children[0]['type']))
+                fieldType = self._fieldType(children[0]['type'])
+                if tmp_type[1] != fieldType:
+                    tmp_type[1] = fieldType
 
             else:
                 c = self._children(children)
@@ -221,9 +221,7 @@ def relax_loads(relax):
     """
     Produce jadn schema from relax schema
     :arg relax: JADN Schema to convert
-    :type relax: str
     :return: jadn schema
-    :rtype str
     """
     return Relax2Jadn(relax).jadn_dump()
 

@@ -5,7 +5,8 @@ from datetime import datetime
 
 from jadnschema import (
     convert,
-    enums
+    enums,
+    utils
 )
 
 
@@ -69,4 +70,5 @@ if __name__ == '__main__':
             t = datetime.now()
             getattr(conversions, conv)()
             t = datetime.now() - t
-            print(f'{t.seconds}s {t.microseconds}ms\n')
+            minutes, seconds = divmod(t.total_seconds(), 60)
+            print(f'{minutes}m {seconds:.4f}s\n')

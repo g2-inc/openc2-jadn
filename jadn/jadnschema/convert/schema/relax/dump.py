@@ -229,22 +229,22 @@ class JADNtoRelaxNG(JADNConverterBase):
         :param itm: array to format
         :return: formatted array
         """
-        opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        type_opts = {'type': itm.type}
+        if len(itm.opts) > 0: type_opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         properties = []
         for prop in itm.fields:
-            opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
+            field_opts = {'type': prop.type, 'field': prop.id}
+            if len(prop.opts) > 0: field_opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
             ltmp = self._formatTag(
                 'element',
                 self._fieldType(prop.type),
                 name=self.formatStr(prop.name),
-                com=self._formatComment(prop.desc, jadn_opts=opts)
+                com=self._formatComment(prop.desc, jadn_opts=field_opts)
             )
 
-            if self._is_optional(opts.get('options', {})):
+            if self._is_optional(field_opts.get('options', {})):
                 properties.append(self._formatTag('optional', ltmp))
             else:
                 properties.append(ltmp)
@@ -255,7 +255,7 @@ class JADNtoRelaxNG(JADNConverterBase):
                 'interleave',
                 properties
             ),
-            com=self._formatComment(itm.desc, jadn_opts=opts),
+            com=self._formatComment(itm.desc, jadn_opts=type_opts),
             name=self.formatStr(itm.name)
         )
 

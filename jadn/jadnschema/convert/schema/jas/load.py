@@ -37,17 +37,14 @@ def JasRules():
 
     def commentLine():
         # match - any characters after comment line '--'
-        return ZeroOrMore(RegExMatch(r'--.*'))
+        return ZeroOrMore(RegExMatch(r'--.*')), endLine()
     
     def commentBlock():
         # match - any characters (line terminators included) enclosed with block quote signifier (/* and */)
         return RegExMatch(r'\/\*(.|{})*?\*\/'.format(lineSep))
     
     def headerComments():
-        return OrderedChoice(
-                ZeroOrMore(commentBlock)
-                # ZeroOrMore(commentLine)
-            )
+        return ZeroOrMore(commentBlock)
 
     def header():
         return ZeroOrMore(headerComments)
@@ -206,14 +203,14 @@ class JasVisitor(PTNodeVisitor):
                 self.data['meta'][line[0]] = line[1]
         
     def visit_repeatedItem(self, node, children):
-        item = []
-        item.append(int(children[1][1:-1]))
-        item.append(children[0])
+        item = [int(children[1][1:-1]), children[0]]
+
         stype = re.sub(',', '', children[2])
         if stype in stype_map:
             item.append(stype_map[stype])
         else: 
             item.append(stype)
+
         opt = []
         if children[3] == 'OPTIONAL':
             opt.append("[0")
@@ -222,7 +219,7 @@ class JasVisitor(PTNodeVisitor):
                 opt.append("]" + match.group(1))
                 children[-1] = re.sub(r'\s*\%\{\S+\s*\d+\}', '', children[-1])
         item.append(opt)
-        item.append(re.sub(r'--\s+', '', children[-1][:-1]))
+        item.append(re.sub(r'--\s+', '', children[-1]))
 
         return item
 
@@ -234,7 +231,7 @@ class JasVisitor(PTNodeVisitor):
             compact = ["="]
 
         try:
-            comment = re.sub(r'--\s+', '', children[4][:-1])
+            comment = re.sub(r'--\s+', '', children[4])
             items = children[5:-1]
         except:
             comment = ""
@@ -265,8 +262,8 @@ class JasVisitor(PTNodeVisitor):
                 opt.append("]" + match.group(1))
                 children[-1] = re.sub(r'\s*\%\{\S+\s*\d+\}', '', children[-1])
         item.append(opt)
-        item.append(re.sub(r'--\s+', '', children[-1][:-1]))
-        
+        item.append(re.sub(r'--\s+', '', children[-1]))
+
         return item
 
     def visit_recordDef(self, node, children):
@@ -277,7 +274,7 @@ class JasVisitor(PTNodeVisitor):
             compact = ["="]
 
         try:
-            comment = re.sub(r'--\s+', '', children[4][:-1])
+            comment = re.sub(r'--\s+', '', children[4])
             items = children[5:-1]
         except:
             comment = ""
@@ -295,7 +292,7 @@ class JasVisitor(PTNodeVisitor):
         item = []
         item.append(int(re.search(r'\d+', children[1]).group(0)))
         item.append(re.sub(r'\s{2,}', '', children[0]))
-        item.append(re.sub(r'--\s+', '', children[-1][:-1]))
+        item.append(re.sub(r'--\s+', '', children[-1]))
         return item
 
     def visit_enumDef(self, node, children):
@@ -307,7 +304,7 @@ class JasVisitor(PTNodeVisitor):
         comment = ""
         match = re.search('--', str(children[4]))
         if match is not None:
-            comment = re.sub(r'--\s+', '', children[4][:-1])
+            comment = re.sub(r'--\s+', '', children[4])
             items = children[5:-1]
         else:
             items = children[4:-1]
@@ -326,7 +323,7 @@ class JasVisitor(PTNodeVisitor):
         # check array type
         match = re.match(r'\((\w+)\)', children[3])
         if match is not None:
-            arrayInfo.append(['*' + match.group(1)])
+            arrayInfo.append('*' + match.group(1))
         
         # check array size
         match = re.search(r'(\d+)\.\.(\d+)', children[4])
@@ -336,11 +333,11 @@ class JasVisitor(PTNodeVisitor):
 
         # check if comment exists
         try:
-            comment = re.sub(r'--\s+', '', children[-1][:-1])
+            comment = re.sub(r'--\s+', '', children[-1])
         except:
             comment = ""
 
-        return [ 
+        return [
             children[0],
             stype_map[children[2]],
             arrayInfo,
@@ -368,7 +365,7 @@ class JasVisitor(PTNodeVisitor):
 
         # check if comment exists
         try:
-            comment = re.sub(r'--\s+', '', children[-1][:-1])
+            comment = re.sub(r'--\s+', '', children[-1])
         except:
             comment = ""
       

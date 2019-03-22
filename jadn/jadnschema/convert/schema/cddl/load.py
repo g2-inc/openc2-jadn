@@ -27,7 +27,7 @@ def CddlRules():
         return RegExMatch(r'\s*;\smeta:\s*(.*)')
 
     def headerComments():
-        return ZeroOrMore(metaLine)
+        return ZeroOrMore(metaLine), endLine()
 
     def header():
         return ZeroOrMore(headerComments)
@@ -185,9 +185,9 @@ class CddlVisitor(PTNodeVisitor):
         for child in children:
             line = child.split(' - ')
             try:
-                self.data['meta'][line[0]] = json.loads(line[1][0:-1])
+                self.data['meta'][line[0]] = json.loads(line[1])
             except Exception as e:
-                self.data['meta'][line[0]] = line[1][0:-1]
+                self.data['meta'][line[0]] = line[1]
 
     def visit_typeDefs(self, node, children):
         if 'types' not in self.data:
