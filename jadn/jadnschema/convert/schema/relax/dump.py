@@ -65,7 +65,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         header = []
         for k in self._meta_order:
             if k in self._meta:
-                header.append(f"<!-- meta: {k} - {header_regex.sub('', json.dumps(utils.default_decode(self._meta[k])))} -->")
+                header.append(f"<!-- meta: {k} - {header_regex.sub('', json.dumps(utils.default_encoding(self._meta[k])))} -->")
 
         return '\n'.join(header) + '\n\n'
 

@@ -10,23 +10,32 @@ from . import (
 from .convert.message import Message
 
 
-def schema_file(path):
+def schema_file(path: str) -> dict:
+    """
+    Load a JADN schema file
+    :param path: path to JADN schema
+    :return: loaded JADN schema as a dictionary
+    """
     fname, ext = os.path.splitext(path)
-    schema = None
 
     if ext == '.jadn':
         try:
-            schema = jadn.jadn_load(path)
+            return dict(
+                path=path,
+                schema=jadn.jadn_load(path)
+            )
         except (IOError, TypeError, ValueError) as e:
-            raise TypeError("Invalid instance given")
+            pass
 
-    return dict(
-        path=path,
-        schema=schema
-    )
+    raise TypeError("Invalid instance given")
 
 
-def instance_file(path):
+def instance_file(path: str) -> dict:
+    """
+    load a JADN message file
+    :param path: path to message file
+    :return: loaded message file as a Message object
+    """
     fname, ext = os.path.splitext(path)
     ext = ext[1:]
 
@@ -45,6 +54,12 @@ def instance_file(path):
 parser = argparse.ArgumentParser(description="JADN Schema Validation CLI")
 
 parser.add_argument(
+    "schema",
+    help="JADN Schema to validate with (i.e. filename.jadn)",
+    type=schema_file,
+)
+
+parser.add_argument(
     "-i", "--instance",
     action="append",
     dest="instance",
@@ -52,19 +67,13 @@ parser.add_argument(
     help=f"instance to validate (i.e. filename.[{','.join(enums.MessageFormats.values())}])(may be specified multiple times)",
 )
 
-parser.add_argument(
-    "schema",
-    help="JADN Schema to validate with (i.e. filename.jadn)",
-    type=schema_file,
-)
 
-
-def main(args=sys.argv[1:]):
+def main(args: list = sys.argv[1:]) -> None:
     arguments = vars(parser.parse_args(args=args or ["--help"]))
     sys.exit(run(args=arguments))
 
 
-def run(args, stdout=sys.stdout, stderr=sys.stderr):
+def run(args: dict, stdout=sys.stdout, stderr=sys.stderr) -> None:
     schema = base.validate_schema(args.get('schema', {}).get('schema', {}))
 
     if schema and isinstance(schema, list):

@@ -5,7 +5,7 @@ MessageFormats = FrozenDict(
     CBOR='cbor',
     JSON='json',
     XML='xml',
-    Proto='proto',
+    # Proto='proto',
     YAML='yaml'
 )
 
