@@ -322,7 +322,7 @@ class CddlVisitor(PTNodeVisitor):
             children[0],
             "String" if children[2] == 'bstr' else children[2],
             ["@"+children[0]] if 'TBD syntax' not in children else [],
-            re.sub(r';\s*', '', children[3][:-1]) if len(children) > 3 else ""
+            re.sub(r';\s*', '', children[3][:-1]).strip() if len(children) > 3 else ""
         ]
 
     def visit_customDefs(self, node, children):

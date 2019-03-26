@@ -205,7 +205,7 @@ class ThriftVisitor(PTNodeVisitor):
 
     def visit_commentLine(self, node, children):
         # replace starting //(SPACE ONE OR MORE)
-        return re.sub(r'^//\s*?', '', node.value)
+        return re.sub(r'^//\s*?', '', node.value).strip()
 
     def visit_headerComments(self, node, children):
         if 'meta' not in self.data:
@@ -244,7 +244,7 @@ class ThriftVisitor(PTNodeVisitor):
             optDict['type'],  # Type
             optDict['options'],  # Options
             # Replace ending (space)#(space) with nothing
-            re.sub(r'\s?#\S?$', '', children[1]) if len(children) >= 2 else ''  # comment
+            re.sub(r'\s?#\S?$', '', children[1]).strip() if len(children) >= 2 else ''  # comment
         ]
 
     def visit_defField(self, node, children):
@@ -260,7 +260,7 @@ class ThriftVisitor(PTNodeVisitor):
             self.repeatedTypes.get(optDict['type'], optDict['type']),  # type
             optDict['options'],  # options
             # Replace ending (space)#(space)
-            re.sub(r'\s?#\S?$', '', children[4]) if len(children) >= 5 else ''  # comment
+            re.sub(r'\s?#\S?$', '', children[4]).strip() if len(children) >= 5 else ''  # comment
         ]
 
     def visit_structDef(self, node, children):
@@ -272,7 +272,7 @@ class ThriftVisitor(PTNodeVisitor):
                         children[0][0],  # name
                         child[2],  # type
                         child[3],  # options
-                        child[4]   # comment
+                        child[4].strip()   # comment
                     ]
                 msgFields.append(child)
             else:
@@ -291,7 +291,7 @@ class ThriftVisitor(PTNodeVisitor):
             # Replace ending (space)#(space)
             re.sub(r'(^\s+|\s+$)', '', children[0]),  # name
             # Replace (space)#(space) or (space)LINE TERMINATOR(space) with nothing
-            re.sub(r'\s?(#|{})\S?$'.format(lineSep), '', children[2]) if len(children) >= 3 else ''  # comment
+            re.sub(r'\s?(#|{})\S?$'.format(lineSep), '', children[2]).strip() if len(children) >= 3 else ''  # comment
         ]
 
     def visit_enumDef(self, node, children):

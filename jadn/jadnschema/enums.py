@@ -1,24 +1,25 @@
 from .utils import FrozenDict
 
-# Message Formats for OpenC2
+# Valid Message Formats for load/dump
 MessageFormats = FrozenDict(
     CBOR='cbor',
     JSON='json',
     XML='xml',
     # Proto='proto',
+    # Thrift='thrift',
     YAML='yaml'
 )
 
-# Schema Formats for OpenC2
+# Valid Schema Formats for conversion
 SchemaFormats = FrozenDict(
     CDDL='cddl',
     HTML='html',
     JADN='jadn',
     JAS='jas',
-    MARKDOWN='md',
-    PROTOBUF='proto',
-    RELAX='relax',
-    THRIFT='thrift'
+    MarkDown='md',
+    Proto='proto',
+    Relax='rng',
+    Thrift='thrift',
 )
 
 # Conversion Comment Level

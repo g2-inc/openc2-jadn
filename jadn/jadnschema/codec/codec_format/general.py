@@ -13,15 +13,15 @@ from . import (
 
 
 # From https://stackoverflow.com/questions/2532053/validate-a-hostname-string
-def s_hostname(sval):
+def s_hostname(sval: str) -> str:
     """
     Check if valid Hostname
     :param sval: Hostname to validate
     :return: given hostname
     :raises: TypeError, ValueError
     """
-    if not isinstance(sval, type('')):
-        raise TypeError(f"Hostname given is not expected {type('')}, given {type(sval)}")
+    if not isinstance(sval, str):
+        raise TypeError(f"Hostname given is not expected {str}, given {type(sval)}")
 
     hostname = sval[:-1] if sval[-1] == "." else sval[:]  # Copy & strip exactly one dot from the right, if present
     if len(sval) > constants.HOSTNAME_MAX_LENGTH:
@@ -35,15 +35,15 @@ def s_hostname(sval):
 
 # Use regex from https://stackoverflow.com/questions/201323/how-to-validate-an-email-address-using-a-regular-expression
 #   A more comprehensive email address validator is available at http://isemail.info/about
-def s_email(sval):
+def s_email(sval: str) -> str:
     """
     Check if valid E-Mail address
     :param sval: E-Mail address to validate
     :return: given e-mail
     :raises: TypeError, ValueError
     """
-    if not isinstance(sval, type('')):
-        raise TypeError(f"E-Mail given is not expected {type('')}, given {type(sval)}")
+    if not isinstance(sval, str):
+        raise TypeError(f"E-Mail given is not expected {str}, given {type(sval)}")
     rfc5322_re = (
         r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"
         r'"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@'
@@ -55,15 +55,15 @@ def s_email(sval):
     raise ValueError(f"E-Mail given is not valid")
 
 
-def s_uri(sval):            # Check if valid URI
+def s_uri(sval: str) -> str:
     """
     Check if valid URI
     :param sval: URI to validate
     :return: uri given
     :raises TypeError, ValueError
     """
-    if not isinstance(sval, type('')):
-        raise TypeError(f"URI given is not expected {type('')}, given {type(sval)}")
+    if not isinstance(sval, str):
+        raise TypeError(f"URI given is not expected {str}, given {type(sval)}")
 
     try:
         result = urlparse(sval)
@@ -88,19 +88,16 @@ def check_format_function(name, basetype, convert=None):
 
 
 def get_format_function(name, basetype, convert=None):
+    err = (_err, _err)  # unsupported conversion
+
     if basetype == 'Binary':
         convert = convert if convert else 'b'
-        try:
-            cvt = constants.FORMAT_CONVERT_BINARY_FUNCTIONS[convert]
-        except KeyError:
-            cvt = (_err, _err)      # Binary conversion function not found
+        cvt = constants.FORMAT_CONVERT_BINARY_FUNCTIONS.get(convert, err)
     elif basetype == 'Array':
-        try:
-            cvt = constants.FORMAT_CONVERT_MULTIPART_FUNCTIONS[convert]
-        except KeyError:
-            cvt = (_err, _err)      # Multipart conversion function not found
+        cvt = constants.FORMAT_CONVERT_MULTIPART_FUNCTIONS.get(convert, err)
     else:
-        cvt = (_err, _err)          # Type does not support conversion
+        cvt = err
+
     try:
         col = {'String': 0, 'Binary': 1, 'Number': 2}[basetype]
         return (name, constants.FORMAT_CHECK_FUNCTIONS[name][col]) + cvt

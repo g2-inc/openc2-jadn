@@ -239,7 +239,7 @@ class ProtoVisitor(PTNodeVisitor):
         return com
 
     def visit_commentLine(self, node, children):
-        return re.sub(r'^//\s*?', '', node.value)
+        return re.sub(r'^//\s*?', '', node.value).strip()
 
     def visit_headerComments(self, node, children):
         if 'meta' not in self.data:
@@ -277,7 +277,7 @@ class ProtoVisitor(PTNodeVisitor):
             children[0],  # Type Name
             optDict['type'],  # Type
             optDict['options'],  # Options
-            re.sub(r'\s?#\S?$', '', children[1]) if len(children) >= 2 else ''  # comment
+            re.sub(r'\s?#\S?$', '', children[1]).strip() if len(children) >= 2 else ''  # comment
         ]
 
     def visit_defField(self, node, children):
@@ -291,7 +291,7 @@ class ProtoVisitor(PTNodeVisitor):
             re.sub(r'(^\s+|\s+$)', '', children[1]),  # name
             self.repeatedTypes.get(optDict['type'], optDict['type']),  # type
             optDict['options'],  # options
-            re.sub(r'\s?#\S?$', '', children[3]) if len(children) >= 4 else ''  # comment
+            re.sub(r'\s?#\S?$', '', children[3]).strip() if len(children) >= 4 else ''  # comment
         ]
 
     def visit_messageDef(self, node, children):
@@ -314,7 +314,7 @@ class ProtoVisitor(PTNodeVisitor):
         return [
             children[1],  # field number
             re.sub(r'(^\s+|\s+$)', '', children[0]),  # name
-            re.sub(r'\s?(#|{})\S?$'.format(lineSep), '', children[2]) if len(children) >= 3 else ''  # comment
+            re.sub(r'\s?(#|{})\S?$'.format(lineSep), '', children[2]).strip() if len(children) >= 3 else ''  # comment
         ]
 
     def visit_enumDef(self, node, children):

@@ -26,6 +26,8 @@ class JADNConverterBase(object):
         'enum_def': ['id', 'value', 'desc'],
     }
 
+    _space_start = re.compile(r"^\s+", re.MULTILINE)
+
     _structure_formats = dict(
         Record='_formatRecord',
         Choice='_formatChoice',

@@ -1,6 +1,7 @@
 import json
 import re
 
+from beautifultable import BeautifulTable
 from datetime import datetime
 
 from ..base_dump import JADNConverterBase
@@ -33,7 +34,7 @@ class JADNtoProto3(JADNConverterBase):
             self.comm = com if com in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
         imports = ''.join([f'import \"{imp}\";\n' for imp in self._imports])
-        jadn_fields = ',\n'.join([self._indent+json.dumps(utils.default_decode(list(field.values()))) for field in self._custom])
+        jadn_fields = ',\n'.join([self._indent+json.dumps(utils.default_encoding(list(field.values()))) for field in self._custom])
 
         return f"{self.makeHeader()}{imports}{self.makeStructures()}\n/* JADN Custom Fields\n[\n{jadn_fields}\n]\n*/"
 
@@ -50,7 +51,7 @@ class JADNtoProto3(JADNConverterBase):
             f"package {pkg_regex.sub('_', self._meta.get('module', 'JADN_ProtoBuf_Schema'))};",
             '',
             '/*',
-            *[f" * meta: {k} - {header_regex.sub('', json.dumps(utils.default_decode(v)))}" for k, v in self._meta.items()],
+            *[f" * meta: {k} - {header_regex.sub('', json.dumps(utils.default_encoding(v)))}" for k, v in self._meta.items()],
             '*/'
         ]
 
@@ -77,20 +78,25 @@ class JADNtoProto3(JADNConverterBase):
         :param itm: record to format
         :return: formatted record
         """
-        properties = []
+        properties = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)
+        properties.set_style(BeautifulTable.STYLE_NONE)
         for prop in itm.fields:
             opts = {'type': prop.type}
             if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
-            comment = self._formatComment(prop.desc, jadn_opts=opts)
-            properties.append(f'{self._indent}{self._fieldType(prop.type)} {self.formatStr(prop.name)} = {prop.id}; {comment}\n')
+            properties.append_row([
+                self._fieldType(prop.type),
+                f"{self.formatStr(prop.name)} =",
+                f"{prop.id};",
+                self._formatComment(prop.desc, jadn_opts=opts)
+            ])
 
         opts = {'type': itm.type}
         if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
-        properties = ''.join(properties)
-        return f'\nmessage {self.formatStr(itm.name)} {{ {comment}\n{properties}}}\n'
+        properties = self._space_start.sub(self._indent, str(properties))
+        return f'\nmessage {self.formatStr(itm.name)} {{ {comment}\n{properties}\n}}\n'
 
     def _formatChoice(self, itm):
         """
@@ -98,20 +104,25 @@ class JADNtoProto3(JADNConverterBase):
         :param itm: choice to format
         :return: formatted choice
         """
-        properties = []
+        properties = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)
+        properties.set_style(BeautifulTable.STYLE_NONE)
         for prop in itm.fields:
             opts = {'type': prop.type}
             if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
-            comment = self._formatComment(prop.desc, jadn_opts=opts)
-            properties.append(f'{self._indent}{self._fieldType(prop.type)} {self.formatStr(prop.name)} = {prop.id}; {comment}\n')
+            properties.append_row([
+                self._fieldType(prop.type),
+                f"{self.formatStr(prop.name)} =",
+                f"{prop.id};",
+                self._formatComment(prop.desc, jadn_opts=opts)
+            ])
 
         opts = {'type': itm.type}
         if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
-        properties = ''.join(properties)
-        return self._wrapAsRecord(f'\noneof {self.formatStr(itm.name)} {{ {comment}\n{properties}}}\n')
+        properties = self._space_start.sub(self._indent, str(properties))
+        return self._wrapAsRecord(f'\noneof {self.formatStr(itm.name)} {{ {comment}\n{properties}\n}}\n')
 
     def _formatMap(self, itm):
         """
@@ -127,20 +138,30 @@ class JADNtoProto3(JADNConverterBase):
         :param itm: enum to format
         :return: formatted enum
         """
-        properties = []
+        properties = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)
+        properties.set_style(BeautifulTable.STYLE_NONE)
         default = True
         for prop in itm.fields:
             if prop.id == 0: default = False
-            prop_name = self.formatStr(prop.value or f'Unknown_{self.formatStr(itm.name)}_{prop.id}')
-            properties.append(f'{self._indent}{prop_name} = {prop.id}; {self._formatComment(prop.desc)}\n')
+            properties.append_row([
+                f"{self.formatStr(prop.value or f'Unknown_{self.formatStr(itm.name)}_{prop.id}')} =",
+                f"{prop.id};",
+                self._formatComment(prop.desc)
+            ])
 
         opts = {'type': itm.type}
         if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
-        default = f"{self._indent}Unknown_{itm.name.replace('-', '_')} = 0; // required starting enum number for protobuf3\n" if default else ''
+        if default:
+            properties.insert_row(0, [
+                f"Unknown_{itm.name.replace('-', '_')} =",
+                "0;",
+                "// required starting enum number for protobuf3\n"
+            ])
+
         comment = self._formatComment(itm.desc, jadn_opts=opts)
-        properties = ''.join(properties)
-        return f'\nenum {self.formatStr(itm.name)} {{ {comment}\n{default}{properties}}}\n'
+        properties = self._space_start.sub(self._indent, str(properties))
+        return f'\nenum {self.formatStr(itm.name)} {{ {comment}\n{properties}\n}}\n'
 
     def _formatArray(self, itm):  # TODO: what should this do??
         """

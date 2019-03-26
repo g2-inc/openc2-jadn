@@ -1,6 +1,7 @@
 import json
 import re
 
+from beautifultable import BeautifulTable
 from datetime import datetime
 
 from ..base_dump import JADNConverterBase
@@ -41,7 +42,7 @@ class JADNtoCDDL(JADNConverterBase):
         :return: header for schema
         """
         header_regex = re.compile(r'(^\"|\"$)')
-        header = [f"; meta: {k} - {header_regex.sub('', json.dumps(utils.default_decode(v)))}" for k, v in self._meta.items()]
+        header = [f"; meta: {k} - {header_regex.sub('', json.dumps(utils.default_encoding(v)))}" for k, v in self._meta.items()]
 
         return '\n'.join(header) + '\n'
 
@@ -59,8 +60,16 @@ class JADNtoCDDL(JADNConverterBase):
         return tmp
 
     def makeCustom(self):
-        defs = [f'{self.formatStr(field.name)} = {self._fieldType(field.type)} ; {field.desc}' for field in self._custom]
-        return '\n'.join(defs)
+        defs = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)
+        defs.set_style(BeautifulTable.STYLE_NONE)
+        for field in self._custom:
+            defs.append_row([
+                f"{self.formatStr(field.name)} =",
+                self._fieldType(field.type),
+                f"; {field.desc}"
+            ])
+
+        return self._space_start.sub('', str(defs))
 
     # Structure Formats
     def _formatRecord(self, itm):
@@ -70,22 +79,25 @@ class JADNtoCDDL(JADNConverterBase):
         :return: formatted record
         """
         i = len(itm.fields)
-        properties = []
+        properties = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)
+        properties.set_style(BeautifulTable.STYLE_NONE)
+
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
             if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
-
-            optional = '? ' if self._is_optional(opts.get('options', {})) else ''
-            comment = (', ' if i > 1 else ' ') + self._formatComment(prop.desc, jadn_opts=opts)
-            properties.append(f'{self._indent}{optional}{self.formatStr(prop.name)}: {self._fieldType(prop.type)}{comment}\n')
+            properties.append_row([
+                f"{'? ' if self._is_optional(opts.get('options', {})) else ''}{self.formatStr(prop.name)}:",
+                f"{self._fieldType(prop.type)}{',' if i > 1 else ''}",
+                self._formatComment(prop.desc, jadn_opts=opts)
+            ])
             i -= 1
 
         opts = {'type': itm.type}
         if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
-        properties = ''.join(properties)
-        return f'\n{self.formatStr(itm.name)} = {{ {comment}\n{properties}}}\n'
+        properties = self._space_start.sub(self._indent, str(properties))
+        return f'\n{self.formatStr(itm.name)} = {{ {comment}\n{properties}\n}}\n'
 
     def _formatChoice(self, itm):
         """
@@ -94,21 +106,27 @@ class JADNtoCDDL(JADNConverterBase):
         :return: formatted choice
         """
         i = len(itm.fields)
-        properties = []
+        properties = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)
+        properties.set_style(BeautifulTable.STYLE_NONE)
+
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
             if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
-            comment = ('// ' if i > 1 else '') + self._formatComment(prop.desc, jadn_opts=opts)
-            properties.append(f"{self.formatStr(prop.name)}: {self._fieldType(prop.type)} {comment}")
+            properties.append_row([
+                f"{self.formatStr(prop.name)}:",
+                f"{self._fieldType(prop.type)}{' // ' if i > 1 else ''}",
+                self._formatComment(prop.desc, jadn_opts=opts)
+            ])
+
             i -= 1
 
         opts = {'type': itm.type}
         if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
-        properties = f'\n{self._indent}'.join(properties)
-        return f'\n{self.formatStr(itm.name)} = ( {comment}\n{self._indent}{properties}\n)\n'
+        properties = self._space_start.sub(self._indent, str(properties))
+        return f'\n{self.formatStr(itm.name)} = ( {comment}\n{properties}\n)\n'
 
     def _formatMap(self, itm):
         """
@@ -117,21 +135,25 @@ class JADNtoCDDL(JADNConverterBase):
         :return: formatted map
         """
         i = len(itm.fields)
-        properties = []
+        properties = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)
+        properties.set_style(BeautifulTable.STYLE_NONE)
+
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
             if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
-            optional = '? ' if self._is_optional(opts.get('options', {})) else ''
-            comment = (', ' if i > 1 else ' ') + self._formatComment(prop.desc, jadn_opts=opts)
-            properties.append(f'{self._indent}{optional}{self.formatStr(prop.name)}: {self._fieldType(prop.type)}{comment}\n')
+            properties.append_row([
+                f"{'? ' if self._is_optional(opts.get('options', {})) else ''}{self.formatStr(prop.name)}:",
+                f"{self._fieldType(prop.type)}{', ' if i > 1 else ''}",
+                self._formatComment(prop.desc, jadn_opts=opts)
+            ])
             i -= 1
 
         opts = {'type': itm.type}
         if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
-        properties = ''.join(properties)
+        properties = self._space_start.sub(self._indent, str(properties))
         return f'\n{self.formatStr(itm.name)} = [ {comment}\n{properties}]\n'
 
     def _formatEnumerated(self, itm):
@@ -142,18 +164,30 @@ class JADNtoCDDL(JADNConverterBase):
         :rtype str
         """
         enum_name = self.formatStr(itm.name)
-        properties = []
+        properties = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)
+        properties.set_style(BeautifulTable.STYLE_NONE)
+
+        i = len(itm.fields)
         for prop in itm.fields:
             opts = {'field': prop.id}
             value = self.formatStr(prop.value or f'Unknown_{enum_name}_{prop.id}')
-            properties.append(f'\"{value}\" {self._formatComment(prop.desc, jadn_opts=opts)}\n')
+            # properties.append(f'\"{value}\" {self._formatComment(prop.desc, jadn_opts=opts)}\n')
+
+            properties.append_row([
+                f"{enum_name} {'' if i == len(itm.fields) else '/'}=",
+                f"\"{value}\"",
+                self._formatComment(prop.desc, jadn_opts=opts)
+            ])
+
+            i -= 1
 
         opts = {'type': itm.type}
         if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
-        properties = f'{enum_name} /= '.join(properties)
-        return f'\n{comment}\n{enum_name} = {properties}'
+        # properties = f'{enum_name} /= '.join(properties)
+        properties = self._space_start.sub('', str(properties))
+        return f'\n{comment}\n{properties}\n'
 
     def _formatArray(self, itm):  # TODO: what should this do??
         """
@@ -163,21 +197,24 @@ class JADNtoCDDL(JADNConverterBase):
         """
         type_opts = {'type': itm.type}
         if len(itm.opts) > 0: type_opts['options'] = jadn_utils.fopts_s2d(itm.opts)
+        properties = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)
+        properties.set_style(BeautifulTable.STYLE_NONE)
 
         i = len(itm.fields)
-        properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
             if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
 
-            optional = '? ' if self._is_optional(opts.get('options', {})) else ''
-            comment = (', ' if i > 1 else ' ') + self._formatComment(prop.desc, jadn_opts=opts)
-            properties.append(f'{self._indent}{optional}{self.formatStr(prop.name)}: {self._fieldType(prop.type)}{comment}\n')
+            properties.append_row([
+                f"{'? ' if self._is_optional(opts.get('options', {})) else ''}{self.formatStr(prop.name)}:",
+                f"{self._fieldType(prop.type)}{', ' if i > 1 else ''}",
+                self._formatComment(prop.desc, jadn_opts=opts)
+            ])
             i -= 1
 
         comment = self._formatComment(itm.desc, jadn_opts=type_opts)
-        properties = ''.join(properties)
-        return f'\n{self.formatStr(itm.name)} = [ {comment}\n{properties}]\n'
+        properties = self._space_start.sub(self._indent, str(properties))
+        return f'\n{self.formatStr(itm.name)} = [ {comment}\n{properties}\n]\n'
 
     def _formatArrayOf(self, itm):  # TODO: what should this do??
         """

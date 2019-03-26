@@ -13,6 +13,12 @@ For other structure types (array, choice, map, record) each field definition is 
 
 from __future__ import unicode_literals
 
+from typing import Union
+
+from . import (
+     utils
+)
+
 # JADN Datatype Definition columns
 TNAME = 0       # Datatype name
 TTYPE = 1       # Base type - built-in or defined
@@ -61,13 +67,32 @@ def is_builtin(vtype):
     return vtype in PRIMITIVE_TYPES + STRUCTURE_TYPES
 
 
+def option_key(opts: dict, val: str) -> Union[str, None]:
+    if isinstance(opts, dict):
+        values = list(opts.values())
+        if val in values:
+            keys = list(opts.keys())
+            return chr(keys[values.index(val)])
+        else:
+            return None
+    else:
+        raise TypeError(f"Options given are not a dict, given {type(opts)}")
+
+
 # Option Tags/Keys
 #   JADN Type Options (TOPTS) and Field Options (FOPTS) contain a list of strings, each of which is an option.
 #   The first character of an option string is the type ID; the remaining characters are the value.
 #   The option string is converted into a Name: Value pair before use.
 #   The tables list the unicode codepoint of the ID and the corresponding Name.
 
-TYPE_OPTIONS = {        # ID, value type, description
+# TODO: Merge options into type & field dicts
+# TYPE_OPTIONS = utils.FrozenDict(OPTIONS=utils.FrozenDict(), SUPPORTED=utils.FrozenDict(), S2D=utils.FrozenDict())
+# TYPE_OPTIONS = utils.FrozenDict(**TYPE_OPTIONS, OPTIONS_INVERT=utils.FrozenDict(),  D2S=utils.FrozenDict())
+#
+# FIELD_OPTIONS = utils.FrozenDict(OPTIONS=utils.FrozenDict(), SUPPORTED=utils.FrozenDict(), S2D=utils.FrozenDict())
+# FIELD_OPTIONS = utils.FrozenDict(**FIELD_OPTIONS, OPTIONS_INVERT=utils.FrozenDict(),  D2S=utils.FrozenDict())
+
+TYPE_OPTIONS = utils.FrozenDict({        # ID, value type, description
     0x3d: 'compact',    # '=', boolean, Enumerated type and Choice/Map/Record keys are ID not Name
     0x2e: 'cvt',        # '.', string, String conversion and validation function for Binary derived types
     0x40: 'format',     # '@', string, name of validation function, e.g., date-time, email, ipaddr, ...
@@ -75,47 +100,53 @@ TYPE_OPTIONS = {        # ID, value type, description
     0x5d: 'max',        # ']', integer, maximum string length, integer value, array length, property count
     0x2a: 'rtype',      # '*', string, Enumerated value from referenced type or ArrayOf element type
     0x24: 'pattern',    # '$', string, regular expression that a string type must match
-}
+})
 
-FIELD_OPTIONS = {
+TYPE_OPTIONS_INVERT = utils.FrozenDict(zip(TYPE_OPTIONS.values(), TYPE_OPTIONS.keys()))
+
+FIELD_OPTIONS = utils.FrozenDict({
     0x5b: 'min',        # '[', integer, minimum cardinality of field, default = 1, 0 = field is optional
     0x5d: 'max',        # ']', integer, maximum cardinality of field, default = 1, 0 = inherited max, not 1 = array
     0x26: 'atfield',    # '&', string, name of a field that specifies the type of this field
     0x2a: 'rtype',      # '*', string, Enumerated value from referenced type
     0x2f: 'etype',      # '/', string, serializer-specific encoding type, e.g., u8, s16, hex, base64
     0x21: 'default',    # '!', string, default value for this field (coerced to field type)
-}
+})
 
-SUPPORTED_TYPE_OPTIONS = {
-    'Binary': ['min', 'max', 'format', 'cvt'],
-    'Boolean': [],
-    'Integer': ['min', 'max', 'format'],
-    'Number': ['min', 'max', 'format'],
-    'Null': [],
-    'String': ['min', 'max', 'pattern', 'format'],
-    'Array': ['min', 'max', 'cvt'],
-    'ArrayOf': ['min', 'max', 'rtype'],
-    'Choice': ['compact'],
-    'Enumerated': ['compact', 'rtype'],
-    'Map': ['compact', 'min', 'max'],
-    'Record': ['min', 'max'],
-}
+FIELD_OPTIONS_INVERT = utils.FrozenDict(zip(FIELD_OPTIONS.values(), FIELD_OPTIONS.keys()))
 
-SUPPORTED_FIELD_OPTIONS = {
-    'Binary': ['min', 'max'],
-    'Boolean': ['min', 'max'],
-    'Integer': ['min', 'max'],
-    'Number': ['min', 'max'],
-    'Null': [],
-    'String': ['min', 'max', 'pattern', 'format'],
-    'Array': ['min', 'max', 'etype', 'atfield'],
-    'ArrayOf': ['min', 'max', 'rtype'],
-    'Choice': ['min', 'max', 'etype'],
-    'Enumerated': ['rtype'],
-    'Map': ['min', 'max', 'etype'],
-    'Record': ['min', 'max', 'etype', 'atfield'],
-}
+SUPPORTED_TYPE_OPTIONS = utils.FrozenDict(
+    Binary=('min', 'max', 'format', 'cvt'),
+    Boolean=(),
+    Integer=('min', 'max', 'format'),
+    Number=('min', 'max', 'format'),
+    Null=(),
+    String=('min', 'max', 'pattern', 'format'),
+    Array=('min', 'max', 'cvt'),
+    ArrayOf=('min', 'max', 'rtype'),
+    Choice=('compact', ),
+    Enumerated=('compact', 'rtype'),
+    Map=('compact', 'min', 'max'),
+    Record=('min', 'max'),
+)
 
+SUPPORTED_FIELD_OPTIONS = utils.FrozenDict(
+    Binary=('min', 'max'),
+    Boolean=('min', 'max'),
+    Integer=('min', 'max'),
+    Number=('min', 'max'),
+    Null=(),
+    String=('min', 'max', 'pattern', 'format'),
+    Array=('min', 'max', 'etype', 'atfield'),
+    ArrayOf=('min', 'max', 'rtype'),
+    Choice=('min', 'max', 'etype'),
+    Enumerated=('rtype', ),
+    Map=('min', 'max', 'etype'),
+    Record=('min', 'max', 'etype', 'atfield'),
+)
+
+# TODO: Combine into single format dict
+# FORMAT = utils.FrozenDict(CHECK=utils.FrozenDict(), CONVERT=utils.FrozenDict())
 FORMAT_CHECK = {            # Semantic validation functions
     'email': 'String',      # email address, RFC 5322 Section 3.4.1
     'hostname': 'String',   # host name, RFC 1123 Section 2.1
@@ -132,3 +163,45 @@ FORMAT_CONVERT = {          # Binary-String and Array-String conversion function
     'ipv4-net': 'Array',    # IPv4 Network Address CIDR string - RFC 4632 Section 3.1
     'ipv6-net': 'Array',    # IPv6 Network Address CIDR string - RFC 4291 Section 2.3
 }
+
+
+# Option Conversions
+OPTIONS_S2D = utils.FrozenDict(
+    TYPE=utils.FrozenDict(
+        compact=lambda x: True,
+        cvt=lambda x: x,
+        format=lambda x: x,
+        min=lambda x: utils.safe_cast(x, int, 1),
+        max=lambda x: utils.safe_cast(x, int, 1),
+        rtype=lambda x: x,
+        pattern=lambda x: x
+    ),
+    FIELD=utils.FrozenDict(
+        min=lambda x: utils.safe_cast(x, int, 1),
+        max=lambda x: utils.safe_cast(x, int, 1),
+        atfield=lambda x: x,
+        rtype=lambda x: x,
+        etype=lambda x: x,
+        default=lambda x: x
+    )
+)
+
+OPTIONS_D2S = utils.FrozenDict(
+    TYPE=utils.FrozenDict(
+        compact=lambda x: chr(TYPE_OPTIONS_INVERT.compact),
+        cvt=lambda x: f"{chr(TYPE_OPTIONS_INVERT.cvt)}{x}",
+        format=lambda x: f"{chr(TYPE_OPTIONS_INVERT.format)}{x}",
+        min=lambda x: f"{chr(TYPE_OPTIONS_INVERT.min)}{utils.safe_cast(x, int, 1)}",
+        max=lambda x: f"{chr(TYPE_OPTIONS_INVERT.max)}{utils.safe_cast(x, int, 1)}",
+        rtype=lambda x: f"{chr(TYPE_OPTIONS_INVERT.rtype)}{x}",
+        pattern=lambda x: f"{chr(TYPE_OPTIONS_INVERT.pattern)}{x}"
+    ),
+    FIELD=utils.FrozenDict(
+        min=lambda x: f"{chr(FIELD_OPTIONS_INVERT.min)}{utils.safe_cast(x, int, 1)}",
+        max=lambda x: f"{chr(FIELD_OPTIONS_INVERT.max)}{utils.safe_cast(x, int, 1)}",
+        atfield=lambda x: f"{chr(FIELD_OPTIONS_INVERT.atfield)}{x}",
+        rtype=lambda x: f"{chr(FIELD_OPTIONS_INVERT.rtype)}{x}",
+        etype=lambda x: f"{chr(FIELD_OPTIONS_INVERT.etype)}{x}",
+        default=lambda x: f"{chr(FIELD_OPTIONS_INVERT.default)}{x}"
+    )
+)

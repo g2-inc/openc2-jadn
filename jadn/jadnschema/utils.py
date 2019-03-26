@@ -47,10 +47,10 @@ def isBase64(sb: Union[str, bytes]) -> bool:
     :return: bool if base64
     """
     try:
-        if type(sb) == str:
+        if isinstance(sb, str):
             # If there's any unicode here, an exception will be thrown and the function will return false
             sb_bytes = bytes(sb, 'ascii')
-        elif type(sb) == bytes:
+        elif isinstance(sb, bytes):
             sb_bytes = sb
         else:
             raise ValueError("Argument must be string or bytes")
@@ -76,7 +76,6 @@ def jadn_format(jadn: Union[dict, str], indent: int = 2) -> str:
             else:
                 jadn = json.loads(jadn)
         except Exception as e:
-            print(e)
             raise TypeError("JADN improperly formatted")
     else:
         raise TypeError("JADN improperly formatted")
@@ -139,16 +138,16 @@ def default_encoding(itm: Any) -> Any:
     :return: system default converted object/type
     """
     tmp = type(itm)()
-    if hasattr(tmp, '__iter__') and not isinstance(tmp, (str, bytearray)):
+    if hasattr(tmp, '__iter__') and not isinstance(tmp, (str, int, float)):
         for k in itm:
             ks = toStr(k)
-            if type(itm) is dict:
+            if isinstance(itm, dict):
                 tmp[ks] = default_encoding(itm[k])
-            elif type(itm) is list:
-                tmp.append(default_encoding(itm[k]))
+            elif isinstance(itm, list):
+                tmp.append(default_encoding(k))
             else:
-                print('Not prepared type: {}-{}'.format(type(itm[k]), itm[k]))
-    elif isinstance(itm, (complex, int, float)):
+                print(f"Not prepared type: {type(itm[k])}-{itm[k]}")
+    elif isinstance(itm, (complex, int, float, object)):
         tmp = itm
     else:
         tmp = toStr(itm)

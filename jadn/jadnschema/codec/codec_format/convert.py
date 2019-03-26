@@ -9,7 +9,7 @@ import re
 
 
 # Binary to String, String to Binary conversion functions
-def s2b_hex(sval):      # Convert from hex string to binary
+def s2b_hex(sval: str) -> bytes:      # Convert from hex string to binary
     """
     Convert from hex string to binary
     :param sval: hex string to convert to binary
@@ -21,7 +21,7 @@ def s2b_hex(sval):      # Convert from hex string to binary
         raise TypeError
 
 
-def b2s_hex(bval):
+def b2s_hex(bval: bytes) -> str:
     """
     Convert from binary to hex string
     :param bval: binary value to convert to hex string
@@ -30,7 +30,7 @@ def b2s_hex(bval):
     return base64.b16encode(bval).decode()
 
 
-def s2b_base64url(sval):
+def s2b_base64url(sval: str) -> bytes:
     """
     Convert from base64url string to binary
     :param sval: base64url string to convert to binary
@@ -42,7 +42,7 @@ def s2b_base64url(sval):
     raise TypeError('base64decode: bad character')
 
 
-def b2s_base64url(bval):
+def b2s_base64url(bval: bytes) -> str:
     """
     Convert from binary to base64url string
     :param bval: binary value to convert to a base64url string
