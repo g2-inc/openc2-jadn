@@ -14,7 +14,7 @@ for msg_file in os.listdir(dir):
         msgs[k] = t, Message(os.path.join(dir, msg_file), MessageFormats.get(t.upper()))
 
 print("Load Schema")
-schema = jadn_load('schema/oc2ls-csdpr02_reorg.jadn')
+schema = jadn_load('schema/oc2ls-csdpr02.jadn')
 
 print("Validate Messages\n")
 for n, tup in msgs.items():
