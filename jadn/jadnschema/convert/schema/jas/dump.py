@@ -59,7 +59,7 @@ def jas_dumps(jadn):
                 jas += '{:14} {}\n'.format(h+':', hdrs[h])
     jas += '*/\n'
 
-    assert set(stype_map) == set(jadn_defs.PRIMITIVE_TYPES + jadn_defs.STRUCTURE_TYPES)         # Ensure type list is up to date
+    assert set(stype_map) == set(jadn_defs.TYPES.PRIMITIVES + jadn_defs.TYPES.STRUCTURES)         # Ensure type list is up to date
     tolist = ['compact', 'cvt', 'rtype', 'min', 'max', 'pattern', 'format']
     assert set(jadn_defs.TYPE_OPTIONS.values()) == set(tolist)                # Ensure type options list is up to date
     folist = ['rtype', 'atfield', 'min', 'max', 'etype', 'default']

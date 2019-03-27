@@ -21,7 +21,7 @@ class JADNtoCDDL(JADNConverterBase):
         'Integer': 'int64',
         'Number': 'float64',
         'Null': 'null',
-        'String': 'bstr'
+        'String': 'tstr'
     }
 
     def cddl_dump(self, comm=enums.CommentLevels.ALL):
@@ -171,21 +171,18 @@ class JADNtoCDDL(JADNConverterBase):
         for prop in itm.fields:
             opts = {'field': prop.id}
             value = self.formatStr(prop.value or f'Unknown_{enum_name}_{prop.id}')
-            # properties.append(f'\"{value}\" {self._formatComment(prop.desc, jadn_opts=opts)}\n')
 
             properties.append_row([
                 f"{enum_name} {'' if i == len(itm.fields) else '/'}=",
                 f"\"{value}\"",
                 self._formatComment(prop.desc, jadn_opts=opts)
             ])
-
             i -= 1
 
         opts = {'type': itm.type}
         if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
-        # properties = f'{enum_name} /= '.join(properties)
         properties = self._space_start.sub('', str(properties))
         return f'\n{comment}\n{properties}\n'
 
@@ -240,11 +237,11 @@ class JADNtoCDDL(JADNConverterBase):
         if f in self._customFields:
             rtn = self.formatStr(f)
 
-        elif f in self._fieldMap.keys():
+        elif f in self._fieldMap:
             rtn = self.formatStr(self._fieldMap.get(f, f))
 
         else:
-            rtn = 'bstr'
+            rtn = 'tstr'
         return rtn
 
     def _formatComment(self, msg, **kargs):

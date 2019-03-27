@@ -15,9 +15,7 @@ from __future__ import unicode_literals
 
 from typing import Union
 
-from . import (
-     utils
-)
+from . import utils
 
 # JADN Datatype Definition columns
 TNAME = 0       # Datatype name
@@ -34,37 +32,48 @@ FTYPE = 2       # Datatype of field
 FOPTS = 3       # Field options
 FDESC = 4       # Field Description
 
-# JADN built-in datatypes
+META_ORDER = ('title', 'module', 'description', 'imports', 'exports', 'patch')
 
-PRIMITIVE_TYPES = (
-    'Binary',
-    'Boolean',
-    'Integer',
-    'Number',
-    'Null',
-    'String',
+# TODO: Convert to use COLUMN_KEY instead of above key/index
+COLUMN_KEYS = utils.FrozenDict(
+    # Structures
+    Structure=('name', 'type', 'opts', 'desc', 'fields'),
+    # Definitions
+    Enum_Def=('id', 'value', 'desc'),
+    Gen_Def=('id', 'name', 'type', 'opts', 'desc')
 )
 
-STRUCTURE_TYPES = (
-    'Array',
-    'ArrayOf',          # Special case: instance is a structure but type definition has no fields
-    'Choice',
-    'Enumerated',
-    'Map',
-    'Record',
+# JADN built-in datatypes
+TYPES = utils.FrozenDict(
+    PRIMITIVES=(
+        'Binary',
+        'Boolean',
+        'Integer',
+        'Number',
+        'Null',
+        'String'
+    ),
+    STRUCTURES=(
+        'Array',
+        'ArrayOf',      # Special case: instance is a structure but type definition has no fields
+        'Choice',
+        'Enumerated',
+        'Map',
+        'Record'
+    )
 )
 
 
 def is_primitive(vtype):
-    return vtype in PRIMITIVE_TYPES
+    return vtype in TYPES.PRIMITIVES
 
 
 def is_structure(vtype):
-    return vtype in STRUCTURE_TYPES
+    return vtype in TYPES.STRUCTURES
 
 
 def is_builtin(vtype):
-    return vtype in PRIMITIVE_TYPES + STRUCTURE_TYPES
+    return vtype in TYPES.PRIMITIVES + TYPES.STRUCTURES
 
 
 def option_key(opts: dict, val: str) -> Union[str, None]:
@@ -85,13 +94,7 @@ def option_key(opts: dict, val: str) -> Union[str, None]:
 #   The option string is converted into a Name: Value pair before use.
 #   The tables list the unicode codepoint of the ID and the corresponding Name.
 
-# TODO: Merge options into type & field dicts
-# TYPE_OPTIONS = utils.FrozenDict(OPTIONS=utils.FrozenDict(), SUPPORTED=utils.FrozenDict(), S2D=utils.FrozenDict())
-# TYPE_OPTIONS = utils.FrozenDict(**TYPE_OPTIONS, OPTIONS_INVERT=utils.FrozenDict(),  D2S=utils.FrozenDict())
-#
-# FIELD_OPTIONS = utils.FrozenDict(OPTIONS=utils.FrozenDict(), SUPPORTED=utils.FrozenDict(), S2D=utils.FrozenDict())
-# FIELD_OPTIONS = utils.FrozenDict(**FIELD_OPTIONS, OPTIONS_INVERT=utils.FrozenDict(),  D2S=utils.FrozenDict())
-
+# TODO: Merge options into field and type dicts?
 TYPE_OPTIONS = utils.FrozenDict({        # ID, value type, description
     0x3d: 'compact',    # '=', boolean, Enumerated type and Choice/Map/Record keys are ID not Name
     0x2e: 'cvt',        # '.', string, String conversion and validation function for Binary derived types
@@ -145,26 +148,6 @@ SUPPORTED_FIELD_OPTIONS = utils.FrozenDict(
     Record=('min', 'max', 'etype', 'atfield'),
 )
 
-# TODO: Combine into single format dict
-# FORMAT = utils.FrozenDict(CHECK=utils.FrozenDict(), CONVERT=utils.FrozenDict())
-FORMAT_CHECK = {            # Semantic validation functions
-    'email': 'String',      # email address, RFC 5322 Section 3.4.1
-    'hostname': 'String',   # host name, RFC 1123 Section 2.1
-    'ip-addr': 'Binary',    # length must be 4 octets (IPv4) or 16 octets (IPv6)
-    'mac-addr': 'Binary',   # length must be 6 octets (EUI-48) or 8 octets (EUI-64)
-    'uri': 'String',        # RFC 3986 Appendix A
-}
-
-FORMAT_CONVERT = {          # Binary-String and Array-String conversion functions
-    'b': 'Binary',          # Base64url - RFC 4648 Section 5 (default)
-    'x': 'Binary',          # Hex - RFC 4648 Section 8
-    'ipv4-addr': 'Binary',  # IPv4 text representation - draft-main-ipaddr-text-rep-02 Section 3
-    'ipv6-addr': 'Binary',  # IPv6 text representation - RFC 5952 Section 4
-    'ipv4-net': 'Array',    # IPv4 Network Address CIDR string - RFC 4632 Section 3.1
-    'ipv6-net': 'Array',    # IPv6 Network Address CIDR string - RFC 4291 Section 2.3
-}
-
-
 # Option Conversions
 OPTIONS_S2D = utils.FrozenDict(
     TYPE=utils.FrozenDict(
@@ -204,4 +187,23 @@ OPTIONS_D2S = utils.FrozenDict(
         etype=lambda x: f"{chr(FIELD_OPTIONS_INVERT.etype)}{x}",
         default=lambda x: f"{chr(FIELD_OPTIONS_INVERT.default)}{x}"
     )
+)
+
+# TODO: Combine into single format dict
+FORMAT = utils.FrozenDict(
+    CHECK=utils.FrozenDict({            # Semantic validation functions
+        'email': 'String',      # email address, RFC 5322 Section 3.4.1
+        'hostname': 'String',   # host name, RFC 1123 Section 2.1
+        'ip-addr': 'Binary',    # length must be 4 octets (IPv4) or 16 octets (IPv6)
+        'mac-addr': 'Binary',   # length must be 6 octets (EUI-48) or 8 octets (EUI-64)
+        'uri': 'String',        # RFC 3986 Appendix A
+    }),
+    CONVERT=utils.FrozenDict({          # Binary-String and Array-String conversion functions
+        'b': 'Binary',          # Base64url - RFC 4648 Section 5 (default)
+        'x': 'Binary',          # Hex - RFC 4648 Section 8
+        'ipv4-addr': 'Binary',  # IPv4 text representation - draft-main-ipaddr-text-rep-02 Section 3
+        'ipv6-addr': 'Binary',  # IPv6 text representation - RFC 5952 Section 4
+        'ipv4-net': 'Array',    # IPv4 Network Address CIDR string - RFC 4632 Section 3.1
+        'ipv6-net': 'Array',    # IPv6 Network Address CIDR string - RFC 4291 Section 2.3
+    })
 )

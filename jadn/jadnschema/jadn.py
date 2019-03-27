@@ -110,11 +110,11 @@ def jadn_check(schema):
             print('Error:', t[TNAME], '- Missing array element type')
         if 'format' in topts:
             f = topts['format']
-            if f not in FORMAT_CHECK or tt != FORMAT_CHECK[f]:
+            if f not in FORMAT.CHECK or tt != FORMAT.CHECK[f]:
                 print('Unsupported value constraint', '"' + topts['format'] + '" on', tt + ':',  t[TNAME])
         if 'cvt' in topts:
             f = topts['cvt']
-            if f not in FORMAT_CONVERT or tt != FORMAT_CONVERT[f]:
+            if f not in FORMAT.CONVERT or tt != FORMAT.CONVERT[f]:
                 print('Unsupported String conversion', '"' + topts['cvt'] + '" on', tt + ':',  t[TNAME])
         if is_primitive(tt) or tt == 'ArrayOf':
             if len(t) != 4:    # TODO: trace back to base type

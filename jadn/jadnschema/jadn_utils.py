@@ -1,16 +1,16 @@
 """
 Support functions for JADN codec
-  Convert dict between nested and flat
-  Convert typedef options between dict and strings
+Convert dict between nested and flat
+Convert typedef options between dict and strings
 """
 from functools import reduce
-from typing import List, Tuple, Union
+from typing import Any, List, Tuple, Union
 
 from . import jadn_defs
 
 
 # Dict conversion utilities
-def _dmerge(x, y):
+def _dmerge(x: dict, y: dict) -> dict:
     k, v = next(iter(y.items()))
     if k in x:
         _dmerge(x[k], v)
@@ -19,17 +19,16 @@ def _dmerge(x, y):
     return x
 
 
-def hdict(keys, value, sep="."):
+def hdict(keys: str, value: dict, sep: str = ".") -> dict:
     """
     Convert a hierarchical-key value pair to a nested dict
     """
     return reduce(lambda v, k: {k: v}, reversed(keys.split(sep)), value)
 
 
-def fluff(src, sep="."):
+def fluff(src: dict, sep: str = ".") -> dict:
     """
     Convert a flat dict with hierarchical keys to a nested dict
-
     :param src: flat dict - e.g., {"a.b.c": 1, "a.b.d": 2}
     :param sep: separator character for keys
     :return: nested dict - e.g., {"a": {"b": {"c": 1, "d": 2}}}
@@ -37,7 +36,7 @@ def fluff(src, sep="."):
     return reduce(lambda x, y: _dmerge(x, y), [hdict(k, v, sep) for k, v in src.items()], {})
 
 
-def flatten(cmd, path="", fc=None, sep="."):
+def flatten(cmd: Any, path: str = "", fc: dict = None, sep: str = ".") -> dict:
     """
     Convert a nested dict to a flat dict with hierarchical keys
     """
@@ -56,10 +55,9 @@ def flatten(cmd, path="", fc=None, sep="."):
     return fcmd
 
 
-def dlist(src):
+def dlist(src: dict) -> dict:
     """
     Convert dicts with numeric keys to lists
-
     :param src: {"a": {"b": {"0":"red", "1":"blue"}, "c": "foo"}}
     :return: {"a": {"b": ["red", "blue"], "c": "foo"}}
     """
@@ -147,7 +145,7 @@ def basetype(tt):                   # Return base type of derived subtypes
     return tt.rsplit('.')[0]        # Strip off subtype (e.g., .ID)
 
 
-def cardinality(minimum: int, maximum: int):
+def cardinality(minimum: int, maximum: int) -> str:
     if minimum == 1 and maximum == 1:
         return '1'
     return f"{minimum}..{'n' if maximum == 0 else maximum}"
