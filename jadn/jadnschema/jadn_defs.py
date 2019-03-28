@@ -13,8 +13,6 @@ For other structure types (array, choice, map, record) each field definition is 
 
 from __future__ import unicode_literals
 
-from typing import Union
-
 from . import utils
 
 # JADN Datatype Definition columns
@@ -86,6 +84,7 @@ def column_index(col_type: str, col_name: str) -> int:
         raise KeyError(f"{col_name} is not a valid column for {col_type}")
 
     return columns.index(col_name)
+
 
 # Option Tags/Keys
 #   JADN Type Options (TOPTS) and Field Options (FOPTS) contain a list of strings, each of which is an option.

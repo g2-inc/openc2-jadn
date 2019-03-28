@@ -122,26 +122,27 @@ def jadn_check(schema: Union[dict, str]) -> dict:
             vop = {*topts.keys()}.difference({*jadn_defs.SUPPORTED_TYPE_OPTIONS[base_type]})
 
             if vop:
-                raise TypeError(f"{type_def['name']} type {base_type} invalid type option{vop}")
+                print(TypeError(f"{type_def['name']} type {base_type} invalid type option{vop}"))
 
         else:
             # TODO: handle if type_def[TNAME] doesn't exist
-            raise TypeError(f"Unknown Base Type: {base_type} ({type_def['name']})")
+            topts = {}
+            print(TypeError(f"Unknown Base Type: {base_type} ({type_def['name']})"))
 
         if base_type == 'ArrayOf' and 'rtype' not in topts:
-            raise FormatError(f"Type: {type_def['name']} - Missing array element type")
+            print(FormatError(f"Type: {type_def['name']} - Missing array element type"))
 
         fmt = topts.get('format')
         if fmt and (fmt not in jadn_defs.FORMAT.CHECK or base_type != jadn_defs.FORMAT.CHECK[fmt]):
-            raise ValueError(f"Unsupported value constraint \"{fmt}\" on {base_type}: {type_def['name']}")
+            print(ValueError(f"Unsupported value constraint \"{fmt}\" on {base_type}: {type_def['name']}"))
 
         cvt = topts.get('cvt')
         if cvt and (cvt not in jadn_defs.FORMAT.CONVERT or base_type != jadn_defs.FORMAT.CONVERT[cvt]):
-            raise ValueError(f"Unsupported String conversion \"{cvt}\" on {base_type}: {type_def['name']}")
+            print(ValueError(f"Unsupported String conversion \"{cvt}\" on {base_type}: {type_def['name']}"))
 
         if jadn_defs.is_primitive(base_type) or base_type == 'ArrayOf':
             if len(type_def) != 4:    # TODO: trace back to base type
-                raise FormatError(f"{type_def['name']} - type {base_type} cannot have items")
+                print(FormatError(f"{type_def['name']} - type {base_type} cannot have items"))
 
         elif jadn_defs.is_builtin(base_type):
             if len(type_def) == 5:
@@ -157,24 +158,24 @@ def jadn_check(schema: Union[dict, str]) -> dict:
                     tags.add(field['id'])
 
                     if ordinal and field['id'] != k + 1:
-                        raise KeyError(f"Item tag: {type_def['name']} ({base_type}): {field['name']} -- {field['id']} should be {k + 1}")
+                        print(KeyError(f"Item tag: {type_def['name']} ({base_type}): {field['name']} -- {field['id']} should be {k + 1}"))
 
                     if len(field) != len(field_columns):
-                        raise FormatError(f"Item: {type_def['name']} {base_type} {field['name']} - {len(field)} != {len(field_columns)}")
+                        print(FormatError(f"Item: {type_def['name']} {base_type} {field['name']} - {len(field)} != {len(field_columns)}"))
 
                     if len(field) > 3 and jadn_defs.is_builtin(field['type']):
                         # TODO: trace back to builtin types
                         fop = {*jadn_utils.fopts_s2d(field['opts'])}.difference({*jadn_defs.SUPPORTED_FIELD_OPTIONS[field['type']]})
 
                         if fop:
-                            raise OptionError(f"{type_def['name']} : {field['name']} {field['type']} invalid field option {fop}")
+                            print(OptionError(f"{type_def['name']} : {field['name']} {field['type']} invalid field option {fop}"))
                     # TODO: check that wildcard name has Choice type, and that there is only one wildcard.
 
                 if len(type_def['fields']) != len(tags):
-                    raise KeyError(f"Tag collision {type_def['name']} {len(type_def['fields'])} items, {len(tags)} unique tags")
+                    print(KeyError(f"Tag collision {type_def['name']} {len(type_def['fields'])} items, {len(tags)} unique tags"))
 
             else:
-                FormatError(f"Type: {type_def['name']} - missing items from compound type {base_type}")
+                print(FormatError(f"Type: {type_def['name']} - missing items from compound type {base_type}"))
     return schema
 
 

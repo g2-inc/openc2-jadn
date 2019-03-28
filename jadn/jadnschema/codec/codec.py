@@ -547,5 +547,6 @@ enctab = {  # decode, encode, min encoded type
     'Choice': (_decode_choice, _encode_choice, dict),
     'Enumerated': (_decode_enumerated, _encode_enumerated, int),
     'Map': (_decode_maprec, _encode_maprec, dict),
+    'MapOf': (None, None, None),
     'Record': (None, None, None),   # Dynamic values
 }
