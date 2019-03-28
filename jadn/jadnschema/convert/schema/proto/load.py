@@ -7,6 +7,7 @@ from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visi
 from datetime import datetime
 
 from .... import (
+    jadn,
     jadn_defs,
     jadn_utils,
     utils
@@ -397,7 +398,7 @@ def proto_loads(proto):
         parser = ParserPython(ProtoRules)
         parse_tree = parser.parse(utils.toStr(proto))
         result = visit_parse_tree(parse_tree, ProtoVisitor())
-        return utils.jadn_format(result, indent=2)
+        return jadn.jadn_dumps(result, indent=2)
 
     except Exception as e:
         raise Exception('Proto parsing error has occurred: {}'.format(e))

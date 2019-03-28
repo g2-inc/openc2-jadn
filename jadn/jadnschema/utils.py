@@ -1,19 +1,7 @@
 import base64
-import json
-import os
 import sys
 
 from typing import Any, Type, Union
-
-_meta_order = ('title', 'module', 'description', 'imports', 'exports', 'patch')
-
-_keys = {
-    # Structures
-    'structure': ('name', 'type', 'opts', 'desc', 'fields'),
-    # Definitions
-    'def': ('id', 'name', 'type', 'opts', 'desc'),
-    'enum_def': ('id', 'value', 'desc'),
-}
 
 
 # Util Functions
@@ -59,78 +47,6 @@ def isBase64(sb: Union[str, bytes]) -> bool:
         return False
 
 
-def jadn_format(jadn: Union[dict, str], indent: int = 2) -> str:
-    """
-    Properly format a JADN schema
-    :param jadn: Schema to format
-    :param indent: spaces to indent
-    :return: Formatted JADN schema
-    """
-    if isinstance(jadn, dict):
-        pass
-    elif isinstance(jadn, str):
-        try:
-            if os.path.isfile(jadn):
-                with open(jadn, 'rb') as f:
-                    jadn = json.load(f)
-            else:
-                jadn = json.loads(jadn)
-        except Exception as e:
-            raise TypeError("JADN improperly formatted")
-    else:
-        raise TypeError("JADN improperly formatted")
-
-    idn = ' ' * (indent if type(indent) is int else 2)
-
-    meta_opts = []
-    schema_meta = jadn.get("meta", {})
-    for key in _meta_order:
-        if key in schema_meta:
-            val = schema_meta[key]
-            if isinstance(val, list):
-                obj = []
-
-                for itm in val:
-                    v = "[{}]".format(", ".join(f"\"{i}\"" for i in itm)) if isinstance(itm, list) else f"\"{itm}\""
-                    obj.append(f"{idn * 3}{v}")
-
-                v = ",\n".join(obj)
-                meta_opts.append(f"{idn * 2}\"{key}\": [\n{v}\n{idn * 2}]")
-            else:
-                meta_opts.append(f"{idn * 2}\"{key}\": \"{val}\"")
-
-    meta = ",\n".join(meta_opts)
-
-    type_defs = []
-    for itm in jadn.get("types", []):
-        itm = dict(zip(_keys['structure'], itm))
-        type_opts = ", ".join(f"\"{o}\"" for o in itm['opts'])
-        header = f"\"{itm['name']}\", \"{itm['type']}\", [{type_opts}], \"{itm['desc']}\""
-        fields = []
-
-        i = 1
-        for field in itm.get("fields", []):
-            if itm['type'] == 'Enumerated':
-                field = dict(zip(_keys['enum_def'], field))
-                fields.append(f"[{safe_cast(field['id'], int, i)}, \"{field['value']}\", \"{field['desc']}\"]")
-            else:
-                field = dict(zip(_keys['def'], field))
-                field_opts = ", ".join(f"\"{o}\"" for o in field['opts'])
-                fields.append(f"[{safe_cast(field['id'], int, i)}, \"{field['name']}\", \"{field['type']}\", [{field_opts}], \"{field['desc']}\"]")
-            i += 1
-
-        if len(fields) >= 1:
-            fields = f",\n{idn * 3}".join(fields)
-            fields = f", [\n{idn * 3}{fields}\n{idn * 2}]"
-        else:
-            fields = ''
-
-        type_defs.append(f"\n{idn * 2}[{header}{fields}]")
-
-    types = ",".join(type_defs)
-    return f"{{\n{idn}\"meta\": {{\n{meta}\n{idn}}},\n{idn}\"types\": [{types}\n{idn}]\n}}"
-
-
 def default_encoding(itm: Any) -> Any:
     """
     Encode the given object/type to the default of the system
@@ -168,8 +84,8 @@ class FrozenDict(dict):
     def __getattr__(self, item: str) -> Any:
         return self.get(item, None)
 
-    def __getitem__(self, item: str) -> Any:
-        return self.get(item, None)
+    def __getitem__(self, item: str, default: Any = None) -> Any:
+        return self.get(item, default)
 
     def _immutable(self, *args, **kwargs) -> TypeError:
         raise TypeError('cannot change object - object is immutable')

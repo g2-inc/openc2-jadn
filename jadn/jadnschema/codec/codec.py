@@ -75,7 +75,7 @@ class Codec:
 
     def __init__(self, schema, verbose_rec=False, verbose_str=False):
         self.schema = schema
-        assert set(enctab) == set(TYPES.PRIMITIVES + TYPES.STRUCTURES)
+        assert set(enctab) == set(JADN_TYPES.PRIMITIVES + JADN_TYPES.STRUCTURES)
         self.max_array = 100        # Conservative default upper bounds that can be overridden
         self.max_string = 255       # Codec defaults (these) -> Schema defaults (bounds) -> Datatype options (max)
         self.max_binary = 1000
@@ -173,34 +173,34 @@ class Codec:
         self.types = {t[TNAME]: t for t in self.schema['types']}        # pre-index types to allow symtab forward refs
         self.symtab = {t[TNAME]: sym(t) for t in self.schema['types']}
         self.symtab.update(self.arrays)                                 # Add generated arrays to symbol table
-        self.symtab.update({t: [['', t], enctab[t], enctab[t][C_ETYPE], get_format_function('', t), []] for t in TYPES.PRIMITIVES})
+        self.symtab.update({t: [['', t], enctab[t], enctab[t][C_ETYPE], get_format_function('', t), []] for t in JADN_TYPES.PRIMITIVES})
 
 
 def _bad_index(ts, k, val):
     td = ts[S_TDEF]
-    raise ValueError('%s(%s): array index %d out of bounds (%d, %d)' % (td[TNAME], td[TTYPE], k, len(ts[S_FLD]), len(val)))
+    raise ValueError(f"{td[TNAME]}({td[TTYPE]}): array index {k} out of bounds ({len(ts[S_FLD])}, {len(val)})")
 
 
 def _bad_choice(ts, val):
     td = ts[S_TDEF]
-    raise ValueError('%s: choice must have one value: %s' % (td[TNAME], val))
+    raise ValueError(f"{td[TNAME]}: choice must have one value: {val}")
 
 
 def _bad_value(ts, val, fld=None):
     td = ts[S_TDEF]
     if fld is not None:
-        raise ValueError('%s(%s): missing required field "%s": %s' % (td[TNAME], td[TTYPE], fld[FNAME], val))
+        raise ValueError(f"{td[TNAME]}({td[TTYPE]}): missing required field \"{fld[FNAME]}\": {val}")
     else:
         v = next(iter(val)) if type(val) == dict else val
-        raise ValueError('%s(%s): bad value: %s' % (td[TNAME], td[TTYPE], v))
+        raise ValueError(f"{td[TNAME]}({td[TTYPE]}): bad value: {v}")
 
 
 def _check_type(ts, val, vtype, fail=False):      # fail forces rejection of boolean vals for number types
     if vtype is not None:
         if fail or not isinstance(val, vtype):
             td = ts[S_TDEF]
-            tn = ('%s(%s)' % (td[TNAME], td[TTYPE]) if td else 'Primitive')
-            raise TypeError('%s: %s is not %s' % (tn, val, vtype))
+            tn = f"{td[TNAME]} ({td[TTYPE]})" if td else 'Primitive'
+            raise TypeError(f"{tn}: {val} is not {vtype}")
 
 
 def _format(ts, val, fmtop):
@@ -208,18 +208,18 @@ def _format(ts, val, fmtop):
         rval = ts[S_FORMAT][fmtop](val)         # fmtop selects function to check, serialize or deserialize
     except ValueError:
         td = ts[S_TDEF]
-        tn = ('%s(%s)' % (td[TNAME], td[TTYPE]) if td[TNAME] else td[TTYPE])
+        tn = f"{td[TNAME]} ({td[TTYPE]})" if td[TNAME] else td[TTYPE]
         val = b2a_hex(val).decode() if isinstance(val, bytes) else val
-        raise ValueError('%s: %s is not a valid %s' % (tn, val, ts[S_FORMAT][FMT_NAME]))
+        raise ValueError(f"{tn}: {val} is not a valid {ts[S_FORMAT][FMT_NAME]}")
     except NameError:
         td = ts[S_TDEF]
-        tn = ('%s(%s)' % (td[TNAME], td[TTYPE]) if td[TNAME] else td[TTYPE])
-        raise ValueError('%s: %s is not defined' % (tn, ts[S_FORMAT][FMT_NAME]))
+        tn = f"{td[TNAME]}({td[TTYPE]})" if td[TNAME] else td[TTYPE]
+        raise ValueError(f"{tn}: {ts[S_FORMAT][FMT_NAME]} is not defined")
     except AttributeError:
         td = ts[S_TDEF]
-        tn = ('%s(%s)' % (td[TNAME], td[TTYPE]) if td[TNAME] else td[TTYPE])
+        tn = f"{td[TNAME]}({td[TTYPE]})" if td[TNAME] else td[TTYPE]
         val = b2a_hex(val).decode() if isinstance(val, bytes) else val
-        raise ValueError('%s: %s is not supported: %s' % (tn, val, ts[S_FORMAT][FMT_NAME]))
+        raise ValueError(f"{tn}: {val} is not supported: {ts[S_FORMAT][FMT_NAME]}")
     return rval
 
 
@@ -227,30 +227,30 @@ def _check_key(ts, val):
     try:
         return int(val) if isinstance(next(iter(ts[S_DMAP])), int) else val
     except ValueError:
-        raise ValueError('%s: %s is not a valid field ID' % (ts[S_TDEF][TNAME], val))
+        raise ValueError(f"{ts[S_TDEF][TNAME]}: {val} is not a valid field ID")
 
 
 def _check_range(ts, val):
     op = ts[S_TOPT]
     tn = ts[S_TDEF][TNAME]
     if 'min' in op and val < op['min']:
-        raise ValueError('%s: %s < minimum %s' % (tn, len(val), op['min']))
+        raise ValueError(f"{tn}: {len(val)} < minimum {op['min']}")
     if 'max' in op and val > op['max']:
-        raise ValueError('%s: %s > maximum %s' % (tn, len(val), op['max']))
+        raise ValueError(f"{tn}: {len(val)} > maximum {op['max']}")
 
 
 def _check_size(ts, val):
     op = ts[S_TOPT]
     tn = ts[S_TDEF][TNAME]
     if 'min' in op and len(val) < op['min']:
-        raise ValueError('%s: length %s < minimum %s' % (tn, len(val), op['min']))
+        raise ValueError(f"{tn}: {len(val)} < minimum {op['min']}")
     if 'max' in op and len(val) > op['max']:
-        raise ValueError('%s: length %s > maximum %s' % (tn, len(val), op['max']))
+        raise ValueError(f"{tn}: {len(val)} > maximum {op['max']}")
 
 
 def _extra_value(ts, val, fld):
     td = ts[S_TDEF]
-    raise ValueError('%s(%s): unexpected field: %s not in %s:' % (td[TNAME], td[TTYPE], val, fld))
+    raise ValueError(f"{td[TNAME]}({td[TTYPE]}): unexpected field: {val} not in {fld}:")
 
 
 def _decode_array_of(ts, val, codec):
@@ -320,7 +320,7 @@ def _decode_enumerated(ts, val, codec):
         return ts[S_DMAP][val]
     else:
         td = ts[S_TDEF]
-        raise ValueError('%s: %r is not a valid %s' % (td[TTYPE], val, td[TNAME]))
+        raise ValueError(f"{td[TTYPE]}: {repr(val)} is not a valid {td[TNAME]}")
 
 
 def _encode_enumerated(ts, val, codec):
@@ -329,7 +329,7 @@ def _encode_enumerated(ts, val, codec):
         return ts[S_EMAP][val]
     else:
         td = ts[S_TDEF]
-        raise ValueError('%s: %r is not a valid %s' % (td[TTYPE], val, td[TNAME]))
+        raise ValueError(f"{td[TTYPE]}: {repr(val)} is not a valid {td[TNAME]}")
 
 
 def _decode_integer(ts, val, codec):

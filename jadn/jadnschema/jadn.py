@@ -1,16 +1,26 @@
 """
 Load, validate, prettyprint, and dump JSON Abstract Encoding Notation (JADN) schemas
 """
-
 from __future__ import print_function, unicode_literals
 
 import copy
 import json
 import jsonschema
 import numbers
+import os
+
 from datetime import datetime
-from .jadn_defs import *
-from .jadn_utils import topts_s2d, fopts_s2d, basetype
+from io import BufferedIOBase, TextIOBase
+from typing import List, Tuple, Union
+
+from . import (
+    jadn_defs,
+    jadn_utils
+)
+from .exceptions import (
+    FormatError,
+    OptionError
+)
 
 # TODO: convert prints to ValidationError exception
 
@@ -82,74 +92,115 @@ jadn_schema = {
 }
 
 
-def jadn_check(schema):
+def jadn_check(schema: Union[dict, str]) -> dict:
     """
-    Validate JADN structure against JSON schema,
     Validate JADN structure against JADN schema, then
     Perform additional checks on type definitions
+    :param schema: schema to check
+    :return: validated schema
     """
+    # TODO: check raised error types
+    if isinstance(schema, str):
+        if os.path.isfile(schema):
+            with open(schema, 'rb') as f:
+                schema = json.load(f)
+        else:
+            schema = json.loads(schema)
+    elif isinstance(schema, dict):
+        pass
+    else:
+        raise TypeError(f"Schema expected as dict/str, given {type(schema)}")
 
     jsonschema.Draft4Validator(jadn_schema).validate(schema)
-#    with open(os.path.join('schema', 'jadn.jadn')) as f:  # TODO: more robust method for locating JADN definition file
-#        jc = Codec(json.load(f), verbose_rec=True, verbose_str=True)
-#        assert jc.encode('Schema', schema) == schema
 
-    # TODO: raise exception instead of print
+    for type_def in schema['types']:     # datatype definition: jadn_defs.COLUMN_KEYS.Structures
+        type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
+        base_type = jadn_utils.basetype(type_def['type'])
 
-    for t in schema['types']:     # datatype definition: TNAME, TTYPE, TOPTS, TDESC, FIELDS
-        tt = basetype(t[TTYPE])
-        if is_builtin(tt):
-            topts = topts_s2d(t[TOPTS])
-            vop = {k for k in topts} - {k for k in SUPPORTED_TYPE_OPTIONS[tt]}
+        if jadn_defs.is_builtin(base_type):
+            topts = jadn_utils.topts_s2d(type_def['opts'])
+            vop = {*topts.keys()}.difference({*jadn_defs.SUPPORTED_TYPE_OPTIONS[base_type]})
+
             if vop:
-                print('Error:', t[TNAME], 'type', tt, 'invalid type option', str(vop))
+                raise TypeError(f"{type_def['name']} type {base_type} invalid type option{vop}")
+
         else:
-            print('Error: Unknown Base Type:', tt, '(' + t[TNAME] + ')')       # TODO: handle if t[TNAME] doesn't exist
-            topts = {}
-        if tt == 'ArrayOf' and 'rtype' not in topts:
-            print('Error:', t[TNAME], '- Missing array element type')
-        if 'format' in topts:
-            f = topts['format']
-            if f not in FORMAT.CHECK or tt != FORMAT.CHECK[f]:
-                print('Unsupported value constraint', '"' + topts['format'] + '" on', tt + ':',  t[TNAME])
-        if 'cvt' in topts:
-            f = topts['cvt']
-            if f not in FORMAT.CONVERT or tt != FORMAT.CONVERT[f]:
-                print('Unsupported String conversion', '"' + topts['cvt'] + '" on', tt + ':',  t[TNAME])
-        if is_primitive(tt) or tt == 'ArrayOf':
-            if len(t) != 4:    # TODO: trace back to base type
-                print('Type format error:', t[TNAME], '- type', tt, 'cannot have items')
-        elif is_builtin(tt):
-            if len(t) == 5:
-                tags = set()                            # TODO: check for name and tag collisions
-                n = 3 if tt == 'Enumerated' else 5      # TODO: check Choice min cardinality != 0
-                for k, i in enumerate(t[FIELDS]):       # item definition: 0-tag, 1-name, 2-type, 3-options, 4-description
-                    tags.update({i[FTAG]})              # or (enumerated): 0-tag, 1-name, 2-description
-                    ordinal = tt in ('Array', 'Record')
-                    if ordinal and i[FTAG] != k + 1:
-                        print('Item tag error:', t[TNAME] + '(' + tt + '):' + i[FNAME], '--', i[FTAG], 'should be', k + 1)
-                    if len(i) != n:
-                        print('Item format error:', t[TNAME], tt, i[FNAME], '-', len(i), '!=', n)
-                    if len(i) > 3 and is_builtin(i[FTYPE]):     # TODO: trace back to builtin types
-                        fop = {k for k in fopts_s2d(i[FOPTS])} - {k for k in SUPPORTED_FIELD_OPTIONS[i[FTYPE]]}
+            # TODO: handle if type_def[TNAME] doesn't exist
+            raise TypeError(f"Unknown Base Type: {base_type} ({type_def['name']})")
+
+        if base_type == 'ArrayOf' and 'rtype' not in topts:
+            raise FormatError(f"Type: {type_def['name']} - Missing array element type")
+
+        fmt = topts.get('format')
+        if fmt and (fmt not in jadn_defs.FORMAT.CHECK or base_type != jadn_defs.FORMAT.CHECK[fmt]):
+            raise ValueError(f"Unsupported value constraint \"{fmt}\" on {base_type}: {type_def['name']}")
+
+        cvt = topts.get('cvt')
+        if cvt and (cvt not in jadn_defs.FORMAT.CONVERT or base_type != jadn_defs.FORMAT.CONVERT[cvt]):
+            raise ValueError(f"Unsupported String conversion \"{cvt}\" on {base_type}: {type_def['name']}")
+
+        if jadn_defs.is_primitive(base_type) or base_type == 'ArrayOf':
+            if len(type_def) != 4:    # TODO: trace back to base type
+                raise FormatError(f"{type_def['name']} - type {base_type} cannot have items")
+
+        elif jadn_defs.is_builtin(base_type):
+            if len(type_def) == 5:
+                tags = set()
+                # TODO: check for name and tag collisions
+                # TODO: check Choice min cardinality != 0
+                # item definition: jadn_defs.COLUMN_KEYS.Gen_def or (enumerated): jadn_defs.COLUMN_KEYS.Enum_Def
+                field_columns = jadn_defs.COLUMN_KEYS['Enum_Def' if base_type == 'Enumerated' else 'Gen_Def']
+
+                for k, field in enumerate(type_def['fields']):
+                    field = dict(zip(field_columns, field))
+                    ordinal = base_type in ('Array', 'Record')
+                    tags.add(field['id'])
+
+                    if ordinal and field['id'] != k + 1:
+                        raise KeyError(f"Item tag: {type_def['name']} ({base_type}): {field['name']} -- {field['id']} should be {k + 1}")
+
+                    if len(field) != len(field_columns):
+                        raise FormatError(f"Item: {type_def['name']} {base_type} {field['name']} - {len(field)} != {len(field_columns)}")
+
+                    if len(field) > 3 and jadn_defs.is_builtin(field['type']):
+                        # TODO: trace back to builtin types
+                        fop = {*jadn_utils.fopts_s2d(field['opts'])}.difference({*jadn_defs.SUPPORTED_FIELD_OPTIONS[field['type']]})
+
                         if fop:
-                            print('Error:', t[TNAME], ':', i[FNAME], i[FTYPE], 'invalid field option', str(fop))
+                            raise OptionError(f"{type_def['name']} : {field['name']} {field['type']} invalid field option {fop}")
                     # TODO: check that wildcard name has Choice type, and that there is only one wildcard.
-                if len(t[FIELDS]) != len(tags):
-                    print('Tag collision', t[TNAME], len(t[FIELDS]), 'items,', len(tags), 'unique tags')
+
+                if len(type_def['fields']) != len(tags):
+                    raise KeyError(f"Tag collision {type_def['name']} {len(type_def['fields'])} items, {len(tags)} unique tags")
+
             else:
-                print('Type format error:', t[TNAME], '- missing items from compound type', tt)
+                FormatError(f"Type: {type_def['name']} - missing items from compound type {base_type}")
     return schema
 
 
-def jadn_strip(schema):             # Strip comments from schema
+def jadn_strip(schema: dict) -> dict:
+    """
+    Strip comments from schema
+    :param schema: schema to strip comments
+    :return: comment stripped JADN schema
+    """
     sc = copy.deepcopy(schema)
-    for tdef in sc['types']:
-        tdef[TDESC] = ''
-        if len(tdef) > FIELDS:
-            fd = EDESC if tdef[TTYPE] == 'Enumerated' else FDESC
-            for fdef in tdef[FIELDS]:
-                fdef[fd] = ''
+    types = sc.get('types', [])
+    if len(types) > 0:
+        sc['types'] = []
+        for tdef in types:
+            tdef = dict(zip(jadn_defs.COLUMN_KEYS.Structure, tdef))
+            tdef['desc'] = ''
+
+            fields = tdef.get('fields', [])
+            if len(fields) > 0:
+                base_type = jadn_utils.basetype(tdef['type'])
+                tdef['fields'] = []
+                for field in fields:
+                    field = dict(zip(jadn_defs.COLUMN_KEYS['Enum_Def' if base_type == 'Enumerated' else 'Gen_Def'], field))
+                    field['desc'] = ''
+                    tdef['fields'].append(list(field.values()))
+            sc['types'].append(list(tdef.values()))
     return sc
 
 
@@ -157,18 +208,21 @@ def jadn_merge(base, imp, nsid):      # Merge an imported schema into a base sch
     def update_opts(opts):
         return [(x[0] + nsid + ':' + x[1:] if x[0] == '*' and x[1:] in imported_names else x) for x in opts]
 
-    types = base['types'][:]        # Make a copy to avoid modifying base
-    imported_names = {t[TNAME] for t in imp['types']}
-    for t in imp['types']:
-        new_types = [nsid + ':' + t[TNAME], t[TTYPE], t[TOPTS], t[TDESC]]
-        new_types[TOPTS] = update_opts(new_types[TOPTS])
-        if len(t) > FIELDS:
-            new_fields = t[FIELDS][:]
-            if t[TTYPE] != 'Enumerated':
-                for f in new_fields:
-                    f[FOPTS] = update_opts(f[FOPTS])
-                    if f[FTYPE] in imported_names:
-                        f[FTYPE] = nsid + ':' + f[FTYPE]
+    # Make a copy to avoid modifying base
+    types = base['types'][:]
+    imported_names = {t[jadn_defs.column_index('Structure', 'name')] for t in imp['types']}
+
+    for type_def in imp['types']:
+        new_types = [f"{nsid}:{type_def[jadn_defs.TNAME]}", type_def[jadn_defs.TTYPE], type_def[jadn_defs.TOPTS], type_def[jadn_defs.TDESC]]
+        new_types[jadn_defs.TOPTS] = update_opts(new_types[jadn_defs.TOPTS])
+
+        if len(type_def) > jadn_defs.FIELDS:
+            new_fields = type_def[jadn_defs.FIELDS][:]
+            if type_def[jadn_defs.TTYPE] != 'Enumerated':
+                for field in new_fields:
+                    field[jadn_defs.FOPTS] = update_opts(field[jadn_defs.FOPTS])
+                    if field[jadn_defs.FTYPE] in imported_names:
+                        field[jadn_defs.FTYPE] = nsid + ':' + field[jadn_defs.FTYPE]
             new_types.append(new_fields)
         types.append(new_types)
     return {'meta': base['meta'], 'types': types}
@@ -198,82 +252,132 @@ def topo_sort(items):
     return out, roots
 
 
-def build_jadn_deps(schema):
-    def ns(name, nsids):   # Return namespace if name has a known namespace, otherwise return full name
+def build_jadn_deps(schema: dict) -> List[Tuple[str, List[str]]]:
+    """
+    Type dependency list
+    :param schema: schema to gather dependencies
+    :return: list of types and dependencies
+    """
+    def ns(name: str, nsids: list) -> str:  # Return namespace if name has a known namespace, otherwise return full name
         nsp = name.split(':')[0]
         return nsp if nsp in nsids else name
 
-    imps = schema['meta']['imports'] if 'imports' in schema['meta'] else []
+    imps = schema.get('meta', {}).get('imports', [])
     items = [(n[0], []) for n in imps]
     nsids = [n[0] for n in imps]
-    for tdef in schema['types']:
+
+    for type_def in schema.get('types', []):
+        type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
+        base_type = jadn_utils.basetype(type_def['type'])
         deps = []
-        if tdef[TTYPE] == 'ArrayOf':
-            rtype = topts_s2d(tdef[TOPTS])['rtype']
-            if not is_builtin(rtype):
+
+        if base_type == 'ArrayOf':
+            rtype = jadn_utils.topts_s2d(type_def['opts'])['rtype']
+            if not jadn_defs.is_builtin(rtype):
                 deps.append(ns(rtype, nsids))
-        if len(tdef) > FIELDS and tdef[TTYPE] != 'Enumerated':
-            for f in tdef[FIELDS]:
-                if not is_builtin(f[FTYPE]):
-                    deps.append(ns(f[FTYPE], nsids))
-        items.append((tdef[TNAME], deps))
+
+        elif 'fields' in type_def and base_type != 'Enumerated':
+            for field in type_def['fields']:
+                field = dict(zip(jadn_defs.COLUMN_KEYS['Gen_Def'], field))
+                if not jadn_defs.is_builtin(field['type']):
+                    deps.append(ns(field['type'], nsids))
+
+        items.append((type_def['name'], deps))
     return items
 
 
-def jadn_analyze(schema):
+def jadn_analyze(schema: dict) -> dict:
+    """
+    Analyze the given schema for unreferenced and undefined types
+    :param schema: schema to analyse
+    :return: analysis results
+    """
     items = build_jadn_deps(schema)
 #    out, roots = topo_sort(items)
-    exports = schema['meta']['exports'] if 'exports' in schema['meta'] else []
-    refs = set().union(*[i[1] for i in items]) | set(exports)
+    exports = schema.get('meta', {}).get('exports', [])
+    refs = {j for i in items for j in i[1]}.union({*exports})
     types = {i[0] for i in items}
     return {
-        'unreferenced': [str(k) for k in types - refs],
-        'undefined': [str(k) for k in refs - types],
+        'unreferenced': list(types.difference(refs)),
+        'undefined': list(refs.difference(types)),
         'cycles': [],
     }
 
 
-def jadn_loads(jadn_str):
-    schema = json.loads(jadn_str)
-    jadn_check(schema)
-    return schema
+def jadn_loads(jadn_str: str) -> dict:
+    """
+    load a JADN schema from a string
+    :param jadn_str: JADN schema to load
+    :return: loaded schema
+    """
+    return jadn_check(json.loads(jadn_str))
 
 
-def jadn_load(fname):
-    with open(fname) as f:
-        schema = json.load(f)
-    jadn_check(schema)
-    return schema
+def jadn_load(fname: Union[str, BufferedIOBase, TextIOBase]) -> dict:
+    """
+    Load a JADN schema from a file
+    :param fname: JADN schema file to load
+    :return: loaded schema
+    """
+    if isinstance(fname, str):
+        with open(fname, 'r') as f:
+            return jadn_check(json.load(f))
+
+    elif isinstance(fname, (BufferedIOBase, TextIOBase)):
+        return jadn_check(json.load(fname))
+
+    raise TypeError('fname is not a valid type')
 
 
-def jadn_dumps(schema, level=0, indent=1, strip=False, nlevel=None):
-    sp = level * indent * ' '
-    sp2 = (level + 1) * indent * ' '
-    sep2 = ',\n' if strip else ',\n\n'
+def jadn_dumps(schema: Union[complex, dict, float, int, str], indent: int = 2, strip: bool = False, _level: int = 0) -> str:
+    """
+    Properly format a JADN schema
+    :param schema: Schema to format
+    :param indent: spaces to indent
+    :param strip: strip comments from schema
+    :param _level: current indent level
+    :return: Formatted JADN schema
+    """
+    schema = jadn_strip(schema) if strip and _level == 0 and isinstance(schema, dict) else schema
+    _indent = indent - 1 if indent % 2 == 1 else indent
+    _indent += (_level * 2)
+    ind, ind_e = ' ' * _indent, ' ' * (_indent - 2)
+
     if isinstance(schema, dict):
-        sep = ',\n' if level > 0 else sep2
-        lines = []
-        for k in schema:
-            lines.append(sp2 + '"' + k + '": ' + jadn_dumps(schema[k], level + 1, indent, strip))
-        return '{\n' + sep.join(lines) + '\n' + sp + '}'
+        lines = f",\n".join(f"{ind}\"{k}\": {jadn_dumps(schema[k], indent, strip, _level+1)}" for k in schema)
+        return f"{{\n{lines}\n{ind_e}}}"
+
     elif isinstance(schema, list):
-        sep = ',\n' if level > 1 else sep2
-        vals = []
-        nest = schema and isinstance(schema[0], list)       # Not an empty list
-        for v in schema:
-            sp3 = sp2 if nest else ''
-            vals.append(sp3 + jadn_dumps(v, level + 1, indent, strip, level))
-        if nest:
-            spn = (nlevel if nlevel else level) * indent * ' '
-            return '[\n' + sep.join(vals) + '\n' + spn + ']'
-        return '[' + ', '.join(vals) + ']'
-    elif isinstance(schema, (numbers.Number, type(''))):
+        nested = schema and isinstance(schema[0], list)
+        lvl = _level+1 if nested and isinstance(schema[-1], list) else _level
+        lines = [jadn_dumps(val, indent, strip, lvl) for val in schema]
+        if nested:
+            return f"[\n{ind}" + f",\n{ind}".join(lines) + f"\n{ind_e}]"
+        return f"[{', '.join(lines)}]"
+
+    elif isinstance(schema, (numbers.Number, str)):
         return json.dumps(schema)
-    return '???'
+    else:
+        return "\"N/A\""
 
 
-def jadn_dump(schema, fname, source='', strip=False):
-    with open(fname, 'w') as f:
+def jadn_dump(schema: dict, fname: Union[str, BufferedIOBase, TextIOBase], source: str = '', strip: bool = False) -> None:
+    """
+    Write the JADN to a file
+    :param schema: schema to write
+    :param fname: file to write to
+    :param source: name of source file
+    :param strip: strip comments from schema
+    """
+    if isinstance(fname, str):
+        with open(fname, 'w') as f:
+            if source:
+                f.write(f"\"Generated from {source}, {datetime.ctime(datetime.now())}\"\n\n")
+            f.write(f"{jadn_dumps(schema, strip=strip)}\n")
+
+    elif isinstance(fname, (BufferedIOBase, TextIOBase)):
         if source:
-            f.write('"Generated from ' + source + ', ' + datetime.ctime(datetime.now()) + '"\n\n')
-        f.write(jadn_dumps(schema, strip=strip) + '\n')
+            fname.write(f"\"Generated from {source}, {datetime.ctime(datetime.now())}\"\n\n")
+        fname.write(f"{jadn_dumps(schema, strip=strip)}\n")
+    else:
+        raise TypeError('fname is not a valid type')

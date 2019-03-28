@@ -7,6 +7,7 @@ from datetime import datetime
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 
 from .... import (
+    jadn,
     jadn_defs,
     jadn_utils,
     utils
@@ -346,7 +347,7 @@ def cddl_loads(cddl):
         parser = ParserPython(CddlRules)
         parse_tree = parser.parse(utils.toStr(cddl))
         result = visit_parse_tree(parse_tree, CddlVisitor())
-        return utils.jadn_format(result, indent=2)
+        return jadn.jadn_dumps(result, indent=2)
 
     except Exception as e:
         raise Exception('CDDL parsing error has occurred: {}'.format(e))

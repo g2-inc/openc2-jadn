@@ -6,6 +6,7 @@ import re
 from datetime import datetime
 
 from .... import (
+    jadn,
     jadn_utils,
     utils
 )
@@ -396,7 +397,7 @@ def json_loads(json):
     :param json: JSON schema to convert
     :return: JADN schema
     """
-    return utils.jadn_format(JSONtoJADN(json).jadn_dump())
+    return jadn.jadn_dumps(JSONtoJADN(json).jadn_dump())
 
 
 def json_load(jsn, fname, source=""):

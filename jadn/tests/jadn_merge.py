@@ -31,7 +31,7 @@ def merge(idir):
         return schema['meta'][item] if item in schema['meta'] else ''
 
     cdir = os.path.dirname(os.path.realpath('__file__'))    # Current directory
-    odir = os.path.normpath(os.path.join(cdir, '..', 'schema_out'))     # Put generated schemas outside of the repo
+    odir = os.path.normpath(os.path.join(cdir, 'schema_out'))     # Put generated schemas outside of the repo
     print('Merging imported schemas from', os.path.realpath(idir), 'to', odir)
     files = {}
     for fn in (f[0] for f in (os.path.splitext(i) for i in os.listdir(idir)) if f[1] == '.jadn'):
@@ -40,7 +40,8 @@ def merge(idir):
         schema = jadn_load(source)
         id = _meta(schema, 'module') + '/' + _meta(schema, 'patch')
         if id in files:
-            raise ValueError('Duplicate schema IDs:', id, source, files['id']['source'])
+            raise ValueError('Duplicate schema IDs:', id, source, files[id]['source'])
+
         else:
             files.update({id: {
                 'source': source,

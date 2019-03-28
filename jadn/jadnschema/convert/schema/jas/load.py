@@ -10,6 +10,7 @@ from datetime import datetime
 from arpeggio import EOF, Optional, OneOrMore, ParserPython, PTNodeVisitor, visit_parse_tree, RegExMatch, OrderedChoice, UnorderedGroup, ZeroOrMore
 
 from .... import (
+    jadn,
     utils
 )
 
@@ -398,7 +399,7 @@ def jas_loads(jas):
         parser = ParserPython(JasRules)
         parse_tree = parser.parse(utils.toStr(jas))
         result = visit_parse_tree(parse_tree, JasVisitor())
-        return utils.jadn_format(result, indent=2)
+        return jadn.jadn_dumps(result, indent=2)
 
     except Exception as e:
         raise Exception(f"JAS parsing error has occurred: {e}")

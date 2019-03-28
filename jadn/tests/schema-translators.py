@@ -1,4 +1,3 @@
-import json
 import os
 
 from datetime import datetime
@@ -6,7 +5,7 @@ from datetime import datetime
 from jadnschema import (
     convert,
     enums,
-    utils
+    jadn
 )
 
 
@@ -21,8 +20,7 @@ class Conversions(object):
         if not os.path.isdir(self._test_dir):
             os.makedirs(self._test_dir)
 
-        with open(self._base_schema, 'rb') as f:
-            self._schema_json = json.loads(f.read())
+        self._schema_json = jadn.jadn_load(self._base_schema)
 
     def CDDL(self):
         convert.cddl_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.all.cddl'), comm=enums.CommentLevels.ALL)

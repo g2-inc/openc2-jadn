@@ -22,6 +22,7 @@ stype_map = {                   # Map JADN built-in types to JAS type names (Equ
     'Choice': 'CHOICE',           # CHOICE
     'Enumerated': 'ENUMERATED',   # ENUMERATED
     'Map': 'MAP',                 # SET
+    'MapOf': 'MAP_OF',            #
     'Record': 'RECORD'            # SEQUENCE
 }
 
@@ -59,10 +60,10 @@ def jas_dumps(jadn):
                 jas += '{:14} {}\n'.format(h+':', hdrs[h])
     jas += '*/\n'
 
-    assert set(stype_map) == set(jadn_defs.TYPES.PRIMITIVES + jadn_defs.TYPES.STRUCTURES)         # Ensure type list is up to date
-    tolist = ['compact', 'cvt', 'rtype', 'min', 'max', 'pattern', 'format']
+    assert set(stype_map) == set(jadn_defs.JADN_TYPES.PRIMITIVES + jadn_defs.JADN_TYPES.STRUCTURES)         # Ensure type list is up to date
+    tolist = ['compact', 'cvt', 'ktype', 'rtype', 'min', 'max', 'pattern', 'format']
     assert set(jadn_defs.TYPE_OPTIONS.values()) == set(tolist)                # Ensure type options list is up to date
-    folist = ['rtype', 'atfield', 'min', 'max', 'etype', 'default']
+    folist = ['rtype', 'atfield', 'min', 'max', 'etype', 'enum', 'default']
     assert set(jadn_defs.FIELD_OPTIONS.values()) == set(folist)               # Ensure field options list is up to date
     for td in jadn['types']:                    # 0:type name, 1:base type, 2:type opts, 3:type desc, 4:fields
         tname = td[jadn_defs.TNAME]
@@ -86,6 +87,8 @@ def jas_dumps(jadn):
                     tostr += '.' + ov
                 elif opt =='rtype':
                     tostr += '(' + ov + ')'
+                elif opt == 'ktype':
+                    pass  # fix MapOf(ktype, rtype)
                 elif opt == 'pattern':
                     tostr += ' (PATTERN ("' + ov + '"))'
                 elif opt == 'format':
@@ -106,13 +109,13 @@ def jas_dumps(jadn):
         if len(td) > jadn_defs.FIELDS:
             titems = deepcopy(td[jadn_defs.FIELDS])
             for n, i in enumerate(titems):      # 0:tag, 1:enum item name, 2:enum item desc  (enumerated), or
-                if len(i) > jadn_defs.FOPTS:              # 0:tag, 1:field name, 2:field type, 3: field opts, 4:field desc
+                if len(i) > jadn_defs.FOPTS:    # 0:tag, 1:field name, 2:field type, 3: field opts, 4:field desc
                     desc = i[jadn_defs.FDESC]
                     i[jadn_defs.FTYPE] = stype(i[jadn_defs.FTYPE])
                 else:
                     desc = i[jadn_defs.EDESC]
                 desc = '    -- ' + desc if desc else ''
-                i.append(',' + desc if n < len(titems) - 1 else (' ' + desc if desc else ''))   # TODO: fix hacked desc for join
+                i.append(',' + desc if n < len(titems) - 1 else (' ' + desc if desc else ''))  # TODO: fix hacked desc for join
             flen = min(32, max(12, max([len(i[jadn_defs.FNAME]) for i in titems]) + 1 if titems else 0))
             jas += ' {' + tdesc + '\n'
             if ttype.lower() == 'enumerated':

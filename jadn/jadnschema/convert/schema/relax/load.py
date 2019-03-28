@@ -6,6 +6,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup, Comment
 
 from .... import (
+    jadn,
     jadn_defs,
     jadn_utils,
     utils
@@ -32,12 +33,12 @@ class Relax2Jadn(object):
         }
 
     def jadn_dump(self):
-        jadn = {
+        schema = {
             'meta': self.makeMeta(),
             'types': self.makeTypes()
         }
 
-        return utils.jadn_format(jadn, indent=2)
+        return jadn.jadn_dumps(schema, indent=2)
 
     def makeMeta(self):
         meta = {}

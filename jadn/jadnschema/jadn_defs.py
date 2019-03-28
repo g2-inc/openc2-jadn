@@ -38,13 +38,13 @@ META_ORDER = ('title', 'module', 'description', 'imports', 'exports', 'patch')
 COLUMN_KEYS = utils.FrozenDict(
     # Structures
     Structure=('name', 'type', 'opts', 'desc', 'fields'),
-    # Definitions
+    # Field Definitions
     Enum_Def=('id', 'value', 'desc'),
     Gen_Def=('id', 'name', 'type', 'opts', 'desc')
 )
 
 # JADN built-in datatypes
-TYPES = utils.FrozenDict(
+JADN_TYPES = utils.FrozenDict(
     PRIMITIVES=(
         'Binary',
         'Boolean',
@@ -59,34 +59,33 @@ TYPES = utils.FrozenDict(
         'Choice',
         'Enumerated',
         'Map',
+        'MapOf',        # (key type, value type)
         'Record'
     )
 )
 
 
 def is_primitive(vtype):
-    return vtype in TYPES.PRIMITIVES
+    return vtype in JADN_TYPES.PRIMITIVES
 
 
 def is_structure(vtype):
-    return vtype in TYPES.STRUCTURES
+    return vtype in JADN_TYPES.STRUCTURES
 
 
 def is_builtin(vtype):
-    return vtype in TYPES.PRIMITIVES + TYPES.STRUCTURES
+    return vtype in JADN_TYPES.PRIMITIVES + JADN_TYPES.STRUCTURES
 
 
-def option_key(opts: dict, val: str) -> Union[str, None]:
-    if isinstance(opts, dict):
-        values = list(opts.values())
-        if val in values:
-            keys = list(opts.keys())
-            return chr(keys[values.index(val)])
-        else:
-            return None
-    else:
-        raise TypeError(f"Options given are not a dict, given {type(opts)}")
+def column_index(col_type: str, col_name: str) -> int:
+    if col_type not in COLUMN_KEYS:
+        raise KeyError(f"{col_type} is not a valid column type")
 
+    columns = COLUMN_KEYS[col_type]
+    if col_name not in columns:
+        raise KeyError(f"{col_name} is not a valid column for {col_type}")
+
+    return columns.index(col_name)
 
 # Option Tags/Keys
 #   JADN Type Options (TOPTS) and Field Options (FOPTS) contain a list of strings, each of which is an option.
@@ -102,6 +101,7 @@ TYPE_OPTIONS = utils.FrozenDict({        # ID, value type, description
     0x5b: 'min',        # '[', integer, minimum string length, integer value, array length, property count
     0x5d: 'max',        # ']', integer, maximum string length, integer value, array length, property count
     0x2a: 'rtype',      # '*', string, Enumerated value from referenced type or ArrayOf element type
+    0x2b: 'ktype',      # '+', string, Key type for MapOf
     0x24: 'pattern',    # '$', string, regular expression that a string type must match
 })
 
@@ -110,6 +110,7 @@ TYPE_OPTIONS_INVERT = utils.FrozenDict(zip(TYPE_OPTIONS.values(), TYPE_OPTIONS.k
 FIELD_OPTIONS = utils.FrozenDict({
     0x5b: 'min',        # '[', integer, minimum cardinality of field, default = 1, 0 = field is optional
     0x5d: 'max',        # ']', integer, maximum cardinality of field, default = 1, 0 = inherited max, not 1 = array
+    0x25: 'enum',       # '%', boolean, enumeration derived from field type
     0x26: 'atfield',    # '&', string, name of a field that specifies the type of this field
     0x2a: 'rtype',      # '*', string, Enumerated value from referenced type
     0x2f: 'etype',      # '/', string, serializer-specific encoding type, e.g., u8, s16, hex, base64
@@ -130,6 +131,7 @@ SUPPORTED_TYPE_OPTIONS = utils.FrozenDict(
     Choice=('compact', ),
     Enumerated=('compact', 'rtype'),
     Map=('compact', 'min', 'max'),
+    MapOf=('min', 'max', 'ktype', 'rtype'),
     Record=('min', 'max'),
 )
 
@@ -156,16 +158,18 @@ OPTIONS_S2D = utils.FrozenDict(
         format=lambda x: x,
         min=lambda x: utils.safe_cast(x, int, 1),
         max=lambda x: utils.safe_cast(x, int, 1),
-        rtype=lambda x: x,
-        pattern=lambda x: x
+        ktype=lambda x: x,
+        pattern=lambda x: x,
+        rtype=lambda x: x
     ),
     FIELD=utils.FrozenDict(
+        atfield=lambda x: x,
+        default=lambda x: x,
+        enum=lambda x: True,
+        etype=lambda x: x,
         min=lambda x: utils.safe_cast(x, int, 1),
         max=lambda x: utils.safe_cast(x, int, 1),
-        atfield=lambda x: x,
-        rtype=lambda x: x,
-        etype=lambda x: x,
-        default=lambda x: x
+        rtype=lambda x: x
     )
 )
 
@@ -176,16 +180,18 @@ OPTIONS_D2S = utils.FrozenDict(
         format=lambda x: f"{chr(TYPE_OPTIONS_INVERT.format)}{x}",
         min=lambda x: f"{chr(TYPE_OPTIONS_INVERT.min)}{utils.safe_cast(x, int, 1)}",
         max=lambda x: f"{chr(TYPE_OPTIONS_INVERT.max)}{utils.safe_cast(x, int, 1)}",
+        ktype=lambda x: f"{chr(TYPE_OPTIONS_INVERT.ktype)}{x}",
         rtype=lambda x: f"{chr(TYPE_OPTIONS_INVERT.rtype)}{x}",
         pattern=lambda x: f"{chr(TYPE_OPTIONS_INVERT.pattern)}{x}"
     ),
     FIELD=utils.FrozenDict(
+        atfield=lambda x: f"{chr(FIELD_OPTIONS_INVERT.atfield)}{x}",
+        default=lambda x: f"{chr(FIELD_OPTIONS_INVERT.default)}{x}",
+        enum=lambda x: chr(TYPE_OPTIONS_INVERT.enum),
+        etype=lambda x: f"{chr(FIELD_OPTIONS_INVERT.etype)}{x}",
         min=lambda x: f"{chr(FIELD_OPTIONS_INVERT.min)}{utils.safe_cast(x, int, 1)}",
         max=lambda x: f"{chr(FIELD_OPTIONS_INVERT.max)}{utils.safe_cast(x, int, 1)}",
-        atfield=lambda x: f"{chr(FIELD_OPTIONS_INVERT.atfield)}{x}",
-        rtype=lambda x: f"{chr(FIELD_OPTIONS_INVERT.rtype)}{x}",
-        etype=lambda x: f"{chr(FIELD_OPTIONS_INVERT.etype)}{x}",
-        default=lambda x: f"{chr(FIELD_OPTIONS_INVERT.default)}{x}"
+        rtype=lambda x: f"{chr(FIELD_OPTIONS_INVERT.rtype)}{x}"
     )
 )
 

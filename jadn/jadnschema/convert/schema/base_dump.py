@@ -7,9 +7,12 @@ import re
 
 from typing import Callable, Union
 
-from ...enums import CommentLevels
-from ...jadn_defs import COLUMN_KEYS, META_ORDER
-from ...utils import FrozenDict
+from ... import (
+    enums,
+    jadn_defs,
+    jadn_utils,
+    utils
+)
 
 
 class JADNConverterBase(object):
@@ -18,9 +21,9 @@ class JADNConverterBase(object):
     """
     _indent = ' ' * 4
 
-    _escape_chars = ['-', ' ']
+    _escape_chars = ('-', ' ')
 
-    _meta_order = META_ORDER
+    _meta_order = jadn_defs.META_ORDER
 
     _space_start = re.compile(r"^\s+", re.MULTILINE)
 
@@ -33,16 +36,16 @@ class JADNConverterBase(object):
         ArrayOf='_formatArrayOf'
     )
 
-    _table_field_headers = {
+    _table_field_headers = utils.FrozenDict({
         '#': 'opts',
         'Description': 'desc',
         'ID': 'id',
         'Name': ('name', 'value'),
         'Type': 'type',
         'Value': 'value'
-    }
+    })
 
-    def __init__(self, jadn, comm=CommentLevels.ALL):
+    def __init__(self, jadn, comm=enums.CommentLevels.ALL):
         """
         Schema Converter Init
         :param jadn: str or dict of the JADN schema
@@ -59,24 +62,26 @@ class JADNConverterBase(object):
         else:
             raise TypeError('JADN improperly formatted')
 
-        self.comm = comm if comm in CommentLevels.values() else CommentLevels.ALL
+        self.comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
         self._meta = jadn.get('meta', {})
         self._types = []
         self._custom = []
         self._customFields = {}
 
-        for t in jadn['types']:
-            t = dict(zip(COLUMN_KEYS.Structure, t))
-            if 'fields' in t:
-                t['fields'] = [FrozenDict(zip(COLUMN_KEYS['Enum_Def' if t['type'] == 'Enumerated' else 'Gen_Def'], f)) for f in t['fields']]
-            t = FrozenDict(t)
+        for type_def in jadn.get('types', []):
+            type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
+            base_type = jadn_utils.basetype(type_def['type'])
 
-            self._customFields[t.name] = t.type
-            if t.type in self._structure_formats.keys():
-                self._types.append(t)
+            if 'fields' in type_def:
+                type_def['fields'] = [utils.FrozenDict(zip(jadn_defs.COLUMN_KEYS['Enum_Def' if base_type == 'Enumerated' else 'Gen_Def'], f)) for f in type_def['fields']]
+            type_def = utils.FrozenDict(type_def)
+
+            self._customFields[type_def.name] = type_def.type
+            if type_def.type in self._structure_formats.keys():
+                self._types.append(type_def)
             else:
-                self._custom.append(t)
+                self._custom.append(type_def)
 
     # Helper Functions
     def formatStr(self, s: str) -> str:
@@ -89,8 +94,7 @@ class JADNConverterBase(object):
         if s == '*':
             return 'unknown'
         elif len(escape_chars) > 0:
-            escape_regex = re.compile(rf"[{''.join(escape_chars)}]")
-            return escape_regex.sub('_', s)
+            return re.compile(rf"[{''.join(escape_chars)}]").sub('_', s)
         else:
             return s
 

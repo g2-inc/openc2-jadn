@@ -141,11 +141,11 @@ def fopts_d2s(opts: dict) -> List[str]:
         raise TypeError(f"Options given are not a dict, given {type(opts)}")
 
 
-def basetype(tt):                   # Return base type of derived subtypes
+def basetype(tt: str) -> str:                   # Return base type of derived subtypes
     return tt.rsplit('.')[0]        # Strip off subtype (e.g., .ID)
 
 
-def cardinality(minimum: int, maximum: int) -> str:
+def multiplicity(minimum: int, maximum: int) -> str:
     if minimum == 1 and maximum == 1:
         return '1'
     return f"{minimum}..{'n' if maximum == 0 else maximum}"
