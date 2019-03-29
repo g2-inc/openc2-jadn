@@ -11,13 +11,14 @@ import os
 
 from datetime import datetime
 from io import BufferedIOBase, TextIOBase
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from . import (
     jadn_defs,
     jadn_utils
 )
 from .exceptions import (
+    DuplicateError,
     FormatError,
     OptionError
 )
@@ -124,8 +125,7 @@ def jadn_check(schema: Union[dict, str]) -> dict:
             if vop:
                 print(TypeError(f"{type_def['name']} type {base_type} invalid type option{vop}"))
 
-        else:
-            # TODO: handle if type_def[TNAME] doesn't exist
+        else:  # TODO: handle if type_def[TNAME] doesn't exist
             topts = {}
             print(TypeError(f"Unknown Base Type: {base_type} ({type_def['name']})"))
 
@@ -147,7 +147,7 @@ def jadn_check(schema: Union[dict, str]) -> dict:
         elif jadn_defs.is_builtin(base_type):
             if len(type_def) == 5:
                 tags = set()
-                # TODO: check for name and tag collisions
+                names = set()
                 # TODO: check Choice min cardinality != 0
                 # item definition: jadn_defs.COLUMN_KEYS.Gen_def or (enumerated): jadn_defs.COLUMN_KEYS.Enum_Def
                 field_columns = jadn_defs.COLUMN_KEYS['Enum_Def' if base_type == 'Enumerated' else 'Gen_Def']
@@ -156,6 +156,7 @@ def jadn_check(schema: Union[dict, str]) -> dict:
                     field = dict(zip(field_columns, field))
                     ordinal = base_type in ('Array', 'Record')
                     tags.add(field['id'])
+                    names.add(field['value' if base_type == 'Enumerated' else 'name'])
 
                     if ordinal and field['id'] != k + 1:
                         print(KeyError(f"Item tag: {type_def['name']} ({base_type}): {field['name']} -- {field['id']} should be {k + 1}"))
@@ -172,7 +173,11 @@ def jadn_check(schema: Union[dict, str]) -> dict:
                     # TODO: check that wildcard name has Choice type, and that there is only one wildcard.
 
                 if len(type_def['fields']) != len(tags):
-                    print(KeyError(f"Tag collision {type_def['name']} {len(type_def['fields'])} items, {len(tags)} unique tags"))
+                    print(DuplicateError(f"Tag collision in {type_def['name']} - {len(type_def['fields'])} items, {len(tags)} unique tags"))
+
+                # TODO: Check validity of error raising
+                if len(type_def['fields']) != len(names) and base_type not in ('Array', 'ArrayOf'):
+                    print(DuplicateError(f"Name collision in {type_def['name']} - {len(type_def['fields'])} items, {len(names)} unique names"))
 
             else:
                 print(FormatError(f"Type: {type_def['name']} - missing items from compound type {base_type}"))
@@ -205,31 +210,46 @@ def jadn_strip(schema: dict) -> dict:
     return sc
 
 
-def jadn_merge(base, imp, nsid):      # Merge an imported schema into a base schema
-    def update_opts(opts):
-        return [(x[0] + nsid + ':' + x[1:] if x[0] == '*' and x[1:] in imported_names else x) for x in opts]
+def jadn_merge(base: dict, imp: dict, nsid: str) -> dict:
+    """
+    Merge an imported schema into a base schema
+    :param base: base schema
+    :param imp: schema to merge into base
+    :param nsid:
+    :return: merged schema
+    """
+    def update_opts(opts: list) -> list:
+        return [(f"{x[0] + nsid}:{x[1:]}" if x[0] == '*' and x[1:] in imported_names else x) for x in opts]
 
     # Make a copy to avoid modifying base
     types = base['types'][:]
     imported_names = {t[jadn_defs.column_index('Structure', 'name')] for t in imp['types']}
 
     for type_def in imp['types']:
-        new_types = [f"{nsid}:{type_def[jadn_defs.TNAME]}", type_def[jadn_defs.TTYPE], type_def[jadn_defs.TOPTS], type_def[jadn_defs.TDESC]]
-        new_types[jadn_defs.TOPTS] = update_opts(new_types[jadn_defs.TOPTS])
+        type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
+        base_type = jadn_utils.basetype(type_def['type'])
 
-        if len(type_def) > jadn_defs.FIELDS:
-            new_fields = type_def[jadn_defs.FIELDS][:]
-            if type_def[jadn_defs.TTYPE] != 'Enumerated':
-                for field in new_fields:
-                    field[jadn_defs.FOPTS] = update_opts(field[jadn_defs.FOPTS])
-                    if field[jadn_defs.FTYPE] in imported_names:
-                        field[jadn_defs.FTYPE] = nsid + ':' + field[jadn_defs.FTYPE]
-            new_types.append(new_fields)
-        types.append(new_types)
+        type_def['name'] = f"{nsid}:{type_def['name']}"
+        type_def['opts'] = update_opts(type_def['opts'])
+
+        if 'fields' in type_def:
+            fields = []
+            for field in type_def['fields']:
+                if base_type != 'Enumerated':
+                    field = dict(zip(jadn_defs.COLUMN_KEYS['Gen_Def'], field))
+                    field['type'] = f"{nsid}:{field['type']}" if field['type'] in imported_names else field['type']
+                    field['opts'] = update_opts(field['opts'])
+                    fields.append(list(field.values()))
+                else:
+                    fields.append(field)
+
+            type_def['fields'] = fields
+
+        types.append(list(type_def.values()))
     return {'meta': base['meta'], 'types': types}
 
 
-def topo_sort(items):
+def topo_sort(items: list) -> Tuple[List[str], List[str]]:
     """
     Topological sort with locality
     Sorts a list of (item: (dependencies)) pairs so that 1) all dependency items are listed before the parent item,
@@ -237,19 +257,21 @@ def topo_sort(items):
     Returns the sorted list of items and a list of root items.  A single root indicates a fully-connected hierarchy;
     multiple roots indicate disconnected items or hierarchies, and no roots indicate a dependency cycle.
     """
-    def walk_tree(item):
-        for i in deps[item]:
+    def walk_tree(item: list):
+        for i in deps.get(item, []):
             if i not in out:
                 walk_tree(i)
                 out.append(i)
 
     out = []
-    deps = {i[0]:i[1] for i in items}
-    roots = {i[0] for i in items} - set().union(*[i[1] for i in items])
+    deps = {i[0]: i[1] for i in items}
+    roots = list({*deps.keys()}.difference({j for i in items for j in i[1]}))
+
     for item in roots:
         walk_tree(item)
         out.append(item)
-    out = out if out else [i[0] for i in items]     # if cycle detected, don't sort
+
+    out = out if out else list(*deps.keys())     # if cycle detected, don't sort
     return out, roots
 
 
@@ -287,7 +309,7 @@ def build_jadn_deps(schema: dict) -> List[Tuple[str, List[str]]]:
     return items
 
 
-def jadn_analyze(schema: dict) -> dict:
+def jadn_analyze(schema: dict) -> Dict[str, List[str]]:
     """
     Analyze the given schema for unreferenced and undefined types
     :param schema: schema to analyse

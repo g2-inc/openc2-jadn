@@ -89,19 +89,19 @@ class Codec:
         try:
             ts = self.symtab[datatype]
         except KeyError:
-            raise ValueError('datatype "%s" is not defined' % (datatype))
+            raise ValueError(f"datatype \"{datatype}\" is not defined")
         return ts[S_CODEC][C_DEC](ts, sval, self)     # Dispatch to type-specific decoder
 
     def encode(self, datatype, aval):       # Encode API value into serialized value
         try:
             ts = self.symtab[datatype]
         except KeyError:
-            raise ValueError('datatype "%s" is not defined' % (datatype))
+            raise ValueError(f"datatype \"{datatype}\" is not defined")
         return ts[S_CODEC][C_ENC](ts, aval, self)     # Dispatch to type-specific encoder
 
     def set_mode(self, verbose_rec=False, verbose_str=False):
         def _add_dtype(fs, newfs):          # Create datatype needed by a field
-            dname = '$' + str(len(self.arrays))
+            dname = f"${len(self.arrays)}"
             self.arrays.update({dname: newfs})
             fs[S_FDEF] = fs[S_FDEF][:]      # Make a copy to modify
             fs[S_FDEF][FTYPE] = dname       # Redirect field to dynamically generated type
