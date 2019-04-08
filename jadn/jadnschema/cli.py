@@ -56,15 +56,15 @@ parser = argparse.ArgumentParser(description="JADN Schema Validation CLI")
 parser.add_argument(
     "schema",
     help="JADN Schema to validate with (i.e. filename.jadn)",
-    type=schema_file,
+    type=schema_file
 )
 
 parser.add_argument(
     "-i", "--instance",
     action="append",
     dest="instance",
-    type=instance_file,
-    help=f"instance to validate (i.e. filename.[{','.join(enums.MessageFormats.values())}])(may be specified multiple times)",
+    help=f"instance to validate (filename.[{','.join(enums.MessageFormats.values())}]) (May be specified multiple times)",
+    type=instance_file
 )
 
 

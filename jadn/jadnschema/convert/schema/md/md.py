@@ -24,12 +24,12 @@ class JADNtoMD(JADNConverterBase):
         def mkrow(k, v):
             if type(v) is list:
                 v = ', '.join([f'**{i[0]}**: {i[1]}' for i in v] if type(v[0]) is list else v) if len(v) > 0 else 'N/A'
-            return f'{k} | {v}'
+            return f'| {k} | {v} |'
 
         return '\n'.join([
             '## Schema',
-            '. | .',
-            ':--- | ---:',
+            '| . | . |',
+            '| :--- | ---: |',
             *[mkrow(meta, self._meta.get(meta, '')) for meta in self._meta_order]
         ]) + '\n\n'
 
@@ -226,8 +226,8 @@ class JADNtoMD(JADNConverterBase):
             align = opts.get('align', 'left')
             header_align.append('---:' if align.startswith('r') else (':---:' if align.startswith('c') else ':---'))
 
-        table_md.append(' | '.join(header))
-        table_md.append(' | '.join(header_align))
+        table_md.append(f"| {' | '.join(header)} |")
+        table_md.append(f"| {' | '.join(header_align)} |")
 
         # Body
         for row in rows:
@@ -250,7 +250,7 @@ class JADNtoMD(JADNConverterBase):
                     tmp_str = str(cell)
                     tmp_row.append(' ' if tmp_str == '' else tmp_str)
 
-            table_md.append(' | '.join(tmp_row))
+            table_md.append(f"| {' | '.join(tmp_row)} |")
 
         return '\n'.join(table_md) + '\n'
 

@@ -35,10 +35,26 @@ META_ORDER = ('title', 'module', 'description', 'imports', 'exports', 'patch')
 # TODO: Convert to use COLUMN_KEY instead of above key/index
 COLUMN_KEYS = utils.FrozenDict(
     # Structures
-    Structure=('name', 'type', 'opts', 'desc', 'fields'),
+    Structure=(
+        'name',     # 0 - TNAME - Datatype name
+        'type',     # 1 - TTYPE - Base type - built-in or defined
+        'opts',     # 2 - TOPTS - Type options
+        'desc',     # 3 - TDESC - Type description
+        'fields'    # 4 - FIELDS - List of fields
+    ),
     # Field Definitions
-    Enum_Def=('id', 'value', 'desc'),
-    Gen_Def=('id', 'name', 'type', 'opts', 'desc')
+    Enum_Def=(
+        'id',       # 0 - FTAG - Element ID
+        'value',    # 1 - FNAME - Element name
+        'desc'      # 2 - EDESC - Enumerated value description
+    ),
+    Gen_Def=(
+        'id',       # 0 - FTAG - Element ID
+        'name',     # 1 - FNAME - Element name
+        'type',     # 2 - FTYPE - Datatype of field
+        'opts',     # 3 - FOPTS - Field options
+        'desc'      # 4 - FDESC - Field Description
+    )
 )
 
 # JADN built-in datatypes
@@ -104,7 +120,7 @@ TYPE_OPTIONS = utils.FrozenDict({        # ID, value type, description
     0x24: 'pattern',    # '$', string, regular expression that a string type must match
 })
 
-TYPE_OPTIONS_INVERT = utils.FrozenDict(zip(TYPE_OPTIONS.values(), TYPE_OPTIONS.keys()))
+TYPE_OPTIONS_INVERT = utils.FrozenDict(map(reversed, TYPE_OPTIONS.items()))
 
 FIELD_OPTIONS = utils.FrozenDict({
     0x5b: 'min',        # '[', integer, minimum cardinality of field, default = 1, 0 = field is optional
@@ -116,7 +132,7 @@ FIELD_OPTIONS = utils.FrozenDict({
     0x21: 'default',    # '!', string, default value for this field (coerced to field type)
 })
 
-FIELD_OPTIONS_INVERT = utils.FrozenDict(zip(FIELD_OPTIONS.values(), FIELD_OPTIONS.keys()))
+FIELD_OPTIONS_INVERT = utils.FrozenDict(map(reversed, FIELD_OPTIONS.items()))
 
 SUPPORTED_TYPE_OPTIONS = utils.FrozenDict(
     Binary=('min', 'max', 'format', 'cvt'),
@@ -194,7 +210,6 @@ OPTIONS_D2S = utils.FrozenDict(
     )
 )
 
-# TODO: Combine into single format dict
 FORMAT = utils.FrozenDict(
     CHECK=utils.FrozenDict({            # Semantic validation functions
         'email': 'String',      # email address, RFC 5322 Section 3.4.1
