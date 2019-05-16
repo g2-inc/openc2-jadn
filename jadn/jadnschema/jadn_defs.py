@@ -249,16 +249,19 @@ FORMAT = utils.FrozenDict(
     CHECK=utils.FrozenDict({    # Semantic validation functions
         'email': 'String',      # email address, RFC 5322 Section 3.4.1
         'hostname': 'String',   # host name, RFC 1123 Section 2.1
-        'ip-addr': 'Binary',    # length must be 4 octets (IPv4) or 16 octets (IPv6)
+        'ipv4-addr': 'Binary',  # IPv4 address as specified in RFC 791 Section 3.1
+        'ipv6-addr': 'Binary',  # IPv6 address as specified in RFC 8200 Section 3
         'mac-addr': 'Binary',   # length must be 6 octets (EUI-48) or 8 octets (EUI-64)
+        'ipv4-net': 'Array',    # Binary IPv4 address and Integer prefix length, RFC 4632 Section 3.1
+        'ipv6-net': 'Array',    # Binary IPv6 address and Integer prefix length, RFC 4291 Section 2.3
         'uri': 'String',        # RFC 3986 Appendix A
     }),
     CONVERT=utils.FrozenDict({  # Binary-String and Array-String conversion functions
         'b': 'Binary',          # Base64url - RFC 4648 Section 5 (default)
         'x': 'Binary',          # Hex - RFC 4648 Section 8
-        'ipv4-addr': 'Binary',  # IPv4 text representation - draft-main-ipaddr-text-rep-02 Section 3
-        'ipv6-addr': 'Binary',  # IPv6 text representation - RFC 5952 Section 4
-        'ipv4-net': 'Array',    # IPv4 Network Address CIDR string - RFC 4632 Section 3.1
-        'ipv6-net': 'Array',    # IPv6 Network Address CIDR string - RFC 4291 Section 2.3
+        'ipv4-addr': 'Binary',  # IPv4 "dotted-quad" text representation, RFC 2673 Section 3.2
+        'ipv6-addr': 'Binary',  # IPv6 text representation, RFC 4291 Section 2.2
+        'ipv4-net': 'Array',    # IPv4 Network Address CIDR string, RFC 4632 Section 3.1
+        'ipv6-net': 'Array',    # IPv6 Network Address CIDR string, RFC 4291 Section 2.3
     })
 )
