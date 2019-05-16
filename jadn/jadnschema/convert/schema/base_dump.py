@@ -83,6 +83,19 @@ class JADNConverterBase(object):
             else:
                 self._custom.append(type_def)
 
+    def _makeStructures(self, default=None):
+        """
+        Create the type definitions for the schema
+        :return: type definitions for the schema
+        :rtype list
+        """
+        structs = []
+        for t in self._types:
+            df = getattr(self, f"_format{t.type}", None)
+            structs.append(df(t) if df else default)
+
+        return structs
+
     # Helper Functions
     def formatStr(self, s: str) -> str:
         """

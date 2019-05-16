@@ -49,14 +49,10 @@ class JADNtoJSON(JADNConverterBase):
     }
 
     _validationMap = {
-        'date-time': 'date-time',
-        'email': 'email',
-        'hostname': 'hostname',
-        'ip-addr': 'ip-addr',  # ipv4/ipv6
-        'json-pointer': 'json-pointer',  # Draft 6
-        'uri': 'uri',
-        'uri-reference': 'uri-reference',  # Draft 6
-        'uri-template': 'uri-template',  # Draft 6
+        'ipv4-addr': 'ipv4',  # ipv4
+        'ipv6-addr': 'ipv6',  # ipv6
+        'x': 'binary',
+        'b': 'binary',
     }
 
     def json_dump(self, com=None):
@@ -103,11 +99,8 @@ class JADNtoJSON(JADNConverterBase):
         :return: type definitions for the schema
         """
         tmp = dict()
-        for t in self._types:
-            df = self._structFun(t.type, lambda d: dict())
-
-            if df is not None:
-                tmp.update(df(t))
+        for struct in self._makeStructures(default={}):
+            tmp.update(struct)
         return tmp
 
     def makeCustom(self):
@@ -393,7 +386,7 @@ class JADNtoJSON(JADNConverterBase):
         :param _type: is type of field
         :return: dict - reformatted options
         """
-        _type = _type if type(_type) is bool else False
+        _type = _type if isinstance(_type, bool) else False
         optType = optType.lower()
         optKeys = self._getOptKeys(optType)
         r_opts = {}
@@ -403,22 +396,25 @@ class JADNtoJSON(JADNConverterBase):
                 return False
 
             return any([
-                k == 'min' and utils.safe_cast(v, int, 1) < 1,
-                k == 'max' and utils.safe_cast(v, int, 1) < 1,
+                k == 'minv' and utils.safe_cast(v, int, 1) < 1,
+                k == 'maxv' and utils.safe_cast(v, int, 1) < 1,
             ])
 
         for key, val in opts.items():
             if _type:
                 if key in optKeys:
+                    val = self._validationMap.get(val, val) if key == 'format' else val
                     r_opts[optKeys[key]] = val
-            elif not ignore(key, val):
-                if key in self._ignoreOpts:
-                    pass
-                elif key in optKeys:
-                    r_opts[optKeys[key]] = val
-                else:
-                    print(f'unknown option for type of {optType}: {key} - {val}')
+                continue
 
+            if ignore(key, val) or key in self._ignoreOpts:
+                continue
+
+            if key in optKeys:
+                val = self._validationMap.get(val, val) if key == 'format' else val
+                r_opts[optKeys[key]] = val
+            else:
+                print(f'unknown option for type of {optType}: {key} - {val}')
         return r_opts
 
     def _fieldType(self, f):

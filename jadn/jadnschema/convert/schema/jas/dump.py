@@ -62,9 +62,9 @@ def jas_dumps(jadn):
 
     assert set(stype_map) == set(jadn_defs.JADN_TYPES.PRIMITIVES + jadn_defs.JADN_TYPES.STRUCTURES)         # Ensure type list is up to date
     tolist = ['compact', 'cvt', 'ktype', 'rtype', 'min', 'max', 'pattern', 'format']
-    assert set(jadn_defs.TYPE_OPTIONS.values()) == set(tolist)                # Ensure type options list is up to date
+    assert set(jadn_defs.TYPE_CONFIG.OPTIONS.values()) == set(tolist)                # Ensure type options list is up to date
     folist = ['rtype', 'atfield', 'min', 'max', 'etype', 'enum', 'default']
-    assert set(jadn_defs.FIELD_OPTIONS.values()) == set(folist)               # Ensure field options list is up to date
+    assert set(jadn_defs.FIELD_CONFIG.OPTIONS.values()) == set(folist)               # Ensure field options list is up to date
     for td in jadn['types']:                    # 0:type name, 1:base type, 2:type opts, 3:type desc, 4:fields
         tname = td[jadn_defs.TNAME]
         ttype = jadn_utils.basetype(td[jadn_defs.TTYPE])

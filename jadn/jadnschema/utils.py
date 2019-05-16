@@ -1,7 +1,14 @@
 import base64
+import json
+import os
 import sys
 
 from typing import Any, Type, Union
+
+from . import (
+    jadn_defs,
+    jadn_utils
+)
 
 
 # Util Classes
@@ -82,6 +89,7 @@ def toFrozen(d: dict) -> FrozenDict:
     :param d: dict to convert
     :return: converted dict as a FrozenDict
     """
+    d = toThawed(d)
     for k in d:
         v = d[k]
         if isinstance(v, dict):
@@ -91,6 +99,20 @@ def toFrozen(d: dict) -> FrozenDict:
         d[k] = v
 
     return FrozenDict(d)
+
+
+def toThawed(d: Union[dict, FrozenDict]) -> dict:
+    thawed = {}
+
+    for k, v in d.items():
+        if isinstance(v, FrozenDict):
+            thawed[k] = toThawed(v)
+        elif isinstance(v, tuple):
+            thawed[k] = list(v)
+        else:
+            thawed[k] = v
+
+    return thawed
 
 
 def toStr(s: Any) -> str:
@@ -114,3 +136,64 @@ def safe_cast(val: Any, to_type: Type, default: Any = None) -> Any:
         return to_type(val)
     except (ValueError, TypeError):
         return default
+
+
+def jadn_idx2key(schema: Union[str, dict]) -> FrozenDict:
+    if isinstance(schema, str):
+        if os.path.isfile(schema):
+            with open(schema, 'rb') as f:
+                schema = json.load(f)
+        else:
+            schema = json.loads(schema)
+
+    tmp_schema = dict(
+        meta=schema.get("meta", {}),
+        types=[]
+    )
+
+    for type_def in schema.get('types', []):
+        type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
+        base_type = jadn_utils.basetype(type_def['type'])
+        type_def['opts'] = jadn_utils.topts_s2d(type_def['opts'])
+
+        if "fields" in type_def:
+            tmp_fields = []
+            for field in type_def['fields']:
+                field = dict(zip(jadn_defs.COLUMN_KEYS['Enum_Def' if base_type == 'Enumerated' else 'Gen_Def'], field))
+                if 'opts' in field:
+                    field['opts'] = jadn_utils.fopts_s2d(field['opts'])
+                tmp_fields.append(field)
+            type_def['fields'] = tmp_fields
+        tmp_schema['types'].append(type_def)
+
+    return toFrozen(tmp_schema)
+
+
+def jadn_key2idx(schema: Union[str, dict]) -> FrozenDict:
+    if isinstance(schema, str):
+        if os.path.isfile(schema):
+            with open(schema, 'rb') as f:
+                schema = json.load(f)
+        else:
+            schema = json.loads(schema)
+
+    schema = toThawed(schema)
+
+    tmp_schema = dict(
+        meta=schema.get("meta", {}),
+        types=[]
+    )
+
+    for type_def in schema.get('types', []):
+        if 'fields' in type_def:
+            tmp_fields = []
+            for field in type_def['fields']:
+                if 'opts' in field:
+                    field['opts'] = jadn_utils.topts_d2s(field['opts'])
+                tmp_fields.append(list(field.values()))
+            type_def['fields'] = tmp_fields
+
+        type_def['opts'] = jadn_utils.topts_d2s(type_def['opts']) if isinstance(type_def['opts'], dict) else type_def['opts']
+        tmp_schema['types'].append(list(type_def.values()))
+
+    return toFrozen(tmp_schema)

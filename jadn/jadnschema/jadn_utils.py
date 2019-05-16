@@ -76,14 +76,14 @@ def topts_s2d(ostr: Union[List[str], Tuple[str]]) -> dict:
     :return: key/value type options
     """
     if isinstance(ostr, (list, tuple)):
-        # assert len(set(OPTIONS_S2D.TYPE).difference(set(TYPE_D2S.keys()))) == 0
         opts = {}
         for o in ostr:
-            try:
-                k = jadn_defs.TYPE_OPTIONS[ord(o[0])]
-                opts[k] = jadn_defs.OPTIONS_S2D.TYPE[k](o[1:])
-            except KeyError:
-                raise ValueError(f"Unknown type option: {o}")
+            k = jadn_defs.TYPE_CONFIG.OPTIONS.get(ord(o[0]), None)
+            opt_fun = jadn_defs.TYPE_CONFIG.S2D.get(k, None)
+            if k and opt_fun:
+                opts[k] = opt_fun(o[1:])
+                continue
+            raise ValueError(f"Unknown type option: {o[0]} -> {o[1:]}")
         return opts
     else:
         raise TypeError(f"Options given are not list/tuple, given {type(ostr)}")
@@ -98,8 +98,10 @@ def topts_d2s(opts: dict) -> List[str]:
     if isinstance(opts, dict):
         ostr = []
         for k, v in opts.items():
-            assert k in jadn_defs.OPTIONS_D2S.TYPE, f"Unknown field option '{k}'"
-            ostr.append(jadn_defs.OPTIONS_D2S.TYPE[k](v))
+            if k in jadn_defs.TYPE_CONFIG.D2S:
+                ostr.append(jadn_defs.TYPE_CONFIG.D2S[k](v))
+                continue
+            raise TypeError(f"Unknown type option '{k}'")
         return ostr
     else:
         raise TypeError(f"Options given are not a dict, given {type(opts)}")
@@ -112,14 +114,14 @@ def fopts_s2d(ostr: List[str]) -> dict:
     :return: key/value field options
     """
     if isinstance(ostr, (list, tuple)):
-        # assert len(set(OPTIONS_S2D.FIELD).difference(set(FIELD_D2S.keys()))) == 0
         opts = {}
         for o in ostr:
-            try:
-                k = jadn_defs.FIELD_OPTIONS[ord(o[0])]
-                opts[k] = jadn_defs.OPTIONS_S2D.FIELD[k](o[1:])
-            except KeyError:
-                raise ValueError(f"Unknown type option: {o}")
+            k = jadn_defs.FIELD_CONFIG.OPTIONS.get(ord(o[0]), None)
+            opt_fun = jadn_defs.FIELD_CONFIG.S2D.get(k, None)
+            if k and opt_fun:
+                opts[k] = opt_fun(o[1:])
+                continue
+            raise ValueError(f"Unknown field option: {o[0]} -> {o[1:]}")
         return opts
     else:
         raise TypeError(f"Options given are not list/tuple, given {type(ostr)}")
@@ -134,15 +136,22 @@ def fopts_d2s(opts: dict) -> List[str]:
     if isinstance(opts, dict):
         ostr = []
         for k, v in opts.items():
-            assert k in jadn_defs.OPTIONS_D2S.FIELD, f"Unknown field option '{k}'"
-            ostr.append(jadn_defs.OPTIONS_D2S.FIELD[k](v))
+            if k in jadn_defs.FIELD_CONFIG.D2S:
+                ostr.append(jadn_defs.FIELD_CONFIG.D2S[k](v))
+                continue
+            raise TypeError(f"Unknown field option '{k}'")
         return ostr
     else:
         raise TypeError(f"Options given are not a dict, given {type(opts)}")
 
 
-def basetype(tt: str) -> str:                   # Return base type of derived subtypes
-    return tt.rsplit(".")[0]        # Strip off subtype (e.g., .ID)
+def basetype(tt: str) -> str:
+    """
+    Return base type of derived subtypes
+    :param tt: Type of structure/field
+    :return: base type
+    """
+    return tt.rsplit(".")[0]  # Strip off subtype (e.g., .ID)
 
 
 def multiplicity(minimum: int, maximum: int) -> str:

@@ -120,7 +120,7 @@ def jadn_check(schema: Union[dict, str]) -> dict:
 
         if jadn_defs.is_builtin(base_type):
             topts = jadn_utils.topts_s2d(type_def["opts"])
-            vop = {*topts.keys()}.difference({*jadn_defs.SUPPORTED_TYPE_OPTIONS[base_type]})
+            vop = {*topts.keys()}.difference({*jadn_defs.TYPE_CONFIG.SUPPORTED_OPTIONS[base_type]})
 
             if vop:
                 print(TypeError(f"{type_def['name']} type {base_type} invalid type option{vop}"))
@@ -166,7 +166,7 @@ def jadn_check(schema: Union[dict, str]) -> dict:
 
                     if len(field) > 3 and jadn_defs.is_builtin(field['type']):
                         # TODO: trace back to builtin types
-                        fop = {*jadn_utils.fopts_s2d(field['opts'])}.difference({*jadn_defs.SUPPORTED_FIELD_OPTIONS[field['type']]})
+                        fop = {*jadn_utils.fopts_s2d(field['opts'])}.difference({*jadn_defs.FIELD_CONFIG.SUPPORTED_OPTIONS.get(field['type'], ())})
 
                         if fop:
                             print(OptionError(f"{type_def['name']} : {field['name']} {field['type']} invalid field option {fop}"))
@@ -352,7 +352,7 @@ def jadn_load(fname: Union[str, BufferedIOBase, TextIOBase]) -> dict:
     raise TypeError('fname is not a valid type')
 
 
-def jadn_dumps(schema: Union[complex, dict, float, int, str], indent: int = 2, strip: bool = False, _level: int = 0) -> str:
+def jadn_dumps(schema: Union[complex, dict, float, int, str, tuple], indent: int = 2, strip: bool = False, _level: int = 0) -> str:
     """
     Properly format a JADN schema
     :param schema: Schema to format
@@ -370,9 +370,9 @@ def jadn_dumps(schema: Union[complex, dict, float, int, str], indent: int = 2, s
         lines = f",\n".join(f"{ind}\"{k}\": {jadn_dumps(schema[k], indent, strip, _level+1)}" for k in schema)
         return f"{{\n{lines}\n{ind_e}}}"
 
-    elif isinstance(schema, list):
-        nested = schema and isinstance(schema[0], list)
-        lvl = _level+1 if nested and isinstance(schema[-1], list) else _level
+    elif isinstance(schema, (list, tuple)):
+        nested = schema and isinstance(schema[0], (list, tuple))
+        lvl = _level+1 if nested and isinstance(schema[-1], (list, tuple)) else _level
         lines = [jadn_dumps(val, indent, strip, lvl) for val in schema]
         if nested:
             return f"[\n{ind}" + f",\n{ind}".join(lines) + f"\n{ind_e}]"
@@ -381,6 +381,7 @@ def jadn_dumps(schema: Union[complex, dict, float, int, str], indent: int = 2, s
     elif isinstance(schema, (numbers.Number, str)):
         return json.dumps(schema)
     else:
+        print(f"{type(schema)} - {schema}")
         return "\"N/A\""
 
 
