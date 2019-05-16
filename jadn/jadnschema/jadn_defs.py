@@ -135,12 +135,14 @@ FIELD_OPTIONS = utils.FrozenDict({
 FIELD_OPTIONS_INVERT = utils.FrozenDict(map(reversed, FIELD_OPTIONS.items()))
 
 SUPPORTED_TYPE_OPTIONS = utils.FrozenDict(
+    # Primitives
     Binary=('min', 'max', 'format', 'cvt'),
     Boolean=(),
     Integer=('min', 'max', 'format'),
     Number=('min', 'max', 'format'),
     Null=(),
     String=('min', 'max', 'pattern', 'format'),
+    # Structures
     Array=('min', 'max', 'cvt'),
     ArrayOf=('min', 'max', 'rtype'),
     Choice=('compact', ),
@@ -151,12 +153,14 @@ SUPPORTED_TYPE_OPTIONS = utils.FrozenDict(
 )
 
 SUPPORTED_FIELD_OPTIONS = utils.FrozenDict(
+    # Primitives
     Binary=('min', 'max'),
     Boolean=('min', 'max'),
     Integer=('min', 'max'),
     Number=('min', 'max'),
     Null=(),
     String=('min', 'max', 'pattern', 'format'),
+    # Structures
     Array=('min', 'max', 'etype', 'atfield'),
     ArrayOf=('min', 'max', 'rtype'),
     Choice=('min', 'max', 'etype'),
@@ -211,14 +215,14 @@ OPTIONS_D2S = utils.FrozenDict(
 )
 
 FORMAT = utils.FrozenDict(
-    CHECK=utils.FrozenDict({            # Semantic validation functions
+    CHECK=utils.FrozenDict({    # Semantic validation functions
         'email': 'String',      # email address, RFC 5322 Section 3.4.1
         'hostname': 'String',   # host name, RFC 1123 Section 2.1
         'ip-addr': 'Binary',    # length must be 4 octets (IPv4) or 16 octets (IPv6)
         'mac-addr': 'Binary',   # length must be 6 octets (EUI-48) or 8 octets (EUI-64)
         'uri': 'String',        # RFC 3986 Appendix A
     }),
-    CONVERT=utils.FrozenDict({          # Binary-String and Array-String conversion functions
+    CONVERT=utils.FrozenDict({  # Binary-String and Array-String conversion functions
         'b': 'Binary',          # Base64url - RFC 4648 Section 5 (default)
         'x': 'Binary',          # Hex - RFC 4648 Section 8
         'ipv4-addr': 'Binary',  # IPv4 text representation - draft-main-ipaddr-text-rep-02 Section 3

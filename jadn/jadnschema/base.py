@@ -19,9 +19,15 @@ def validate_schema(schema: Union[bytearray, dict, str]) -> Union[dict, List[Exc
         schema = jadn.jadn_loads(schema)
     jadn_analysis = jadn.jadn_analyze(schema)
 
-    if len(jadn_analysis['undefined']):
-        return [ReferenceError(f"schema contains undefined types: {', '.join(jadn_analysis['undefined'])}")]
-    return schema
+    errs = []
+
+    if len(jadn_analysis['undefined']) > 0:
+        errs.append(ReferenceError(f"schema contains undefined types: {', '.join(jadn_analysis['undefined'])}"))
+
+    if len(jadn_analysis['unreferenced']) > 0:
+        errs.append(ReferenceError(f"schema contains unreferenced types: {', '.join(jadn_analysis['unreferenced'])}"))
+
+    return schema if len(errs) == 0 else errs
 
 
 def validate_instance(schema: dict, instance: dict, _type: str = None) -> Union[Tuple[dict, str], List[Exception]]:

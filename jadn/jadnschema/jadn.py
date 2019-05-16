@@ -103,7 +103,7 @@ def jadn_check(schema: Union[dict, str]) -> dict:
     # TODO: check raised error types
     if isinstance(schema, str):
         if os.path.isfile(schema):
-            with open(schema, 'rb') as f:
+            with open(schema, "rb") as f:
                 schema = json.load(f)
         else:
             schema = json.loads(schema)
@@ -114,12 +114,12 @@ def jadn_check(schema: Union[dict, str]) -> dict:
 
     jsonschema.Draft4Validator(jadn_schema).validate(schema)
 
-    for type_def in schema['types']:     # datatype definition: jadn_defs.COLUMN_KEYS.Structures
+    for type_def in schema["types"]:     # datatype definition: jadn_defs.COLUMN_KEYS.Structures
         type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
-        base_type = jadn_utils.basetype(type_def['type'])
+        base_type = jadn_utils.basetype(type_def["type"])
 
         if jadn_defs.is_builtin(base_type):
-            topts = jadn_utils.topts_s2d(type_def['opts'])
+            topts = jadn_utils.topts_s2d(type_def["opts"])
             vop = {*topts.keys()}.difference({*jadn_defs.SUPPORTED_TYPE_OPTIONS[base_type]})
 
             if vop:
