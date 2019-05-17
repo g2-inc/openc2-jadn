@@ -138,13 +138,16 @@ def safe_cast(val: Any, to_type: Type, default: Any = None) -> Any:
         return default
 
 
-def jadn_idx2key(schema: Union[str, dict]) -> FrozenDict:
+def jadn_idx2key(schema: Union[str, dict], opts: bool = False) -> FrozenDict:
     if isinstance(schema, str):
-        if os.path.isfile(schema):
-            with open(schema, 'rb') as f:
-                schema = json.load(f)
-        else:
-            schema = json.loads(schema)
+        try:
+            if os.path.isfile(schema):
+                with open(schema, 'rb') as f:
+                    schema = json.load(f)
+            else:
+                schema = json.loads(schema)
+        except Exception as e:
+            raise ValueError("Schema improperly formatted")
 
     tmp_schema = dict(
         meta=schema.get("meta", {}),
@@ -154,30 +157,31 @@ def jadn_idx2key(schema: Union[str, dict]) -> FrozenDict:
     for type_def in schema.get('types', []):
         type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
         base_type = jadn_utils.basetype(type_def['type'])
-        type_def['opts'] = jadn_utils.topts_s2d(type_def['opts'])
+        type_def['opts'] = jadn_utils.topts_s2d(type_def['opts']) if opts else type_def['opts']
 
         if "fields" in type_def:
             tmp_fields = []
             for field in type_def['fields']:
                 field = dict(zip(jadn_defs.COLUMN_KEYS['Enum_Def' if base_type == 'Enumerated' else 'Gen_Def'], field))
                 if 'opts' in field:
-                    field['opts'] = jadn_utils.fopts_s2d(field['opts'])
+                    field['opts'] = jadn_utils.fopts_s2d(field['opts']) if opts else field['opts']
                 tmp_fields.append(field)
             type_def['fields'] = tmp_fields
         tmp_schema['types'].append(type_def)
 
-    return toFrozen(tmp_schema)
+    return tmp_schema
 
 
 def jadn_key2idx(schema: Union[str, dict]) -> FrozenDict:
     if isinstance(schema, str):
-        if os.path.isfile(schema):
-            with open(schema, 'rb') as f:
-                schema = json.load(f)
-        else:
-            schema = json.loads(schema)
-
-    schema = toThawed(schema)
+        try:
+            if os.path.isfile(schema):
+                with open(schema, 'rb') as f:
+                    schema = json.load(f)
+            else:
+                schema = json.loads(schema)
+        except Exception as e:
+            raise ValueError("Schema improperly formatted")
 
     tmp_schema = dict(
         meta=schema.get("meta", {}),
@@ -189,11 +193,11 @@ def jadn_key2idx(schema: Union[str, dict]) -> FrozenDict:
             tmp_fields = []
             for field in type_def['fields']:
                 if 'opts' in field:
-                    field['opts'] = jadn_utils.topts_d2s(field['opts'])
+                    field['opts'] = jadn_utils.topts_d2s(field['opts'])if isinstance(field['opts'], dict) else field['opts']
                 tmp_fields.append(list(field.values()))
             type_def['fields'] = tmp_fields
 
         type_def['opts'] = jadn_utils.topts_d2s(type_def['opts']) if isinstance(type_def['opts'], dict) else type_def['opts']
         tmp_schema['types'].append(list(type_def.values()))
 
-    return toFrozen(tmp_schema)
+    return tmp_schema

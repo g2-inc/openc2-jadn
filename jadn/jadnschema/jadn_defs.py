@@ -244,6 +244,10 @@ FIELD_CONFIG['D2S'] = dict(
 )
 FIELD_CONFIG = utils.toFrozen(FIELD_CONFIG)
 
+OPTION_ID = {**TYPE_CONFIG['OPTIONS_INVERT']}
+OPTION_ID.update(FIELD_CONFIG['OPTIONS_INVERT'])
+OPTION_ID = utils.toFrozen(OPTION_ID)
+
 
 FORMAT = utils.FrozenDict(
     CHECK=utils.FrozenDict({    # Semantic validation functions
@@ -256,6 +260,7 @@ FORMAT = utils.FrozenDict(
         'ipv6-net': 'Array',    # Binary IPv6 address and Integer prefix length, RFC 4291 Section 2.3
         'uri': 'String',        # RFC 3986 Appendix A
     }),
+    SERIALIZE=utils.FrozenDict(),
     CONVERT=utils.FrozenDict({  # Binary-String and Array-String conversion functions
         'b': 'Binary',          # Base64url - RFC 4648 Section 5 (default)
         'x': 'Binary',          # Hex - RFC 4648 Section 8

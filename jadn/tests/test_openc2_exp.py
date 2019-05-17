@@ -107,7 +107,6 @@ class Experimental_IPv4_Addr(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.tc.decode('Target', self.ipv4_addr_str_ser_bad4)
 
-
 class Experimental_IPv6_Addr(unittest.TestCase):
 
     def setUp(self):
@@ -243,7 +242,6 @@ class Experimental_IPv4_Net(unittest.TestCase):
             self.tc.decode('Target', self.ipv4_net_ser_bad2)
         with self.assertRaises(ValueError):
             self.tc.decode('Target', self.ipv4_net_ser_bad3)
-
 
 class Experimental_IPv6_Net(unittest.TestCase):
 

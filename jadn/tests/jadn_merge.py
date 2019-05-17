@@ -62,5 +62,6 @@ def merge(idir):
                 print('  ##', v['source'], e.args)
 
 
+
 if __name__ == '__main__':
     merge('schema')

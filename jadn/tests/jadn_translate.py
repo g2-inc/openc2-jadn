@@ -15,7 +15,7 @@ This script (jadn_translate) has no library dependencies other then jsonschema.
 from __future__ import print_function
 import os
 
-from jadnschema import jadn_load, jadn_dump, jadn_analyze, jadn_strip
+from jadnschema import jadn_load, jadn_dump, jadn_analyze, jadn_strip, jadn_simplify
 from jadnschema.convert import html_dump, jas_dump, md_dump
 
 
@@ -40,6 +40,7 @@ if __name__ == '__main__':
         print('\n'.join(['  ' + k + ': ' + str(sa[k]) for k in ('module', 'exports', 'unreferenced', 'undefined', 'cycles')]))
 
         jadn_dump(jadn_strip(schema), dest + '_strip.jadn', strip=True)
+        jadn_dump(jadn_simplify(schema), dest + '_simple.jadn')
         jadn_dump(schema, dest + '.jadn')
         jas_dump(schema, dest + '.jas')
         md_dump(schema, dest + '.md')

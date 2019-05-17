@@ -7,7 +7,7 @@ import binascii
 import unittest
 
 from jadnschema.codec.codec import Codec
-from jadnschema import jadn_load, jadn_check, jadn_analyze
+from jadnschema import jadn_load, jadn_check, jadn_analyze, jadn_simplify
 
 
 # Encode and decode data to verify that numeric object keys work properly when JSON converts them to strings
@@ -1090,6 +1090,7 @@ class Selectors(unittest.TestCase):         # TODO: bad schema - verify * field 
         with self.assertRaises(ValueError):
             self.tc.decode('t_property_explicit_primitive', self.pep_bad_min)
 
+
 """
     attr1i_api = {'type': 'Integer', 'value': 17}
     attr2i_api = {'type': 'Primitive', 'value': {'count': 17}}
@@ -1181,15 +1182,15 @@ class Selectors(unittest.TestCase):         # TODO: bad schema - verify * field 
 schema_list_cardinality = {                # JADN schema for fields with cardinality > 1 (e.g., list of x)
     'meta': {'module': 'unittests-ListField'},
     'types': [
-        ['t_array0', 'ArrayOf', ['*String', '[0', ']2'], ''],   # Min array length = 0, Max = 2
-        ['t_array1', 'ArrayOf', ['*String', ']2'], ''],         # Min array length = 1 (default), Max = 2
+        ['t_array0', 'ArrayOf', ['*String', '{0', '}2'], ''],   # Min array length = 0, Max = 2
+        ['t_array1', 'ArrayOf', ['*String', '}2'], ''],         # Min array length = 1 (default), Max = 2
         ['t_opt_list0', 'Record', [], '', [
             [1, 'string', 'String', [], ''],
             [2, 'list', 't_array0', ['[0'], '']        # Min = 0, Max default = 1 (Array is optional)
         ]],
         ['t_opt_list1', 'Record', [], '', [
             [1, 'string', 'String', [], ''],
-            [2, 'list', 't_array1', ['[0'], '']        # Min = 0, Max default = 1  (Array is optional)
+            [2, 'list', 't_array1', ['[0'], '']        # Min = 0, Max default = 1 (Array is optional)
         ]],
         ['t_list_1_2', 'Record', [], '', [
             [1, 'string', 'String', [], ''],
@@ -1197,11 +1198,11 @@ schema_list_cardinality = {                # JADN schema for fields with cardina
         ]],
         ['t_list_0_2', 'Record', [], '', [
             [1, 'string', 'String', [], ''],
-            [2, 'list', 'String', ['[0', ']2'], '']    # Min = 0, Max = 2
+            [2, 'list', 'String', ['[0', ']2'], '']    # Min = 0, Max = 2 (Array is optional, empty is invalid)
         ]],
         ['t_list_2_3', 'Record', [], '', [
             [1, 'string', 'String', [], ''],
-            [2, 'list', 'String', ['[2',']3'], '']     # Min = 2, Max = 3
+            [2, 'list', 'String', ['[2', ']3'], '']     # Min = 2, Max = 3
         ]],
         ['t_list_1_n', 'Record', [], '', [
             [1, 'string', 'String', [], ''],
@@ -1223,7 +1224,7 @@ class ListCardinality(unittest.TestCase):      # TODO: arrayOf(rec,map,array,arr
     L2a = {'string': 'cat', 'list': ['red', 'green']}
     L3a = {'string': 'cat', 'list': ['red', 'green', 'blue']}
 
-    def test_opt_list0_verbose(self):        # n-P, s-F, 0-F, 1-P, 2-P, 3-F
+    def test_opt_list0_verbose(self):        # n-P, s-F, 0-P, 1-P, 2-P, 3-F
         self.tc.set_mode(True, True)
         self.assertDictEqual(self.tc.encode('t_opt_list0', self.Lna), self.Lna)
         self.assertDictEqual(self.tc.decode('t_opt_list0', self.Lna), self.Lna)
@@ -1425,25 +1426,25 @@ class Bounds(unittest.TestCase):        # TODO: check max and min string length,
 schema_format = {  # JADN schema for value constraint tests
     'meta': {'module': 'unittests-Format'},
     'types': [
-        ['IPv4-Bin', 'Binary', ['[4', ']4'], ''],                   # Check length = 32 bits with format function
-        ['IPv4-Hex', 'Binary', ['[4', ']4', '.x'], ''],             # Check length = 32 bits with min/max size
-        ['IPv4-String', 'Binary', ['[4', ']4', '.ipv4-addr'], ''],
-        ['IPv6-Base64url', 'Binary', ['[16', ']16'], ''],
-        ['IPv6-Hex', 'Binary', ['[16', ']16', '.x'], ''],
-        ['IPv6-String', 'Binary', ['[16', ']16', '.ipv6-addr'], ''],
-        ['IPv5-error-expected', 'Binary', ['.ipv5'], ''],           # Generate error: unsupported (nonexistent) format
-        ['IPv4-Net', 'Array', ['.ipv4-net'], '', [
+        ['IPv4-Bin', 'Binary', ['{4', '}4'], ''],                   # Check length = 32 bits with format function
+        ['IPv4-Hex', 'Binary', ['{4', '}4', '/x'], ''],             # Check length = 32 bits with min/max size
+        ['IPv4-String', 'Binary', ['{4', '}4', '/ipv4-addr'], ''],
+        ['IPv6-Base64url', 'Binary', ['{16', '}16'], ''],
+        ['IPv6-Hex', 'Binary', ['{16', '}16', '/x'], ''],
+        ['IPv6-String', 'Binary', ['{16', '}16', '/ipv6-addr'], ''],
+        ['IPv5-error-expected', 'Binary', ['/ipv5'], ''],           # Generate error: unsupported (nonexistent) format
+        ['IPv4-Net', 'Array', ['/ipv4-net'], '', [
             [1, 'addr', 'Binary', [], ''],
             [2, 'prefix', 'Integer', [], '']
         ]],
-        ['IPv6-Net', 'Array', ['.ipv6-net'], '', [
+        ['IPv6-Net', 'Array', ['/ipv6-net'], '', [
             [1, 'addr', 'Binary', [], ''],
             [2, 'prefix', 'Integer', [], '']
         ]],
         ['t_ipaddrs', 'ArrayOf', ['*IPv4-Bin'], ''],
-        ['MAC-Base64url', 'Binary', ['@mac-addr'], ''],
-        ['Email-Addr', 'String', ['@email'], ''],
-        ['Hostname', 'String', ['@hostname'], '']
+        ['MAC-Base64url', 'Binary', ['/eui'], ''],
+        ['Email-Addr', 'String', ['/email'], ''],
+        ['Hostname', 'String', ['/hostname'], '']
     ]
 }
 
@@ -1606,6 +1607,76 @@ class JADN(unittest.TestCase):
 
         self.assertDictEqual(self.tc.encode('Schema', self.schema), self.schema)
         self.assertDictEqual(self.tc.decode('Schema', self.schema), self.schema)
+
+
+class Simplify(unittest.TestCase):
+    schema_enum_optimized = {
+        'meta': {'module': 'unittests-enum-optimized'},
+        'types': [
+            ['Colors', 'Record', [], '', [
+                [1, 'red', 'Integer', [], 'rojo'],
+                [2, 'green', 'Integer', [], 'verde'],
+                [3, 'blue', 'Integer', [], '']
+            ]],
+            ['Colors-Enum', 'Colors', ['$'], '']  # Derived enumeration
+        ]
+    }
+
+    schema_enum_simplified = {
+        'meta': {'module': 'unittests-enum-simple'},
+        'types': [
+            ['Colors', 'Record', [], '', [
+                [1, 'red', 'Integer', [], 'rojo'],
+                [2, 'green', 'Integer', [], 'verde'],
+                [3, 'blue', 'Integer', [], '']
+            ]],
+            ['Colors-Enum', 'Enumerated', [], '', [
+                [1, 'red', 'rojo'],
+                [2, 'green', 'verde'],
+                [3, 'blue', '']
+            ]]
+        ]
+    }
+
+    schema_mapof_optimized = {
+        'meta': {'module': 'unittests-enum-optimized'},
+        'types': [
+            ['Colors-Enum', 'Enumerated', [], '', [
+                [1, 'red', 'rojo'],
+                [2, 'green', 'verde'],
+                [3, 'blue', '']
+            ]],
+            ['Colors-Map', 'MapOf', ['+Colors-Enum', '*Number'], '']
+        ]
+    }
+
+    schema_mapof_simplified = {
+        'meta': {'module': 'unittests-enum-simple'},
+        'types': [
+            ['Colors-Enum', 'Enumerated', [], '', [
+                [1, 'red', 'rojo'],
+                [2, 'green', 'verde'],
+                [3, 'blue', '']
+            ]],
+            ['Colors-Map', 'Map', [], '', [
+                [1, 'red', 'Number', [], 'rojo'],
+                [2, 'green', 'Number', [], 'verde'],
+                [3, 'blue', 'Number', [], '']
+            ]]
+        ]
+    }
+
+    def test_derived_enum(self):
+        jadn_check(self.schema_enum_optimized)
+        jadn_check(self.schema_enum_simplified)
+        ss = jadn_simplify(self.schema_enum_optimized)
+        self.assertEqual(ss['types'], self.schema_enum_simplified['types'])
+
+    def test_mapof(self):
+        jadn_check(self.schema_mapof_optimized)
+        jadn_check(self.schema_mapof_simplified)
+        ss = jadn_simplify(self.schema_mapof_optimized)
+        self.assertEqual(ss['types'], self.schema_mapof_simplified['types'])
 
 
 if __name__ == '__main__':
