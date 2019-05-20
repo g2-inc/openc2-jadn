@@ -13,6 +13,8 @@ from .... import (
 
 
 class JADNtoJSON(JADNConverterBase):
+    _escape_chars = (' ',)
+
     _fieldMap = {
         'Binary': 'string',
         'Boolean': 'bool',
@@ -22,9 +24,9 @@ class JADNtoJSON(JADNConverterBase):
         'String': 'string'
     }
 
-    _ignoreOpts = [
+    _ignoreOpts = (
         'rtype'
-    ]
+    )
 
     _optKeys = {
         ('array',): {
@@ -32,18 +34,18 @@ class JADNtoJSON(JADNConverterBase):
             'max': 'maxItems'
         },
         ('integer', 'number'): {
-            'min': 'minimum',
-            'max': 'maximum',
+            'minc': 'minimum',
+            'maxc': 'maximum',
             'format': 'format'
         },
         ('choice', 'map', 'object'): {
-            'min': 'minItems',
-            'max': 'maxItems'
+            'minv': 'minItems',
+            'maxv': 'maxItems'
         },
         ('binary', 'enumerated', 'string'): {
             'format': 'format',
-            'min': 'minLength',
-            'max': 'maxLength',
+            'minc': 'minLength',
+            'maxc': 'maxLength',
             'pattern': 'pattern'
         }
     }
@@ -168,13 +170,10 @@ class JADNtoJSON(JADNConverterBase):
         :return: formatted choice
         """
         itm_opts = jadn_utils.topts_s2d(itm['opts'])
-        fields = []
         properties = {}
 
         for prop in itm.fields:
             prop_opts = jadn_utils.fopts_s2d(prop.opts)
-            fields.append(prop.name)
-
             tmp_def = self._fieldType(prop.type)
 
             field_type = tmp_def.get('type', '')
@@ -189,11 +188,16 @@ class JADNtoJSON(JADNConverterBase):
             type='object',
             **self._optReformat('object', itm_opts, True),
             **self._formatComment(itm.desc),
+            minProperties=1,
+            maxProperties=1,
             additionalProperties=False,
-            patternProperties={f"^({'|'.join(fields)})$": {}},
-            oneOf=[
-                dict(properties=properties)
-            ]
+            properties=properties,
+            patternProperties={
+                "^x-[A-Za-z0-9][A-Za-z0-9_]*:[A-Za-z0-9][A-Za-z0-9_]*$": {
+                    "description": "Non-OASIS target extensions must start with x- and be separated by a colon",
+                    "type": "object"
+                }
+            }
         )
 
         return {
@@ -239,17 +243,17 @@ class JADNtoJSON(JADNConverterBase):
             **self._optReformat('object', itm_opts, True),
             **self._formatComment(itm.desc),
             additionalProperties=False,
-            patternProperties={f"^({'|'.join(fields)})$": {}},
+            properties=properties,
+            patternProperties={
+                "^x-[A-Za-z0-9_]*$": {
+                    "description": "Non-OASIS extensions must start with x-",
+                    "type": "object"
+                }
+            }
         )
 
         if len(required) > 0:
             type_def['required'] = required
-
-        type_def['anyOf'] = [
-            dict(
-                properties=properties
-            )
-        ]
 
         return {
             self.formatStr(itm.name): type_def
@@ -358,6 +362,7 @@ class JADNtoJSON(JADNConverterBase):
             type='array',
             **self._optReformat('array', itm_opts, True),
             **self._formatComment(itm.desc),
+            uniqueItems=True,
             items=[
                 self._fieldType(rtype)
             ]

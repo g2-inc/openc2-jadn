@@ -78,23 +78,25 @@ def _format_ok(val):  # No value constraints on this type
     return val
 
 
-def _err(val):  # Unsupported format type
+def error(val):  # Unsupported format type
     raise NameError(f'Unsupported format type: {type(val)}')
 
 
 def check_format_function(name, basetype, convert=None):
     ff = get_format_function(name, basetype, convert)
-    return ff[constants.FMT_CHECK] != _err, ff[constants.FMT_B2S] != _err
+    return ff[constants.FMT_CHECK] != error, ff[constants.FMT_B2S] != error
 
 
 def get_format_function(name, basetype, convert=None):
-    err = (_err, _err)  # unsupported conversion
+    err = (error, error)  # unsupported conversion
 
     if basetype == 'Binary':
         convert = convert if convert else 'b'
         cvt = constants.FORMAT_CONVERT_BINARY_FUNCTIONS.get(convert, err)
+
     elif basetype == 'Array':
         cvt = constants.FORMAT_CONVERT_MULTIPART_FUNCTIONS.get(convert, err)
+
     else:
         cvt = err
 
@@ -102,4 +104,4 @@ def get_format_function(name, basetype, convert=None):
         col = {'String': 0, 'Binary': 1, 'Number': 2}[basetype]
         return (name, constants.FORMAT_CHECK_FUNCTIONS[name][col]) + cvt
     except KeyError:
-        return (name, _err if name else _format_ok) + cvt
+        return (name, error if name else _format_ok) + cvt

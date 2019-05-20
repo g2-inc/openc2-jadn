@@ -3,10 +3,14 @@ Support functions for JADN codec
 Convert dict between nested and flat
 Convert typedef options between dict and strings
 """
+
 from functools import reduce
 from typing import Any, List, Tuple, Union
 
-from . import jadn_defs
+from . import (
+    jadn_defs,
+    utils
+)
 
 
 # Dict conversion utilities
@@ -69,6 +73,7 @@ def dlist(src: dict) -> dict:
     return src
 
 
+# Option conversions
 def topts_s2d(ostr: Union[List[str], Tuple[str]]) -> dict:
     """
     Convert list of type definition option strings to options dictionary
@@ -81,12 +86,13 @@ def topts_s2d(ostr: Union[List[str], Tuple[str]]) -> dict:
             k = jadn_defs.TYPE_CONFIG.OPTIONS.get(ord(o[0]), None)
             opt_fun = jadn_defs.TYPE_CONFIG.S2D.get(k, None)
             if k and opt_fun:
-                opts[k] = opt_fun(o[1:])
+                v = opt_fun(o[1:])
+                opts[k] = utils.safe_cast(v, int, v)
                 continue
             raise ValueError(f"Unknown type option: {o[0]} -> {o[1:]}")
         return opts
     else:
-        raise TypeError(f"Options given are not list/tuple, given {type(ostr)}")
+        raise TypeError(f"Type options given are not list/tuple, given {type(ostr)}")
 
 
 def topts_d2s(opts: dict) -> List[str]:
@@ -104,7 +110,7 @@ def topts_d2s(opts: dict) -> List[str]:
             raise TypeError(f"Unknown type option '{k}'")
         return ostr
     else:
-        raise TypeError(f"Options given are not a dict, given {type(opts)}")
+        raise TypeError(f"Type options given are not a dict, given {type(opts)}")
 
 
 def fopts_s2d(ostr: List[str]) -> dict:
@@ -119,12 +125,13 @@ def fopts_s2d(ostr: List[str]) -> dict:
             k = jadn_defs.FIELD_CONFIG.OPTIONS.get(ord(o[0]), None)
             opt_fun = jadn_defs.FIELD_CONFIG.S2D.get(k, None)
             if k and opt_fun:
-                opts[k] = opt_fun(o[1:])
+                v = opt_fun(o[1:])
+                opts[k] = utils.safe_cast(v, int, v)
                 continue
             raise ValueError(f"Unknown field option: {o[0]} -> {o[1:]}")
         return opts
     else:
-        raise TypeError(f"Options given are not list/tuple, given {type(ostr)}")
+        raise TypeError(f"Field options given are not list/tuple, given {type(ostr)}")
 
 
 def fopts_d2s(opts: dict) -> List[str]:
@@ -140,6 +147,24 @@ def fopts_d2s(opts: dict) -> List[str]:
                 ostr.append(jadn_defs.FIELD_CONFIG.D2S[k](v))
                 continue
             raise TypeError(f"Unknown field option '{k}'")
+        return ostr
+    else:
+        raise TypeError(f"Field options given are not a dict, given {type(opts)}")
+
+
+def opts_d2s(opts: dict) -> List[str]:
+    """
+    Convert options dictionary to list of type or field option strings
+    :param opts: key/value options
+    :return: list options
+    """
+    if isinstance(opts, dict):
+        ostr = []
+        for k, v in opts.items():
+            if k in jadn_defs.OPTION_ID:
+                ostr.append(f"{jadn_defs.OPTION_ID[k]}{v}")
+                continue
+            raise TypeError(f"Unknown option '{k}'")
         return ostr
     else:
         raise TypeError(f"Options given are not a dict, given {type(opts)}")

@@ -25,7 +25,7 @@ class JADNtoRelaxNG(JADNConverterBase):
     def relax_dump(self, comm=enums.CommentLevels.ALL):
         """
         Converts the JADN schema to RelaxNG
-        :param com: Level of comments to include in converted schema
+        :param comm: Level of comments to include in converted schema
         :return: RelaxNG schema
         """
         if comm:
@@ -74,14 +74,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         Create the type definitions for the schema
         :return: type definitions for the schema
         """
-        defs = []
-        for t in self._types:
-            df = self._structFun(t.type, None)
-
-            if df is not None:
-                defs.append(df(t))
-
-        return defs
+        return self._makeStructures(default=None)
 
     def makeCustom(self):
         defs = []

@@ -138,7 +138,7 @@ def safe_cast(val: Any, to_type: Type, default: Any = None) -> Any:
         return default
 
 
-def jadn_idx2key(schema: Union[str, dict], opts: bool = False) -> FrozenDict:
+def jadn_idx2key(schema: Union[str, dict], opts: bool = False) -> dict:
     if isinstance(schema, str):
         try:
             if os.path.isfile(schema):
@@ -172,7 +172,7 @@ def jadn_idx2key(schema: Union[str, dict], opts: bool = False) -> FrozenDict:
     return tmp_schema
 
 
-def jadn_key2idx(schema: Union[str, dict]) -> FrozenDict:
+def jadn_key2idx(schema: Union[str, dict]) -> dict:
     if isinstance(schema, str):
         try:
             if os.path.isfile(schema):
@@ -193,7 +193,7 @@ def jadn_key2idx(schema: Union[str, dict]) -> FrozenDict:
             tmp_fields = []
             for field in type_def['fields']:
                 if 'opts' in field:
-                    field['opts'] = jadn_utils.topts_d2s(field['opts'])if isinstance(field['opts'], dict) else field['opts']
+                    field['opts'] = jadn_utils.fopts_d2s(field['opts']) if isinstance(field['opts'], dict) else field['opts']
                 tmp_fields.append(list(field.values()))
             type_def['fields'] = tmp_fields
 

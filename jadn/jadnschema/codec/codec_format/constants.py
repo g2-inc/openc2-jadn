@@ -25,11 +25,11 @@ HOSTNAME_MAX_LENGTH = 255
 
 # Semantic validation function for type: String, Binary, Number
 FORMAT_CHECK_FUNCTIONS = {  # TYPE: [STRING, BINARY, ??]
-    'hostname':     [general.s_hostname, general._err, general._err],       # Domain-Name
-    'email':        [general.s_email, general._err, general._err],          # Email-Addr
-    'ip-addr':      [general._err, network.b_ip_addr, general._err],        # IP-Addr (IPv4 or IPv6)
-    'mac-addr':     [general._err, network.b_mac_addr, general._err],       # MAC-Addr
-    'uri':          [general.s_uri, general._err, general._err]             # URI
+    'hostname':     [general.s_hostname, general.error, general.error],       # Domain-Name
+    'email':        [general.s_email, general.error, general.error],          # Email-Addr
+    'ip-addr':      [general.error, network.b_ip_addr, general.error],        # IP-Addr (IPv4 or IPv6)
+    'mac-addr':     [general.error, network.b_mac_addr, general.error],       # MAC-Addr
+    'uri':          [general.s_uri, general.error, general.error]             # URI
 }
 
 FORMAT_CONVERT_BINARY_FUNCTIONS = {  # TYPE: [BINARY, STRING]

@@ -73,14 +73,20 @@ class Conversions(object):
 
 
 if __name__ == '__main__':
-    schema = 'oc2ls-csdpr02'
+    schema = 'oc2ls-wd13'
     conversions = Conversions(schema)
 
     for conv in dir(conversions):
         if not conv.startswith('_'):
             print(f'Convert To/From: {conv}')
             t = datetime.now()
-            getattr(conversions, conv)()
+            try:
+                getattr(conversions, conv)()
+            except Exception as e:
+                if 'parsing' in str(e):
+                    print(getattr(e, 'message', e))
+                else:
+                    raise e
             t = datetime.now() - t
             minutes, seconds = divmod(t.total_seconds(), 60)
             print(f'{minutes}m {seconds:.4f}s\n')

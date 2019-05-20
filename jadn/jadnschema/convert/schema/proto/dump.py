@@ -62,14 +62,7 @@ class JADNtoProto3(JADNConverterBase):
         Create the type definitions for the schema
         :return: type definitions for the schema
         """
-        tmp = ''
-        for t in self._types:
-            df = self._structFun(t.type, None)
-
-            if df is not None:
-                tmp += df(t)
-
-        return tmp
+        return ''.join(self._makeStructures(default=''))
 
     # Structure Formats
     def _formatRecord(self, itm):

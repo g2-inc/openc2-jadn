@@ -62,7 +62,7 @@
     [501, "Not Implemented", "the consumer does not support the functionality required to fulfill the request."]
   ]],
 
-  ["Features", "ArrayOf", ["*Feature", "[0"], "A target used to query Actuator for its supported capabilities"],
+  ["Features", "ArrayOf", ["*Feature", "{0"], "A target used to query Actuator for its supported capabilities"],
 
   ["File", "Map", [], "", [
     [1, "name", "String", ["[0"], "The name of the file as defined in the file system"],
@@ -70,7 +70,7 @@
     [3, "hashes", "Hashes", ["[0"], "One or more cryptographic hash codes of the file contents"]
   ]],
 
-  ["IP-Addr", "Binary", ["@ip-addr"], "32 bit IPv4 address or 128 bit IPv6 address"],
+  ["IP-Addr", "Binary", ["/ip-addr"], "32 bit IPv4 address or 128 bit IPv6 address"],
 
   ["IP-Connection", "Record", [], "5-tuple that specifies a tcp/ip connection", [
     [1, "src_addr", "IP-Addr", ["[0"], "source address"],
@@ -105,7 +105,7 @@
     [132, "sctp", "Stream Control Transmission Protocol - RFC 4960"]
   ]],
 
-  ["Port", "Integer", ["[0", "]65535"], "Transport Protocol Port Number, RFC 6335"],
+  ["Port", "Integer", ["{0", "}65535"], "Transport Protocol Port Number, RFC 6335"],
 
   ["Feature", "Enumerated", [], "Results to be included in response to query features command", [
     [1, "versions", "List of OpenC2 language versions supported by this actuator"],
@@ -193,7 +193,7 @@
 
   ["jadn:Type", "Array", [], "", [
     [1, "tname", "jadn:Identifier", [], "Name of this datatype"],
-    [2, "btype", "Enumerated", ["*jadn:JADN-Type"], "Base type.  Enumerated value derived from list of JADN data types"],
+    [2, "btype", "jadn:JADN-Type", ["$"], "Base type.  Enumerated value derived from list of JADN data types"],
     [3, "opts", "jadn:Options", [], "Type options"],
     [4, "desc", "String", [], "Description of this data type"],
     [5, "fields", "jadn:JADN-Type", ["&2", "[0", "]0"], "List of fields for compound types.  Not present for primitive types"]
@@ -228,14 +228,14 @@
     [5, "", "String", [], "Field description"]
   ]],
 
-  ["jadn:Identifier", "String", ["$^[a-zA-Z][\\w-]*$", "[0", "]32"], "A string starting with an alpha char followed by zero or more alphanumeric / underscore / dash chars"],
+  ["jadn:Identifier", "String", ["%^[a-zA-Z][\\w-]*$", "{0", "}32"], "A string starting with an alpha char followed by zero or more alphanumeric / underscore / dash chars"],
 
-  ["jadn:Nsid", "String", ["$^[a-zA-Z][\\w-]*$", "[1", "]8"], "Namespace ID - a short identifier"],
+  ["jadn:Nsid", "String", ["%^[a-zA-Z][\\w-]*$", "{1", "}16"], "Namespace ID - a short identifier"],
 
-  ["jadn:Uname", "String", ["[1", "]100"], "Unique name (e.g., of a schema) - typically a set of Identifiers separated by forward slashes"],
+  ["jadn:Uname", "String", ["{1", "}100"], "Unique name (e.g., of a schema) - typically a set of Identifiers separated by forward slashes"],
 
-  ["jadn:Options", "ArrayOf", ["*jadn:Option", "[0", "]10"], "Options list may be empty but may not be omitted"],
+  ["jadn:Options", "ArrayOf", ["*jadn:Option", "{0", "}10"], "Options list may be empty but may not be omitted"],
 
-  ["jadn:Option", "String", ["[1", "]100"], "Option string: 1st char = option id"]
+  ["jadn:Option", "String", ["{1", "}100"], "Option string: 1st char = option id"]
  ]
 }

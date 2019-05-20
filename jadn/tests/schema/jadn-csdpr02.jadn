@@ -19,8 +19,7 @@
     [3, "title", "String", ["[0"], "Title"],
     [4, "description", "String", ["[0"], "Description"],
     [5, "imports", "Import", ["[0", "]0"], "Imported schema modules"],
-    [6, "exports", "Identifier", ["[0", "]0"], "Data types exported by this module"],
-    [7, "bounds", "Bounds", ["[0"], "Schema-wide upper bounds"]
+    [6, "exports", "TypeName", ["[0", "]0"], "Data types exported by this module"]
   ]],
 
   ["Import", "Array", [], "Imported module id and unique name", [
@@ -28,58 +27,54 @@
     [2, "uname", "Uname", [], "Unique name of imported module"]
   ]],
 
-  ["Bounds", "Array", [], "Schema-wide default upper bounds.  Overrides codec defaults, overridden by type definitions", [
-    [1, "max_msg", "Integer", [], "Maximum serialized message size in octets or characters"],
-    [2, "max_str", "Integer", [], "Maximum string length in characters"],
-    [3, "max_bin", "Integer", [], "Maximum binary length in octets"],
-    [4, "max_fields", "Integer", [], "Maximum number of elements in ArrayOf"]
-  ]],
-
   ["Type", "Array", [], "", [
-    [1, "tname", "Identifier", [], "Name of this datatype"],
-    [2, "btype", "Enumerated", ["*JADN-Type"], "Base type.  Enumerated value derived from list of JADN data types"],
-    [3, "opts", "Options", [], "Type options"],
-    [4, "desc", "String", [], "Description of this data type"],
-    [5, "fields", "JADN-Type", ["&2", "[0", "]0"], "List of fields for compound types.  Not present for primitive types"]
+    [1, "type_name", "TypeName", [], ""],
+    [2, "base_type", "JADN-Type", ["$"], ""],
+    [3, "type_options", "Options", [], ""],
+    [4, "type_desc", "String", [], ""],
+    [5, "fields", "JADN-Type", ["&2", "[0", "]0"], ""]
   ]],
 
   ["JADN-Type", "Choice", [], "", [
-    [1, "Binary", "Null", [], "Octet (binary) string"],
-    [2, "Boolean", "Null", [], "True or False"],
-    [3, "Integer", "Null", [], "Whole number"],
-    [4, "Number", "Null", [], "Real number"],
-    [5, "Null", "Null", [], "Nothing"],
-    [6, "String", "Null", [], "Character (text) string"],
-    [7, "Array", "FullField", [], "Ordered list of unnamed fields"],
-    [8, "ArrayOf", "Null", [], "Ordered list of fields of a specified type"],
-    [9, "Choice", "FullField", [], "One of a set of named fields"],
-    [10, "Enumerated", "EnumField", [], "One of a set of id:name pairs"],
-    [11, "Map", "FullField", [], "Unordered set of named fields"],
-    [12, "Record", "FullField", [], "Ordered list of named fields"]
+    [1, "Binary", "Null", [], ""],
+    [2, "Boolean", "Null", [], ""],
+    [3, "Integer", "Null", [], ""],
+    [4, "Number", "Null", [], ""],
+    [5, "Null", "Null", [], ""],
+    [6, "String", "Null", [], ""],
+    [10, "Enumerated", "EnumField", [], ""],
+    [11, "Choice", "FullField", [], ""],
+    [12, "Array", "FullField", [], ""],
+    [13, "ArrayOf", "Null", [], ""],
+    [14, "Map", "FullField", [], ""],
+    [15, "MapOf", "Null", [], ""],
+    [16, "Record", "FullField", [], ""]
   ]],
 
-  ["EnumField", "Array", [], "Item definition for Enumerated types", [
-    [1, "", "Integer", [], "Item ID"],
-    [2, "", "String", [], "Item name"],
-    [3, "", "String", [], "Item description"]
+  ["EnumField", "Array", [], "", [
+    [1, "field_id", "Integer", [], ""],
+    [2, "field_name", "String", [], ""],
+    [3, "enum_desc", "String", [], ""]
   ]],
 
-  ["FullField", "Array", [], "Field definition for other compound types", [
-    [1, "", "Integer", [], "Field ID or ordinal position"],
-    [2, "", "Identifier", [], "Field name"],
-    [3, "", "Identifier", [], "Field type"],
-    [4, "", "Options", [], "Field options"],
-    [5, "", "String", [], "Field description"]
+  ["FullField", "Array", [], "", [
+    [1, "field_id", "Integer", [], ""],
+    [2, "field_name", "FieldName", [], ""],
+    [3, "field_type", "TypeName", [], ""],
+    [4, "field_options", "Options", [], ""],
+    [5, "field_desc", "String", [], ""]
   ]],
 
-  ["Identifier", "String", ["$^[a-zA-Z][\\w-]*$", "[0", "]32"], "A string starting with an alpha char followed by zero or more alphanumeric / underscore / dash chars"],
+  ["TypeName", "String", ["%^([A-Z]([-A-Za-z0-9]|\\$){,31})$"], ""],
 
-  ["Nsid", "String", ["$^[a-zA-Z][\\w-]*$", "[1", "]8"], "Namespace ID - a short identifier"],
+  ["FieldName", "String", ["%^([a-z][_A-Za-z0-9]{,31})$"], ""],
 
-  ["Uname", "String", ["[1", "]100"], "Unique name (e.g., of a schema) - typically a set of Identifiers separated by forward slashes"],
+  ["Nsid", "String", ["%^[a-z][a-z0-9]{,7}$"], ""],
 
-  ["Options", "ArrayOf", ["*Option", "[0", "]10"], "Options list may be empty but may not be omitted"],
+  ["Uname", "String", ["/uri"], ""],
 
-  ["Option", "String", ["[1", "]100"], "Option string: 1st char = option id"]
+  ["Options", "ArrayOf", ["*Option", "{0", "}10"], ""],
+
+  ["Option", "String", ["{1", "}100"], ""]
  ]
 }

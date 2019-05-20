@@ -23,21 +23,21 @@ class JSONtoJADN(object):
 
     _optKeys = {
         ('array',): {
-            'minItems': 'min',
-            'maxItems': 'max'
+            'minItems': 'minc',
+            'maxItems': 'maxc'
         },
         ('integer',): {
-            'minimum': 'min',
-            'exclusiveMinimum': 'min',
-            'maximum': 'max',
-            'exclusiveMaximum': 'max',
+            'minimum': 'minc',
+            'exclusiveMinimum': 'minc',
+            'maximum': 'maxc',
+            'exclusiveMaximum': 'maxc',
             'format': 'format'
         },
         ('object',): {},
         ('string',): {
             'format': 'format',
-            'minLength': 'min',
-            'maxLength': 'max',
+            'minLength': 'minc',
+            'maxLength': 'maxc',
             'pattern': 'pattern'
         }
     }
@@ -322,12 +322,9 @@ class JSONtoJADN(object):
         tmp_def = dict(
             name=name,
             type='ArrayOf',
-            opts=dict(
-                rtype=rtype['$ref'].split('/')[-1] if '$ref' in rtype else self._fieldType(rtype)
-            ),
+            opts=self._optReformat('array', itm, True),
             desc=itm.get('description', '').strip()
         )
-        tmp_def['opts'].update(self._optReformat('array', itm, True))
 
         tmp_def['opts'] = jadn_utils.topts_d2s(tmp_def['opts'])
         return list(tmp_def.values())

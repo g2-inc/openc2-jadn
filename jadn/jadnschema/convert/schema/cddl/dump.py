@@ -51,13 +51,7 @@ class JADNtoCDDL(JADNConverterBase):
         Create the type definitions for the schema
         :return: type definitions for the schema
         """
-        tmp = ''
-        for t in self._types:
-            df = self._structFun(t.type, None)
-
-            if df is not None:
-                tmp += df(t)
-        return tmp
+        return ''.join(self._makeStructures(default=''))
 
     def makeCustom(self):
         defs = BeautifulTable(default_alignment=BeautifulTable.ALIGN_LEFT, max_width=500)

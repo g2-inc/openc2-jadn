@@ -196,7 +196,7 @@ def jadn_check(schema: Union[dict, str]) -> dict:
             else:
                 print(OptionError(f"{type_def['name']} - missing items from compound type {base_type}"))
 
-        elif type_def["options"]:
+        elif type_def["opts"]:
             print(FormatError(f"Defined type {type_def['name']} cannot have options - {type_def['opts']}"))
 
     return utils.jadn_key2idx(schema)
@@ -228,11 +228,11 @@ def jadn_simplify(schema: dict) -> dict:          # Remove schema optimizations
     """
 
     def get_optx(opts, oname):
-        n = [i for i, x in enumerate(opts) if x[0] == OPTION_ID[oname]]
+        n = [i for i, x in enumerate(opts) if x[0] == jadn_defs.OPTION_ID[oname]]
         return n[0] if n else None
 
     def del_opt(opts, oname):
-        n = [i for i, x in enumerate(opts) if x[0] == OPTION_ID[oname]]
+        n = [i for i, x in enumerate(opts) if x[0] == jadn_defs.OPTION_ID[oname]]
         if n:
             del opts[n[0]]
 
@@ -250,17 +250,17 @@ def jadn_simplify(schema: dict) -> dict:          # Remove schema optimizations
     Sys = "$"                                   # Character reserved for tool-generated TypeNames
     sc = copy.deepcopy(schema)                  # Don't modify original schema
     tdefs = sc["types"]
-    typex = {t[TypeName]: n for n, t in enumerate(tdefs)}   # Build type index
+    typex = {t[jadn_defs.TypeName]: n for n, t in enumerate(tdefs)}   # Build type index
     new_types = []
 
     enum_defs = {}                              # Map of base type to Enumerated type definition
     enum_refs = defaultdict(list)               # Map of base type to list of references
     for tdef in tdefs:                          # Build list of derived enumerations
-        if tdef[BaseType] in ["Enumerated", "ArrayOf", "MapOf"]:
-            opts = tdef[TypeOptions]
+        if tdef[jadn_defs.BaseType] in ["Enumerated", "ArrayOf", "MapOf"]:
+            opts = tdef[jadn_defs.TypeOptions]
             n = get_optx(opts, "enum")
             if n is not None:
-                enum_defs[opts[n][1:]] = tdef[TypeName]
+                enum_defs[opts[n][1:]] = tdef[jadn_defs.TypeName]
             update_eref(enum_refs, opts, "ktype")
             update_eref(enum_refs, opts, "vtype")
     for tname, refs in enum_refs.items():       #
@@ -273,29 +273,29 @@ def jadn_simplify(schema: dict) -> dict:          # Remove schema optimizations
             tdefs.append([])
             typex.update({typename: tx})
         rdef = tdefs[typex[tname]]              # Referenced type definition
-        newfields = [[f[FieldID], f[FieldName], f[FieldDesc]] for f in rdef[Fields]]
-        idopt = [OPTION_ID["id"]] if get_optx(rdef[TypeOptions], "id") is not None else []
-        tdefs[tx] = [typename, "Enumerated", idopt, rdef[TypeDesc], newfields]
+        newfields = [[f[jadn_defs.FieldID], f[jadn_defs.FieldName], f[jadn_defs.FieldDesc]] for f in rdef[jadn_defs.Fields]]
+        idopt = [jadn_defs.OPTION_ID["id"]] if get_optx(rdef[jadn_defs.TypeOptions], "id") is not None else []
+        tdefs[tx] = [typename, "Enumerated", idopt, rdef[jadn_defs.TypeDesc], newfields]
         for opts, n in refs:                        # Replace all references with Enumerated type
             opts[n] = opts[n][0] + typename
 
     for n, tdef in enumerate(sc["types"]):
-        to = topts_s2d(tdef[TypeOptions])
-        if tdef[BaseType] == "MapOf" and tdefs[typex[to["ktype"]]][BaseType] == "Enumerated":  # Replace MapOf(Enumerated, ..) with Map
-            newfields = [[f[FieldID], f[FieldName], to["vtype"], [], f[EnumDesc]] for f in tdefs[typex[to["ktype"]]][Fields]]
-            sc["types"][n] = [tdef[TypeName], "Map", [], tdef[TypeDesc], newfields]
-        elif is_compound(tdef[BaseType]):
-            for fdef in tdef[Fields]:
-                fo = fopts_s2d(fdef[FieldOptions])
+        to = jadn_utils.topts_s2d(tdef[jadn_defs.TypeOptions])
+        if tdef[jadn_defs.BaseType] == "MapOf" and tdefs[typex[to["ktype"]]][jadn_defs.BaseType] == "Enumerated":  # Replace MapOf(Enumerated, ..) with Map
+            newfields = [[f[jadn_defs.FieldID], f[jadn_defs.FieldName], to["vtype"], [], f[jadn_defs.EnumDesc]] for f in tdefs[typex[to["ktype"]]][jadn_defs.Fields]]
+            sc["types"][n] = [tdef[jadn_defs.TypeName], "Map", [], tdef[jadn_defs.TypeDesc], newfields]
+        elif jadn_defs.is_compound(tdef[jadn_defs.BaseType]):
+            for fdef in tdef[jadn_defs.Fields]:
+                fo = jadn_utils.fopts_s2d(fdef[jadn_defs.FieldOptions])
                 if "maxc" in fo and fo["maxc"] != 1:                # Expand field multiplicity
-                    newname = tdef[TypeName] + Sys + fdef[FieldName]
+                    newname = tdef[jadn_defs.TypeName] + Sys + fdef[jadn_defs.FieldName]
                     minc = fo["minc"] if "minc" in fo else 1
-                    newopts = {"vtype": fdef[FieldType], "minv": max(minc, 1)}      # Don't allow empty ArrayOf
+                    newopts = {"vtype": fdef[jadn_defs.FieldType], "minv": max(minc, 1)}      # Don't allow empty ArrayOf
                     newopts.update({"maxv": fo["maxc"]} if fo["maxc"] > 1 else {})  # Omit unspecified upper bound
-                    new_types.append([newname, "ArrayOf", opts_d2s(newopts), fdef[FieldDesc]])
+                    new_types.append([newname, "ArrayOf", jadn_utils.opts_d2s(newopts), fdef[jadn_defs.FieldDesc]])
 
-                    fdef[FieldType] = newname       # Point existing field to new ArrayOf
-                    f = fdef[FieldOptions]
+                    fdef[jadn_defs.FieldType] = newname       # Point existing field to new ArrayOf
+                    f = fdef[jadn_defs.FieldOptions]
                     del_opt(f, "maxc")
                     if minc != 0:
                         del_opt(f, "minc")
@@ -443,14 +443,19 @@ def jadn_load(fname: Union[str, BufferedIOBase, TextIOBase]) -> dict:
     :return: loaded schema
     """
     try:
+        if isinstance(fname, (BufferedIOBase, TextIOBase)):
+            return jadn_check(json.load(fname))
+
         if isinstance(fname, str):
+            if fname.startswith("{") and fname.endswith("}"):
+                return jadn_check(json.loads(fname))
+
             if os.path.isfile(fname):
                 with open(fname, "rb") as f:
                     return jadn_check(json.load(f))
             else:
-                return jadn_check(json.loads(fname))
-        elif isinstance(fname, (BufferedIOBase, TextIOBase)):
-            return jadn_check(json.load(fname))
+                raise FileNotFoundError(f"Schema file not found - '{fname}'")
+
     except Exception:
         raise ValueError("Schema improperly formatted")
 

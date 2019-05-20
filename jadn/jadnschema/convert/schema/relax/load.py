@@ -145,7 +145,7 @@ class Relax2Jadn(object):
 
                     if 'options' in opts:
                         options = opts['options'] if type(opts['options']) is dict else {}
-                        tmp_def.append(jadn_utils.topts_d2s(options) if jadn_defs.is_structure(opts['type']) else jadn_utils.fopts_d2s(options))
+                        tmp_def.append(jadn_utils.topts_d2s(options) if jadn_defs.is_compound(opts['type']) else jadn_utils.fopts_d2s(options))
                     else:
                         tmp_def.append([])
 

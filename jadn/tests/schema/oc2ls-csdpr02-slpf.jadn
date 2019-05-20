@@ -66,7 +66,7 @@
     [501, "Not Implemented", "the consumer does not support the functionality required to fulfill the request."]
   ]],
 
-  ["Features", "ArrayOf", ["*Feature", "[0"], "A target used to query Actuator for its supported capabilities"],
+  ["Features", "ArrayOf", ["*Feature", "{0"], "A target used to query Actuator for its supported capabilities"],
 
   ["File", "Map", [], "", [
     [1, "name", "String", ["[0"], "The name of the file as defined in the file system"],
@@ -74,7 +74,7 @@
     [3, "hashes", "Hashes", ["[0"], "One or more cryptographic hash codes of the file contents"]
   ]],
 
-  ["IP-Addr", "Binary", ["@ip-addr"], "32 bit IPv4 address or 128 bit IPv6 address"],
+  ["IP-Addr", "Binary", ["/ip-addr"], "32 bit IPv4 address or 128 bit IPv6 address"],
 
   ["IP-Connection", "Record", [], "5-tuple that specifies a tcp/ip connection", [
     [1, "src_addr", "IP-Addr", ["[0"], "source address"],
@@ -109,7 +109,7 @@
     [132, "sctp", "Stream Control Transmission Protocol - RFC 4960"]
   ]],
 
-  ["Port", "Integer", ["[0", "]65535"], "Transport Protocol Port Number, RFC 6335"],
+  ["Port", "Integer", ["{0", "}65535"], "Transport Protocol Port Number, RFC 6335"],
 
   ["Feature", "Enumerated", [], "Results to be included in response to query features command", [
     [1, "versions", "List of OpenC2 language versions supported by this actuator"],
@@ -128,9 +128,10 @@
 
   ["Version", "String", [], "Major.Minor version number"],
 
-  ["Action-Targets", "Array", [], "", [
-    [1, "action", "Action", [], "An action supported by this actuator"],
-    [2, "targets", "Target", ["]0", "*"], "List of targets applicable to this action"]
-  ]]
+  ["Action-Targets", "MapOf", ["+Action", "*Targets"], "Map of each action supported by this actuator to the list of targets applicable to that action."],
+
+  ["Targets", "ArrayOf", ["*Target-Enum", "{1", "}0"], "List of Target fields"],
+
+  ["Target-Enum", "Target", ["$"], ""]
  ]
 }
