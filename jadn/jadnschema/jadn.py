@@ -20,6 +20,7 @@ from . import (
     jadn_utils,
     utils
 )
+
 from .exceptions import (
     DuplicateError,
     FormatError,
@@ -98,11 +99,11 @@ jadn_schema = {
 
 def _check_typeopts(btype: str, topts: dict, tname: str) -> None:
     if jadn_defs.is_builtin(btype):
-        vop = {topts.keys()} - {jadn_defs.TYPE_CONFIG.SUPPORTED_OPTIONS.get(btype, {}).keys()}
+        vop = set(topts.keys()) - set(jadn_defs.TYPE_CONFIG.SUPPORTED_OPTIONS.get(btype, ()))
         if vop:
             OptionError(f"{tname} type {btype} invalid type option {', '.join(vop)}")
     else:
-        TypeError(f"{tname} has invalid base type {btype}")
+        print(TypeError(f"{tname} has invalid base type {btype}"))
 
 
 def jadn_check(schema: Union[dict, str]) -> dict:
@@ -150,67 +151,53 @@ def jadn_check(schema: Union[dict, str]) -> dict:
             if fmt not in fmts or base_type != fmts.get(fmt, None):
                 print(ValueError(f"Unsupported value constraint \"{fmt}\" on {base_type}: {type_def['name']}"))
 
-        if jadn_defs.is_builtin(base_type):
-            topts = jadn_utils.topts_s2d(type_def["opts"])
-            vop = {*topts.keys()}.difference({*jadn_defs.TYPE_CONFIG.SUPPORTED_OPTIONS[base_type]})
-
-            if vop:
-                print(TypeError(f"{type_def['name']} type {base_type} invalid type option{vop}"))
-
-        else:  # TODO: handle if type_def[TNAME] doesn't exist
-            topts = {}
-            print(TypeError(f"Unknown Base Type: {base_type} ({type_def['name']})"))
-
-        if base_type == "ArrayOf" and "rtype" not in topts:
-            print(FormatError(f"Type: {type_def['name']} - Missing array element type"))
-
-
-
-        cvt = topts.get("cvt")
-        if cvt and (cvt not in jadn_defs.FORMAT.CONVERT or base_type != jadn_defs.FORMAT.CONVERT[cvt]):
-            print(ValueError(f"Unsupported String conversion \"{cvt}\" on {base_type}: {type_def['name']}"))
-
-        if jadn_defs.is_primitive(base_type) or base_type == "ArrayOf":
-            if len(type_def) != 4:    # TODO: trace back to base type
-                print(FormatError(f"{type_def['name']} - type {base_type} cannot have items"))
+        if jadn_defs.is_primitive(base_type) or base_type in ("ArrayOf", "MapOf"):
+            if 'fields' in type_def:
+                print(FormatError(f"{type_def['name']} - cannot have fields"))
 
         elif jadn_defs.is_builtin(base_type):
-            if len(type_def) == 5:
+            if len(type_def) == len(jadn_defs.COLUMN_KEYS.Structure):
+                ordinal = base_type in ("Array", "Record")
+                field_keys = jadn_defs.COLUMN_KEYS["Enum_Def" if base_type == "Enumerated" else "Gen_Def"]
                 tags = set()
                 names = set()
-                # TODO: check Choice min cardinality != 0
-                # item definition: jadn_defs.COLUMN_KEYS.Gen_def or (enumerated): jadn_defs.COLUMN_KEYS.Enum_Def
-                field_columns = jadn_defs.COLUMN_KEYS["Enum_Def" if base_type == "Enumerated" else "Gen_Def"]
 
-                for k, field in enumerate(type_def["fields"]):
-                    field = dict(zip(field_columns, field))
-                    ordinal = base_type in ("Array", "Record")
+                # item definition: jadn_defs.COLUMN_KEYS -> Enum - Enum_Def, General - Gen_Def
+                for k, field in enumerate(type_def['fields']):
+                    name = field["value" if base_type == "Enumerated" else "name"]
                     tags.add(field["id"])
-                    names.add(field["value" if base_type == "Enumerated" else "name"])
+                    names.add(name)
 
                     if ordinal and field["id"] != k + 1:
                         print(KeyError(f"Item tag: {type_def['name']} ({base_type}): {field['name']} -- {field['id']} should be {k + 1}"))
 
-                    if len(field) != len(field_columns):
-                        print(FormatError(f"Item: {type_def['name']} {base_type} {field['name']} - {len(field)} != {len(field_columns)}"))
+                    if len(field) != len(field_keys):
+                        print(FormatError(f"{type_def['name']} - {base_type} {name} - {len(field)} != {len(field_keys)}"))
 
-                    if len(field) > 3 and jadn_defs.is_builtin(field["type"]):
-                        # TODO: trace back to builtin types
-                        fop = {*jadn_utils.fopts_s2d(field["opts"])}.difference({*jadn_defs.FIELD_CONFIG.SUPPORTED_OPTIONS.get(field["type"], ())})
+                    if base_type != "Enumerated" and jadn_defs.is_builtin(field['type']):
+                        valid_opts = list(jadn_defs.TYPE_CONFIG.SUPPORTED_OPTIONS.get(field["type"], ())) + list(jadn_defs.FIELD_CONFIG.OPTIONS.values())
+                        field_opts = field["opts"]
+                        fop = set(field_opts.keys()).difference({*valid_opts})
 
                         if fop:
-                            print(OptionError(f"{type_def['name']} : {field['name']} {field['type']} invalid field option {fop}"))
-                    # TODO: check that wildcard name has Choice type, and that there is only one wildcard.
+                            print(OptionError(f"{type_def['name']} : {field['name']} {field['type']} invalid field option {', '.join(fop)}"))
+
+                        if 'minc' in field_opts and 'maxc' in field_opts:
+                            if field_opts['minc'] < 0 or (field_opts['maxc'] != 0 and field_opts['maxc'] < field_opts['minc']):
+                                print(OptionError(f"{type_def['name']}: {field['name']} bad cardinality {field_opts['minc']} {field_opts['maxc']}"))
 
                 if len(type_def["fields"]) != len(tags):
                     print(DuplicateError(f"Tag collision in {type_def['name']} - {len(type_def['fields'])} items, {len(tags)} unique tags"))
 
-                # TODO: Check validity of error raising
-                if len(type_def["fields"]) != len(names) and base_type not in ("Array", "ArrayOf"):
+                    # TODO: Check validity of error raising
+                if len(type_def["fields"]) != len(names) and base_type not in ("Array", "ArrayOf", "MapOf"):
                     print(DuplicateError(f"Name collision in {type_def['name']} - {len(type_def['fields'])} items, {len(names)} unique names"))
 
             else:
-                print(FormatError(f"Type: {type_def['name']} - missing items from compound type {base_type}"))
+                print(OptionError(f"{type_def['name']} - missing items from compound type {base_type}"))
+
+        elif type_def["options"]:
+            print(FormatError(f"Defined type {type_def['name']} cannot have options - {type_def['opts']}"))
 
     return utils.jadn_key2idx(schema)
 
