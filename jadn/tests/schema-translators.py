@@ -11,7 +11,7 @@ from jadnschema import (
 
 # TODO: Add CommentLevels, requires dump.py rewrite
 class Conversions(object):
-    _test_dir = 'schema_gen_test'
+    _test_dir = 'schema_gen'
 
     def __init__(self, schema):
         self._schema = schema
@@ -70,6 +70,11 @@ class Conversions(object):
         convert.thrift_dump(self._schema_json, os.path.join(self._test_dir, self._schema + '.none.thrift'), comm=enums.CommentLevels.NONE)
         print("Convert: Thrift --> JADN")
         convert.thrift_load(open(os.path.join(self._test_dir, self._schema + '.all.thrift'), 'rb').read(), os.path.join(self._test_dir, self._schema + '.thrift.jadn'))
+
+    def prettyFormat(self):
+        print("JADN --> Formatted JADN")
+        with open(f'{self._test_dir}/{self._schema}_reorg.jadn', "w") as f:
+            jadn.jadn_dump(self._schema_json, f)
 
 
 if __name__ == '__main__':

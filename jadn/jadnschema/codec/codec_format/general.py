@@ -23,7 +23,10 @@ def s_hostname(sval: str) -> str:
     if not isinstance(sval, str):
         raise TypeError(f"Hostname given is not expected {str}, given {type(sval)}")
 
-    hostname = sval[:-1] if sval[-1] == "." else sval[:]  # Copy & strip exactly one dot from the right, if present
+    hostname = sval[:-1] if sval.endswith(".") else sval[:]  # Copy & strip exactly one dot from the right, if present
+    if len(sval) < 1:
+        raise ValueError(f'Hostname is not a valid length, minimum 1 character')
+
     if len(sval) > constants.HOSTNAME_MAX_LENGTH:
         raise ValueError(f'Hostname is not a valid length, exceeds {constants.HOSTNAME_MAX_LENGTH} characters')
 
@@ -49,7 +52,8 @@ def s_email(sval: str) -> str:
         r'"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@'
         r"(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])"
         r"|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]"
-        r":(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])")
+        r":(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"
+    )
     if re.match(rfc5322_re, sval):
         return sval
     raise ValueError(f"E-Mail given is not valid")
@@ -64,22 +68,23 @@ def s_uri(sval: str) -> str:
     """
     if not isinstance(sval, str):
         raise TypeError(f"URI given is not expected {str}, given {type(sval)}")
+    url_match = re.match(r"(https?:\/\/(www\.)?)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)", sval)
 
     try:
         result = urlparse(sval)
-        if all([result.scheme, result.netloc]):
+        if all([result.scheme, result.netloc, result.path]) or url_match:
             return sval
     except Exception:
         pass
     raise ValueError(f"URI given is not expected valid")
 
 
-def _format_ok(val):  # No value constraints on this type
+def format_ok(val):  # No value constraints on this type
     return val
 
 
 def error(val):  # Unsupported format type
-    raise NameError(f'Unsupported format type: {type(val)}')
+    raise ValueError(f'Unsupported format type: {type(val)}')
 
 
 def check_format_function(name, basetype, convert=None):
@@ -104,4 +109,4 @@ def get_format_function(name, basetype, convert=None):
         col = {'String': 0, 'Binary': 1, 'Number': 2}[basetype]
         return (name, constants.FORMAT_CHECK_FUNCTIONS[name][col]) + cvt
     except KeyError:
-        return (name, error if name else _format_ok) + cvt
+        return (name, error if name else format_ok) + cvt

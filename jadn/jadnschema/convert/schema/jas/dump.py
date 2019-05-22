@@ -148,7 +148,7 @@ def jas_dumps(jadn):
                     ostr = ''
                     opts = jadn_utils.fopts_s2d(i[jadn_defs.FieldOptions])
                     if 'tfield' in opts:
-                        ostr += '.&' + opts['tfield']
+                        ostr += f".&{opts['tfield']}"
                         del opts['tfield']
 
                     if 'vtype' in opts:

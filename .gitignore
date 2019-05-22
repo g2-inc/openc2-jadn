@@ -214,3 +214,4 @@ local.properties
 .idea/*
 schema_gen
 schema_gen_test
+schema_out

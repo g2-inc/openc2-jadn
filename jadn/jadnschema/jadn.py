@@ -217,16 +217,16 @@ def jadn_strip(schema: dict) -> dict:
     return utils.jadn_key2idx(schema)
 
 
-# TODO: Cleanup code
-def jadn_simplify(schema: dict) -> dict:          # Remove schema optimizations
+# TODO: Cleanup Code
+def jadn_simplify(schema: dict) -> dict:  # Remove schema optimizations
     """
     Given an input schema, return a simplified schema with any optimized definitions removed.
-
     1) Replace all derived enumerations with explicit Enumerated type definitions
     2) Replace all multiple-value fields with explicit ArrayOf type definitions
     3) Replace all MapOf types with listed keys with explicit Map type definitions
+    :param schema: schema to simplify
+    :return: simplified schema
     """
-
     def get_optx(opts, oname):
         n = [i for i, x in enumerate(opts) if x[0] == jadn_defs.OPTION_ID[oname]]
         return n[0] if n else None
@@ -237,19 +237,19 @@ def jadn_simplify(schema: dict) -> dict:          # Remove schema optimizations
             del opts[n[0]]
 
     def get_function(fname, typeref):
-        m = re.match(fname + "\((\w+)\)$", typeref) if typeref else None
+        m = re.match(fname + '\((\w+)\)$', typeref) if typeref else None
         return m.group(1) if m else None
 
     def update_eref(refs, opts, optname):
         n = get_optx(opts, optname)
         if n is not None:
-            x = get_function("Enum", opts[n][1:])
+            x = get_function('Enum', opts[n][1:])
             if x:
                 refs[x].append([opts, n])
 
-    Sys = "$"                                   # Character reserved for tool-generated TypeNames
+    Sys = '$'                                   # Character reserved for tool-generated TypeNames
     sc = copy.deepcopy(schema)                  # Don't modify original schema
-    tdefs = sc["types"]
+    tdefs = sc['types']
     typex = {t[jadn_defs.TypeName]: n for n, t in enumerate(tdefs)}   # Build type index
     new_types = []
 
@@ -258,48 +258,48 @@ def jadn_simplify(schema: dict) -> dict:          # Remove schema optimizations
     for tdef in tdefs:                          # Build list of derived enumerations
         if tdef[jadn_defs.BaseType] in ["Enumerated", "ArrayOf", "MapOf"]:
             opts = tdef[jadn_defs.TypeOptions]
-            n = get_optx(opts, "enum")
+            n = get_optx(opts, 'enum')
             if n is not None:
                 enum_defs[opts[n][1:]] = tdef[jadn_defs.TypeName]
-            update_eref(enum_refs, opts, "ktype")
-            update_eref(enum_refs, opts, "vtype")
+            update_eref(enum_refs, opts, 'ktype')
+            update_eref(enum_refs, opts, 'vtype')
     for tname, refs in enum_refs.items():       #
         if tname in enum_defs:                  # Replace derived enumeration with Enumerated type
             typename = enum_defs[tname]
             tx = typex[typename]
         else:                                   # Referenced - create new Enumerated type
-            typename = tname + Sys + "Enum"
+            typename = tname + Sys + 'Enum'
             tx = len(tdefs)
             tdefs.append([])
             typex.update({typename: tx})
         rdef = tdefs[typex[tname]]              # Referenced type definition
         newfields = [[f[jadn_defs.FieldID], f[jadn_defs.FieldName], f[jadn_defs.FieldDesc]] for f in rdef[jadn_defs.Fields]]
-        idopt = [jadn_defs.OPTION_ID["id"]] if get_optx(rdef[jadn_defs.TypeOptions], "id") is not None else []
-        tdefs[tx] = [typename, "Enumerated", idopt, rdef[jadn_defs.TypeDesc], newfields]
+        idopt = [jadn_defs.OPTION_ID['id']] if get_optx(rdef[jadn_defs.TypeOptions], 'id') is not None else []
+        tdefs[tx] = [typename, 'Enumerated', idopt, rdef[jadn_defs.TypeDesc], newfields]
         for opts, n in refs:                        # Replace all references with Enumerated type
             opts[n] = opts[n][0] + typename
 
-    for n, tdef in enumerate(sc["types"]):
+    for n, tdef in enumerate(sc['types']):
         to = jadn_utils.topts_s2d(tdef[jadn_defs.TypeOptions])
-        if tdef[jadn_defs.BaseType] == "MapOf" and tdefs[typex[to["ktype"]]][jadn_defs.BaseType] == "Enumerated":  # Replace MapOf(Enumerated, ..) with Map
-            newfields = [[f[jadn_defs.FieldID], f[jadn_defs.FieldName], to["vtype"], [], f[jadn_defs.EnumDesc]] for f in tdefs[typex[to["ktype"]]][jadn_defs.Fields]]
-            sc["types"][n] = [tdef[jadn_defs.TypeName], "Map", [], tdef[jadn_defs.TypeDesc], newfields]
+        if tdef[jadn_defs.BaseType] == 'MapOf' and tdefs[typex[to['ktype']]][jadn_defs.BaseType] == 'Enumerated':  # Replace MapOf(Enumerated, ..) with Map
+            newfields = [[f[jadn_defs.FieldID], f[jadn_defs.FieldName], to['vtype'], [], f[jadn_defs.EnumDesc]] for f in tdefs[typex[to['ktype']]][jadn_defs.Fields]]
+            sc['types'][n] = [tdef[jadn_defs.TypeName], 'Map', [], tdef[jadn_defs.TypeDesc], newfields]
         elif jadn_defs.is_compound(tdef[jadn_defs.BaseType]):
             for fdef in tdef[jadn_defs.Fields]:
                 fo = jadn_utils.fopts_s2d(fdef[jadn_defs.FieldOptions])
-                if "maxc" in fo and fo["maxc"] != 1:                # Expand field multiplicity
+                if 'maxc' in fo and fo['maxc'] != 1:                # Expand field multiplicity
                     newname = tdef[jadn_defs.TypeName] + Sys + fdef[jadn_defs.FieldName]
-                    minc = fo["minc"] if "minc" in fo else 1
-                    newopts = {"vtype": fdef[jadn_defs.FieldType], "minv": max(minc, 1)}      # Don't allow empty ArrayOf
-                    newopts.update({"maxv": fo["maxc"]} if fo["maxc"] > 1 else {})  # Omit unspecified upper bound
-                    new_types.append([newname, "ArrayOf", jadn_utils.opts_d2s(newopts), fdef[jadn_defs.FieldDesc]])
+                    minc = fo['minc'] if 'minc' in fo else 1
+                    newopts = {'vtype': fdef[jadn_defs.FieldType], 'minv': max(minc, 1)}      # Don't allow empty ArrayOf
+                    newopts.update({'maxv': fo['maxc']} if fo['maxc'] > 1 else {})  # Omit unspecified upper bound
+                    new_types.append([newname, 'ArrayOf', jadn_utils.opts_d2s(newopts), fdef[jadn_defs.FieldDesc]])
 
                     fdef[jadn_defs.FieldType] = newname       # Point existing field to new ArrayOf
                     f = fdef[jadn_defs.FieldOptions]
-                    del_opt(f, "maxc")
+                    del_opt(f, 'maxc')
                     if minc != 0:
-                        del_opt(f, "minc")
-    sc["types"].append(new_types)
+                        del_opt(f, 'minc')
+    sc['types'].append(new_types)
     return sc
 
 

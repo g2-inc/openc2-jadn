@@ -18,13 +18,27 @@ import os
 from jadnschema import jadn_load, jadn_dump, jadn_analyze, jadn_strip, jadn_simplify
 from jadnschema.convert import html_dump, jas_dump, md_dump
 
+ignore_schemas = (
+    'exp',
+    'jadn-csdpr02',
+    'oc2ls-csdpr02',
+    'oc2ls-csdpr02-slpf',
+    'oc2ls-csdpr02-slpf_merged',
+    'oc2ls-wd12',
+    'oc2ls-wd13',
+    # 'oc2ls-wd13_reorg',
+    'slpf-csdpr02'
+)
 
 if __name__ == '__main__':
     cdir = os.path.dirname(os.path.realpath('__file__'))    # Current directory
     idir = 'schema'
-    odir = os.path.normpath(os.path.join(cdir, '..', 'schema_out'))     # Put generated schemas outside of the repo
+    odir = os.path.normpath(os.path.join(cdir, 'schema_out'))     # Put generated schemas outside of the repo
+    if not os.path.isdir(odir):
+        os.makedirs(odir)
+
     print('Translating schemas from', os.path.realpath(idir), 'to', odir)
-    for fn in (f[0] for f in (os.path.splitext(i) for i in os.listdir(idir)) if f[1] == '.jadn'):
+    for fn in (f[0] for f in (os.path.splitext(i) for i in os.listdir(idir)) if f[1] == '.jadn' and f[0] not in ignore_schemas):
         print('**', fn)
         source = os.path.join(idir, fn) + '.jadn'
         dest = os.path.join(odir, fn) + '_gen'

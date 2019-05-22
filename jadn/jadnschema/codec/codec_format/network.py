@@ -19,7 +19,7 @@ def b_ip_addr(bval):
     """
     if not isinstance(bval, bytes):
         raise TypeError(f"IP Address given is not expected {bytes}, given {type(bval)}")
-    if len(bval) == 4 or len(bval) == 16:
+    if len(bval) in (4, 16):
         return bval
     raise ValueError(f"IP Address given is not valid")
 
@@ -34,12 +34,12 @@ def b_mac_addr(bval):
     """
     if not isinstance(bval, bytes):
         raise TypeError(f"MAC Address given is not expected {bytes}, given {type(bval)}")
-    if len(bval) == 6 or len(bval) == 8:
+    if len(bval) in (6, 8):
         return bval
     raise ValueError(f"Mac Address given is not valid")
 
 
-# Convert IP address string to binary
+# Convert IP address
 def _value_check_s2b(val):
     """
     Validate the value given is the proper type
@@ -89,7 +89,7 @@ def s2b_ipv6_addr(sval):
         raise e
 
 
-# Convert IP address binary to string
+# Convert IP address
 def _value_check_b2s(val):
     """
     Validate the value given is the proper type
@@ -140,7 +140,6 @@ def b2s_ipv6_addr(bval):
 
 
 # IP Net (address, prefix length tuple) conversions
-# Convert CIDR string to IP Net (v4 or v6)
 def _value_check_s2a(val):
     """
     Validate the value given is the proper type
@@ -172,6 +171,7 @@ def s2a_ipv4_net(sval, strict=False):
     :param strict: boot - enforce validation of network with host bits set
     :return: list - ipv4, prefix
     """
+    print(sval)
     try:
         check = _value_check_s2a(sval)
         addr = tuple(sval.split('/', 1))
@@ -197,7 +197,7 @@ def s2a_ipv6_net(sval, strict=False):
         raise e
 
 
-# Convert IP Net (v4 or v6) to string in CIDR notation
+# Convert IP Net (v4 or v6) CIDR notation
 def _value_check_a2s(val):
     """
     Validate the value given is the proper type
@@ -205,6 +205,7 @@ def _value_check_a2s(val):
     :raises: Value - Invalid size list given
     :raises: TypeError - Invalid type given
     """
+    print(val)
     if len(val) != 2:
         raise ValueError(f'List of size 2 expected, give size {len(val)}')
     elif isinstance(type(val[0]), type('')):
