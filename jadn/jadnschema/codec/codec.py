@@ -11,11 +11,11 @@ Licensed under the Apache License, Version 2.0
 http://www.apache.org/licenses/LICENSE-2.0
 """
 
-from .config import *
+from .constants import *
 
 from .codec_format import get_format_function
 
-from .utils import (
+from .codec_serialize import (
     enctab,
     encode,
     decode

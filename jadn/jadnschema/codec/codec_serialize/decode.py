@@ -5,7 +5,19 @@ import numbers
 
 from . import general
 
-from ..config import *
+from ..constants import (
+    C_ETYPE,
+    S_CODEC,
+    S_DMAP,
+    S_EMAP,
+    S_FDEF,
+    S_FLD,
+    S_FNAMES,
+    S_FOPT,
+    S_TDEF,
+    S_TOPT,
+    S_VSTR
+)
 
 from ..codec_format import (
     FMT_CHECK,
@@ -125,9 +137,10 @@ def maprec(ts, sval, codec):
 
 
 def array(ts, sval, codec):  # Ordered list of types, returned as a list
-    if 'sopt' in ts[S_TOPT]:
+    # TODO: Validat this
+    if 'sopt' in ts[S_TOPT] or 'format' in ts[S_TOPT]:
         general.check_type(ts, sval, type(''))
-        val =general.format(ts, sval, FMT_S2B)  # Convert string to multipart value (array)
+        val = general.format(ts, sval, FMT_S2B)  # Convert string to multipart value (array)
     else:
         val = sval
     general.check_type(ts, val, list)

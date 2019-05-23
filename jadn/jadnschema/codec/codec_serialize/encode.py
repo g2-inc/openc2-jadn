@@ -5,7 +5,18 @@ import numbers
 
 from . import general
 
-from ..config import *
+from ..constants import (
+    C_ETYPE,
+    S_CODEC,
+    S_EMAP,
+    S_FDEF,
+    S_FLD,
+    S_FNAMES,
+    S_FOPT,
+    S_TDEF,
+    S_TOPT,
+    S_VSTR
+)
 
 from ..codec_format import (
     FMT_B2S,
@@ -151,8 +162,10 @@ def array(ts, aval, codec):
                general.bad_value(ts, aval, f)
     while sval and sval[-1] is None:    # Strip non-populated trailing optional values
         sval.pop()
-    if 'sopt' in ts[S_TOPT]:
-        sval =general.format(ts, sval, FMT_B2S)    # Convert multipart value to string
+
+    # TODO: Validat this
+    if 'sopt' in ts[S_TOPT] or 'format' in ts[S_TOPT]:
+        sval = general.format(ts, sval, FMT_B2S)    # Convert multipart value to string
     return sval
 
 

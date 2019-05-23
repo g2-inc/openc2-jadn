@@ -4,7 +4,13 @@ Codec General Utilities
 
 from binascii import b2a_hex
 
-from ..config import *
+from ..constants import (
+    S_DMAP,
+    S_FLD,
+    S_FORMAT,
+    S_TDEF,
+    S_TOPT
+)
 
 from ..codec_format import FMT_NAME
 

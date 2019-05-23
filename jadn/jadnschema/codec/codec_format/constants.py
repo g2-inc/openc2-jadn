@@ -1,13 +1,12 @@
 """
 JADN Validation Constants
 """
-from __future__ import unicode_literals
-
-# from functools import partial
+from functools import partial
 
 from . import (
     convert,
     general,
+    validate,
     network
 )
 
@@ -30,28 +29,49 @@ FMT_S2B = 3     # Function to convert string to binary (decode / deserialize Bin
 # Format Validation constants
 HOSTNAME_MAX_LENGTH = 255
 
+
+# Don't need custom format functions, use built-in value constraints instead:
+#   Date-Time       - Integer - min and max value for plausible date range
+#   Duration        - Integer - min 0, max value for plausible durations
+#   Identifier      - String - regex pattern
+#   Port            - Integer - min 0, max 65535
+#   Request-Id      - Binary - len 0 - 8 bytes
+
+# Semantic validation functions from JSON Schema Draft 6
+#    date-time      - String, RFC 3339, section 5.6
+#    email          - String, RFC 5322, section 3.4.1
+#    hostname       - String, RFC 1034, section 3.1
+#    ipv4           - String, dotted-quad
+#    ipv6           - String, RFC 2373, section 2.2
+#    uri            - String, RFC 3986
+#    uri-reference  - String, RFC 3986, section 4.1
+#    json-pointer   - String, RFC 6901
+#    uri-template   - String, RFC 6570
+
+
 # Semantic validation function for type: String, Binary, Number
 FORMAT_CHECK_FUNCTIONS = {  # TYPE: [STRING, BINARY, ??]
-    'email':        [general.s_email, general.error, general.error],        # Email-Addr
-    'hostname':     [general.s_hostname, general.error, general.error],     # Domain-Name
-    'ip-addr':      [general.error, network.b_ip_addr, general.error],      # IP-Addr (IPv4 or IPv6)
-    'eui':          [general.error, network.b_mac_addr, general.error],     # MAC-Addr (EUI-48 or EUI-64)
-    'uri':          [general.s_uri, general.error, general.error],          # URI
+    'email':        [validate.email, general.format_error, general.format_error],       # Email-Addr
+    'hostname':     [validate.hostname, general.format_error, general.format_error],    # Domain-Name
+    'ip-addr':      [validate.s_ip_addr, validate.b_ip_addr, general.format_error],     # IP-Addr (IPv4 or IPv6)
+    'eui':          [validate.s_mac_addr, validate.b_mac_addr, general.format_error],   # MAC-Addr (EUI-48 or EUI-64)
+    'uri':          [validate.uri, general.format_error, general.format_error],         # URI
     # Testing
-    # 'ipv4-addr':    [general.error, partial(testing, 'chk', 'ipv4-addr'), general.error],
-    # 'ipv6-addr':    [general.error, partial(testing, 'chk', 'ipv6-addr'), general.error],
+    'x':            [general.format_error, validate.hex, general.format_error],         # Hex
+    'ipv4-addr':    [validate.s_ip_addr, validate.b_ip_addr, general.format_error],     # IPv4
+    'ipv6-addr':    [validate.s_ip_addr, validate.b_ip_addr, general.format_error],     # IPv6
 }
 
 FORMAT_CONVERT_BINARY_FUNCTIONS = {  # TYPE: [BINARY, STRING]
     'b':            (convert.b2s_base64url, convert.s2b_base64url),    # Base64url
-    'x':            (convert.b2s_hex, convert.s2b_hex),                # Hex
     'ip-addr':      (network.b2s_ip_addr, network.s2b_ip_addr),        # IP (v4 or v6) Address, version autodetect
     'ipv4-addr':    (network.b2s_ipv4_addr, network.s2b_ipv4_addr),    # IPv4 Address
     'ipv6-addr':    (network.b2s_ipv6_addr, network.s2b_ipv6_addr),    # IPv6 Address
+    'x':            (convert.b2s_hex, convert.s2b_hex),                # Hex
     # Testing
-    # 'eui': (partial(testing, 'bin2str', 'eui'), partial(testing, 'str2bin', 'eui'))  # (network.b2s_mac_addr, network.s2b_mac_addr),
-    # 'f16': (partial(testing, 'bin2str', 'f16'), partial(testing, 'str2bin', 'f16')),
-    # 'f32': (partial(testing, 'bin2str', 'f32'), partial(testing, 'str2bin', 'f32')),
+    'eui': (network.b2s_mac_addr, network.s2b_mac_addr),               # MAC-Addr (EUI-48 or EUI-64)
+    'f16': (partial(testing, 'bin2str', 'f16'), partial(testing, 'str2bin', 'f16')),
+    'f32': (partial(testing, 'bin2str', 'f32'), partial(testing, 'str2bin', 'f32')),
 }
 
 FORMAT_CONVERT_MULTIPART_FUNCTIONS = {  # TYPE: [LIST, STRING]

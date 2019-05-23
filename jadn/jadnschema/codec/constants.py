@@ -1,5 +1,5 @@
 """
-Codec index names
+Codec Constants
 """
 
 # Codec Table fields

@@ -1,42 +1,34 @@
 """
 JADN Network Related Validation Functions
 """
-from __future__ import unicode_literals
-
 import ipaddress
 
 from . import convert
 
 
-# General Network
-def b_ip_addr(bval):
+# Convert Mac Address
+def b2s_mac_addr(bval):
     """
-    Check if valid IP Address
-    Length of IP addr must be 32 or 128 bits
-    :param bval: IP Address to validate
-    :return: given IP Address
-    :raises: TypeError, ValueError
+    Convert binary MAC Address to string format
+    :param bval: binary value of the MAC Address to convert
+    :return: string representation of the MAC Address
     """
-    if not isinstance(bval, bytes):
-        raise TypeError(f"IP Address given is not expected {bytes}, given {type(bval)}")
-    if len(bval) in (4, 16):
-        return bval
-    raise ValueError(f"IP Address given is not valid")
+    if not isinstance(bval, (bytes, bytearray)):
+        raise TypeError(f"MAC Address given is not expected {bytes}/{bytearray}, given {type(bval)}")
+    # str - ':'.join(f"{b:02x}" for b in bval)
+    return convert.b2s_base64url(bval)
 
 
-def b_mac_addr(bval):
+def s2b_mac_addr(sval):
     """
-    Check if valid MAC Address
-    Length of MAC addr must be 48 or 64 bits
-    :param bval: MAC Address to validate
-    :return: given MAC Address
-    :raises TypeError, ValueError
+    Convert string MAC Address to binary format
+    :param sval: string value of the MAC Address to convert
+    :return: binary representation of the MAC Address
     """
-    if not isinstance(bval, bytes):
-        raise TypeError(f"MAC Address given is not expected {bytes}, given {type(bval)}")
-    if len(bval) in (6, 8):
-        return bval
-    raise ValueError(f"Mac Address given is not valid")
+    if not isinstance(sval, str):
+        raise TypeError(f"MAC Address given is not expected {str}, given {type(sval)}")
+    # bytes - bytes.fromhex(re.sub(r"[:-]", "", sval))
+    return convert.s2b_base64url(sval)
 
 
 # Convert IP address
@@ -171,7 +163,6 @@ def s2a_ipv4_net(sval, strict=False):
     :param strict: boot - enforce validation of network with host bits set
     :return: list - ipv4, prefix
     """
-    print(sval)
     try:
         check = _value_check_s2a(sval)
         addr = tuple(sval.split('/', 1))
@@ -205,7 +196,7 @@ def _value_check_a2s(val):
     :raises: Value - Invalid size list given
     :raises: TypeError - Invalid type given
     """
-    print(val)
+    # print(val)
     if len(val) != 2:
         raise ValueError(f'List of size 2 expected, give size {len(val)}')
     elif isinstance(type(val[0]), type('')):
