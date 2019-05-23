@@ -1452,7 +1452,8 @@ schema_format = {  # JADN schema for value constraint tests
 class Format(unittest.TestCase):
 
     def setUp(self):
-        jadn_check(schema_format)
+        with self.assertRaises(ValueError):
+            jadn_check(schema_format)
         self.tc = Codec(schema_format, verbose_rec=True, verbose_str=True)
 
     ipv4_b = binascii.a2b_hex('c6020304')           # IPv4 address

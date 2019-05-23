@@ -1,14 +1,7 @@
 import base64
-import json
-import os
 import sys
 
 from typing import Any, Type, Union
-
-from . import (
-    jadn_defs,
-    jadn_utils
-)
 
 
 # Util Classes
@@ -47,20 +40,19 @@ def default_encoding(itm: Any) -> Any:
     :param itm: object/type to convert to the system default
     :return: system default converted object/type
     """
-    tmp = type(itm)()
-    if hasattr(tmp, '__iter__') and not isinstance(tmp, (str, int, float)):
-        for k in itm:
-            ks = toStr(k)
-            if isinstance(itm, dict):
-                tmp[ks] = default_encoding(itm[k])
-            elif isinstance(itm, list):
-                tmp.append(default_encoding(k))
-            else:
-                print(f"Not prepared type: {type(itm[k])}-{itm[k]}")
+    if isinstance(itm, dict):
+        return {toStr(k): default_encoding(v) for k, v in itm}
+
+    elif isinstance(itm, list):
+        return [default_encoding(i) for i in itm]
+
+    elif isinstance(itm, tuple):
+        tmp = tuple(default_encoding(i) for i in itm)
+
     elif isinstance(itm, (complex, int, float, object)):
-        tmp = itm
+        return itm
     else:
-        tmp = toStr(itm)
+        return toStr(itm)
     return tmp
 
 
@@ -83,36 +75,32 @@ def isBase64(sb: Union[str, bytes]) -> bool:
         return False
 
 
-def toFrozen(d: dict) -> FrozenDict:
+def toFrozen(itm: Union[dict, list, str]) -> Union[FrozenDict, str, tuple]:
     """
-    Convert the given dict to a FrozenDict
-    :param d: dict to convert
-    :return: converted dict as a FrozenDict
+    Convert the given item to a frozen format
+    :param itm: item to freeze
+    :return: converted item as a frozen format
     """
-    d = toThawed(d)
-    for k in d:
-        v = d[k]
-        if isinstance(v, dict):
-            v = toFrozen(v)
-        if isinstance(v, list):
-            v = tuple(v)
-        d[k] = v
+    if isinstance(itm, dict):
+        return FrozenDict({k: toFrozen(v) for k, v in itm.items()})
+    if isinstance(itm, list):
+        return tuple(toFrozen(i) for i in itm)
 
-    return FrozenDict(d)
+    return itm
 
 
-def toThawed(d: Union[dict, FrozenDict]) -> dict:
-    thawed = {}
+def toThawed(itm: Union[dict, FrozenDict, tuple]) -> Union[dict, list, str]:
+    """
+    Convert the given item to a thawed format
+    :param itm: item to thaw
+    :return: converted item as a thawed format
+    """
+    if isinstance(itm, (dict, FrozenDict)):
+        return FrozenDict({k: toThawed(v) for k, v in itm.items()})
+    if isinstance(itm, tuple):
+        return list(toThawed(i) for i in itm)
 
-    for k, v in d.items():
-        if isinstance(v, FrozenDict):
-            thawed[k] = toThawed(v)
-        elif isinstance(v, tuple):
-            thawed[k] = list(v)
-        else:
-            thawed[k] = v
-
-    return thawed
+    return itm
 
 
 def toStr(s: Any) -> str:
@@ -136,68 +124,3 @@ def safe_cast(val: Any, to_type: Type, default: Any = None) -> Any:
         return to_type(val)
     except (ValueError, TypeError):
         return default
-
-
-def jadn_idx2key(schema: Union[str, dict], opts: bool = False) -> dict:
-    if isinstance(schema, str):
-        try:
-            if os.path.isfile(schema):
-                with open(schema, 'rb') as f:
-                    schema = json.load(f)
-            else:
-                schema = json.loads(schema)
-        except Exception as e:
-            raise ValueError("Schema improperly formatted")
-
-    tmp_schema = dict(
-        meta=schema.get("meta", {}),
-        types=[]
-    )
-
-    for type_def in schema.get('types', []):
-        type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
-        base_type = jadn_utils.basetype(type_def['type'])
-        type_def['opts'] = jadn_utils.topts_s2d(type_def['opts']) if opts else type_def['opts']
-
-        if "fields" in type_def:
-            tmp_fields = []
-            for field in type_def['fields']:
-                field = dict(zip(jadn_defs.COLUMN_KEYS['Enum_Def' if base_type == 'Enumerated' else 'Gen_Def'], field))
-                if 'opts' in field:
-                    field['opts'] = jadn_utils.fopts_s2d(field['opts']) if opts else field['opts']
-                tmp_fields.append(field)
-            type_def['fields'] = tmp_fields
-        tmp_schema['types'].append(type_def)
-
-    return tmp_schema
-
-
-def jadn_key2idx(schema: Union[str, dict]) -> dict:
-    if isinstance(schema, str):
-        try:
-            if os.path.isfile(schema):
-                with open(schema, 'rb') as f:
-                    schema = json.load(f)
-            else:
-                schema = json.loads(schema)
-        except Exception as e:
-            raise ValueError("Schema improperly formatted")
-
-    tmp_schema = dict(
-        meta=schema.get("meta", {}),
-        types=[]
-    )
-
-    for type_def in schema.get('types', []):
-        if 'fields' in type_def:
-            tmp_fields = []
-            for field in type_def['fields']:
-                if 'opts' in field:
-                    field['opts'] = jadn_utils.fopts_d2s(field['opts']) if isinstance(field['opts'], dict) else field['opts']
-                tmp_fields.append(list(field.values()))
-            type_def['fields'] = tmp_fields
-
-        type_def['opts'] = jadn_utils.topts_d2s(type_def['opts']) if isinstance(type_def['opts'], dict) else type_def['opts']
-        tmp_schema['types'].append(list(type_def.values()))
-
-    return tmp_schema

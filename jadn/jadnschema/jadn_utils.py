@@ -4,6 +4,9 @@ Convert dict between nested and flat
 Convert typedef options between dict and strings
 """
 
+import json
+import os
+
 from functools import reduce
 from typing import Any, List, Tuple, Union
 
@@ -87,7 +90,7 @@ def topts_s2d(ostr: Union[List[str], Tuple[str]]) -> dict:
             opt_fun = jadn_defs.TYPE_CONFIG.S2D.get(k, None)
             if k and opt_fun:
                 v = opt_fun(o[1:])
-                opts[k] = utils.safe_cast(v, int, v)
+                opts[k] = v
                 continue
             raise ValueError(f"Unknown type option: {o[0]} -> {o[1:]}")
         return opts
@@ -126,7 +129,7 @@ def fopts_s2d(ostr: List[str]) -> dict:
             opt_fun = jadn_defs.FIELD_CONFIG.S2D.get(k, None)
             if k and opt_fun:
                 v = opt_fun(o[1:])
-                opts[k] = utils.safe_cast(v, int, v)
+                opts[k] = v
                 continue
             raise ValueError(f"Unknown field option: {o[0]} -> {o[1:]}")
         return opts
@@ -183,3 +186,69 @@ def multiplicity(minimum: int, maximum: int) -> str:
     if minimum == 1 and maximum == 1:
         return "1"
     return f"{minimum}..{'n' if maximum == 0 else maximum}"
+
+
+# Custom Utilities
+def jadn_idx2key(schema: Union[str, dict], opts: bool = False) -> dict:
+    if isinstance(schema, str):
+        try:
+            if os.path.isfile(schema):
+                with open(schema, 'rb') as f:
+                    schema = json.load(f)
+            else:
+                schema = json.loads(schema)
+        except Exception as e:
+            raise ValueError("Schema improperly formatted")
+
+    tmp_schema = dict(
+        meta=schema.get("meta", {}),
+        types=[]
+    )
+
+    for type_def in schema.get('types', []):
+        type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
+        base_type = basetype(type_def['type'])
+        type_def['opts'] = topts_s2d(type_def['opts']) if opts else type_def['opts']
+
+        if "fields" in type_def:
+            tmp_fields = []
+            for field in type_def['fields']:
+                field = dict(zip(jadn_defs.COLUMN_KEYS['Enum_Def' if base_type == 'Enumerated' else 'Gen_Def'], field))
+                if 'opts' in field:
+                    field['opts'] = fopts_s2d(field['opts']) if opts else field['opts']
+                tmp_fields.append(field)
+            type_def['fields'] = tmp_fields
+        tmp_schema['types'].append(type_def)
+
+    return tmp_schema
+
+
+def jadn_key2idx(schema: Union[str, dict]) -> dict:
+    if isinstance(schema, str):
+        try:
+            if os.path.isfile(schema):
+                with open(schema, 'rb') as f:
+                    schema = json.load(f)
+            else:
+                schema = json.loads(schema)
+        except Exception as e:
+            raise ValueError("Schema improperly formatted")
+
+    tmp_schema = dict(
+        meta=schema.get("meta", {}),
+        types=[]
+    )
+
+    for type_def in schema.get('types', []):
+        if 'fields' in type_def:
+            tmp_fields = []
+            for field in type_def['fields']:
+                if 'opts' in field:
+                    field['opts'] = fopts_d2s(field['opts']) if isinstance(field['opts'], dict) else field['opts']
+                tmp_fields.append(list(field.values()))
+            type_def['fields'] = tmp_fields
+
+        type_def['opts'] = topts_d2s(type_def['opts']) if isinstance(type_def['opts'], dict) else type_def['opts']
+        tmp_schema['types'].append(list(type_def.values()))
+
+    return tmp_schema

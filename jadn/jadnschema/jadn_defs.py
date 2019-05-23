@@ -175,8 +175,8 @@ TYPE_CONFIG = dict(
         enum=lambda x: x,
         format=lambda x: x,
         pattern=lambda x: x,
-        minv=lambda x: x,
-        maxv=lambda x: x,
+        minv=lambda x: utils.safe_cast(x, int, 1),
+        maxv=lambda x: utils.safe_cast(x, int, 1),
         default=lambda x: x,
     )
 )

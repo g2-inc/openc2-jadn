@@ -62,6 +62,7 @@ class JADNConverterBase(object):
         else:
             raise TypeError('JADN improperly formatted')
 
+        jadn = utils.toFrozen(jadn_utils.jadn_idx2key(jadn))
         self.comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
         self._meta = jadn.get('meta', {})
@@ -70,13 +71,6 @@ class JADNConverterBase(object):
         self._customFields = {}
 
         for type_def in jadn.get('types', []):
-            type_def = dict(zip(jadn_defs.COLUMN_KEYS.Structure, type_def))
-            base_type = jadn_utils.basetype(type_def['type'])
-
-            if 'fields' in type_def:
-                type_def['fields'] = [utils.FrozenDict(zip(jadn_defs.COLUMN_KEYS['Enum_Def' if base_type == 'Enumerated' else 'Gen_Def'], f)) for f in type_def['fields']]
-            type_def = utils.FrozenDict(type_def)
-
             self._customFields[type_def.name] = type_def.type
             if type_def.type in self._structure_formats.keys():
                 self._types.append(type_def)

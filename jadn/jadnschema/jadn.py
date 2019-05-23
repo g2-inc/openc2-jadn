@@ -27,8 +27,6 @@ from .exceptions import (
     OptionError
 )
 
-# TODO: convert prints to ValidationError exception
-
 jadn_schema = {
     "type": "object",
     "required": ["meta", "types"],
@@ -125,7 +123,7 @@ def jadn_check(schema: Union[dict, str]) -> dict:
         # TODO: raise errors if invalid schema
         print(val)
 
-    schema = utils.jadn_idx2key(schema, True)
+    schema = jadn_utils.jadn_idx2key(schema, True)
 
     for type_def in schema.get("types", []):  # datatype definition: jadn_defs.COLUMN_KEYS.Structures
         base_type = jadn_utils.basetype(type_def["type"])
@@ -136,24 +134,24 @@ def jadn_check(schema: Union[dict, str]) -> dict:
             if 'vtype' in type_opts:
                 pass  # check vtype options
             else:
-                print(OptionError(f"{type_def['name']} - Missing value type"))
+                raise OptionError(f"{type_def['name']} - Missing value type")
 
         if base_type == "MapOf":
             if 'ktype' in type_opts:
                 pass  # check ktype options
             else:
-                print(OptionError(f"{type_def['name']} - Missing key type"))
+                raise OptionError(f"{type_def['name']} - Missing key type")
 
         fmt = type_opts.get("format", None)
         if fmt:
             fmts = jadn_defs.FORMAT.CHECK.copy()
             fmts.update(jadn_defs.FORMAT.SERIALIZE)
             if fmt not in fmts or base_type != fmts.get(fmt, None):
-                print(ValueError(f"Unsupported value constraint \"{fmt}\" on {base_type}: {type_def['name']}"))
+                raise ValueError(f"Unsupported value constraint \"{fmt}\" on {base_type}: {type_def['name']}")
 
         if jadn_defs.is_primitive(base_type) or base_type in ("ArrayOf", "MapOf"):
             if 'fields' in type_def:
-                print(FormatError(f"{type_def['name']} - cannot have fields"))
+                raise FormatError(f"{type_def['name']} - cannot have fields")
 
         elif jadn_defs.is_builtin(base_type):
             if len(type_def) == len(jadn_defs.COLUMN_KEYS.Structure):
@@ -169,10 +167,10 @@ def jadn_check(schema: Union[dict, str]) -> dict:
                     names.add(name)
 
                     if ordinal and field["id"] != k + 1:
-                        print(KeyError(f"Item tag: {type_def['name']} ({base_type}): {field['name']} -- {field['id']} should be {k + 1}"))
+                        raise KeyError(f"Item tag: {type_def['name']} ({base_type}): {field['name']} -- {field['id']} should be {k + 1}")
 
                     if len(field) != len(field_keys):
-                        print(FormatError(f"{type_def['name']} - {base_type} {name} - {len(field)} != {len(field_keys)}"))
+                        raise FormatError(f"{type_def['name']} - {base_type} {name} - {len(field)} != {len(field_keys)}")
 
                     if base_type != "Enumerated" and jadn_defs.is_builtin(field['type']):
                         valid_opts = list(jadn_defs.TYPE_CONFIG.SUPPORTED_OPTIONS.get(field["type"], ())) + list(jadn_defs.FIELD_CONFIG.OPTIONS.values())
@@ -180,26 +178,26 @@ def jadn_check(schema: Union[dict, str]) -> dict:
                         fop = set(field_opts.keys()).difference({*valid_opts})
 
                         if fop:
-                            print(OptionError(f"{type_def['name']} : {field['name']} {field['type']} invalid field option {', '.join(fop)}"))
+                            raise OptionError(f"{type_def['name']} : {field['name']} {field['type']} invalid field option {', '.join(fop)}")
 
                         if 'minc' in field_opts and 'maxc' in field_opts:
                             if field_opts['minc'] < 0 or (field_opts['maxc'] != 0 and field_opts['maxc'] < field_opts['minc']):
-                                print(OptionError(f"{type_def['name']}: {field['name']} bad cardinality {field_opts['minc']} {field_opts['maxc']}"))
+                                raise OptionError(f"{type_def['name']}: {field['name']} bad cardinality {field_opts['minc']} {field_opts['maxc']}")
 
                 if len(type_def["fields"]) != len(tags):
-                    print(DuplicateError(f"Tag collision in {type_def['name']} - {len(type_def['fields'])} items, {len(tags)} unique tags"))
+                    raise DuplicateError(f"Tag collision in {type_def['name']} - {len(type_def['fields'])} items, {len(tags)} unique tags")
 
                     # TODO: Check validity of error raising
                 if len(type_def["fields"]) != len(names) and base_type not in ("Array", "ArrayOf", "MapOf"):
-                    print(DuplicateError(f"Name collision in {type_def['name']} - {len(type_def['fields'])} items, {len(names)} unique names"))
+                    raise DuplicateError(f"Name collision in {type_def['name']} - {len(type_def['fields'])} items, {len(names)} unique names")
 
             else:
-                print(OptionError(f"{type_def['name']} - missing items from compound type {base_type}"))
+                raise OptionError(f"{type_def['name']} - missing items from compound type {base_type}")
 
         elif type_def["opts"]:
-            print(FormatError(f"Defined type {type_def['name']} cannot have options - {type_def['opts']}"))
+            raise FormatError(f"Defined type {type_def['name']} cannot have options - {type_def['opts']}")
 
-    return utils.jadn_key2idx(schema)
+    return jadn_utils.jadn_key2idx(schema)
 
 
 def jadn_strip(schema: dict) -> dict:
@@ -208,13 +206,13 @@ def jadn_strip(schema: dict) -> dict:
     :param schema: schema to strip comments
     :return: comment stripped JADN schema
     """
-    schema = utils.jadn_idx2key(schema)
+    schema = jadn_utils.jadn_idx2key(schema)
 
     for type_def in schema.get("types", []):
         type_def["desc"] = ""
         for field in type_def.get("fields", []):
             field["desc"] = ""
-    return utils.jadn_key2idx(schema)
+    return jadn_utils.jadn_key2idx(schema)
 
 
 # TODO: Cleanup Code
@@ -381,7 +379,7 @@ def build_jadn_deps(schema: dict) -> List[Tuple[str, List[str]]]:
         nsp = name.split(":")[0]
         return nsp if nsp in nsids else name
 
-    schema = utils.jadn_idx2key(schema, True)
+    schema = jadn_utils.jadn_idx2key(schema, True)
     imps = schema.get("meta", {}).get("imports", [])
     items = [(n[0], []) for n in imps]
     nsids = [n[0] for n in imps]
@@ -442,22 +440,15 @@ def jadn_load(fname: Union[str, BufferedIOBase, TextIOBase]) -> dict:
     :param fname: JADN schema file to load
     :return: loaded schema
     """
-    try:
-        if isinstance(fname, (BufferedIOBase, TextIOBase)):
-            return jadn_check(json.load(fname))
+    if isinstance(fname, (BufferedIOBase, TextIOBase)):
+        return jadn_check(json.load(fname))
 
-        if isinstance(fname, str):
-            if fname.startswith("{") and fname.endswith("}"):
-                return jadn_check(json.loads(fname))
-
-            if os.path.isfile(fname):
-                with open(fname, "rb") as f:
-                    return jadn_check(json.load(f))
-            else:
-                raise FileNotFoundError(f"Schema file not found - '{fname}'")
-
-    except Exception:
-        raise ValueError("Schema improperly formatted")
+    if isinstance(fname, str):
+        if os.path.isfile(fname):
+            with open(fname, "rb") as f:
+                return jadn_check(json.load(f))
+        else:
+            raise FileNotFoundError(f"Schema file not found - '{fname}'")
 
     raise TypeError("fname is not a valid type")
 
