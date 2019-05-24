@@ -7,7 +7,6 @@ from datetime import datetime
 from ..base_dump import JADNConverterBase
 from .... import (
     enums,
-    jadn_utils,
     utils
 )
 
@@ -75,7 +74,7 @@ class JADNtoProto3(JADNConverterBase):
         properties.set_style(BeautifulTable.STYLE_NONE)
         for prop in itm.fields:
             opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = prop.opts
 
             properties.append_row([
                 self._fieldType(prop.type),
@@ -85,7 +84,7 @@ class JADNtoProto3(JADNConverterBase):
             ])
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = itm.opts
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = self._space_start.sub(self._indent, str(properties))
@@ -101,7 +100,7 @@ class JADNtoProto3(JADNConverterBase):
         properties.set_style(BeautifulTable.STYLE_NONE)
         for prop in itm.fields:
             opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = prop.opts
 
             properties.append_row([
                 self._fieldType(prop.type),
@@ -111,7 +110,7 @@ class JADNtoProto3(JADNConverterBase):
             ])
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = itm.opts
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = self._space_start.sub(self._indent, str(properties))
@@ -143,7 +142,7 @@ class JADNtoProto3(JADNConverterBase):
             ])
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = itm.opts
 
         if default:
             properties.insert_row(0, [
@@ -173,7 +172,7 @@ class JADNtoProto3(JADNConverterBase):
         """
         opts = {
             'type': 'arrayOf',
-            'options': jadn_utils.topts_s2d(itm.opts)
+            'options': utils.toThawed(itm.opts)
         }
         rtype = self.formatStr(opts['options'].setdefault('rtype', 'String'))
         comment = self._formatComment(itm.desc, jadn_opts=opts)

@@ -41,7 +41,7 @@ def default_encoding(itm: Any) -> Any:
     :return: system default converted object/type
     """
     if isinstance(itm, dict):
-        return {toStr(k): default_encoding(v) for k, v in itm}
+        return {toStr(k): default_encoding(v) for k, v in itm.items()}
 
     elif isinstance(itm, list):
         return [default_encoding(i) for i in itm]
@@ -96,7 +96,7 @@ def toThawed(itm: Union[dict, FrozenDict, tuple]) -> Union[dict, list, str]:
     :return: converted item as a thawed format
     """
     if isinstance(itm, (dict, FrozenDict)):
-        return FrozenDict({k: toThawed(v) for k, v in itm.items()})
+        return {k: toThawed(v) for k, v in itm.items()}
     if isinstance(itm, tuple):
         return list(toThawed(i) for i in itm)
 

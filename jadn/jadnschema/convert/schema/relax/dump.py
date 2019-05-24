@@ -7,7 +7,6 @@ from datetime import datetime
 from ..base_dump import JADNConverterBase
 from .... import (
     enums,
-    jadn_utils,
     utils
 )
 
@@ -82,7 +81,7 @@ class JADNtoRelaxNG(JADNConverterBase):
             com = '' if field.desc == '' else field.desc
 
             if len(field.opts) >= 1:
-                opts = {'options': jadn_utils.topts_s2d(field.opts)}
+                opts = {'options': field.opts}
                 com += f' #jadn_opts:{json.dumps(opts)}'
 
             c = self._formatTag(
@@ -105,7 +104,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = prop.opts
 
             ltmp = self._formatTag(
                 'element',
@@ -120,7 +119,7 @@ class JADNtoRelaxNG(JADNConverterBase):
                 properties.append(ltmp)
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(prop.opts)
+        if len(itm.opts) > 0: opts['options'] = prop.opts
 
         return self._formatTag(
             'define',
@@ -139,7 +138,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         for prop in itm.fields:
             n = self.formatStr(prop.name or f'Unknown_{self.formatStr(itm.name)}_{prop.id}')
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = prop.opts
 
             properties.append(self._formatTag(
                 'element',
@@ -149,7 +148,7 @@ class JADNtoRelaxNG(JADNConverterBase):
             ))
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = itm.opts
 
         return self._formatTag(
             'define',
@@ -167,7 +166,7 @@ class JADNtoRelaxNG(JADNConverterBase):
         properties = []
         for prop in itm.fields:
             opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = prop.opts
 
             ltmp = self._formatTag(
                 'element',
@@ -182,7 +181,7 @@ class JADNtoRelaxNG(JADNConverterBase):
                 properties.append(ltmp)
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = itm.opts
 
         return self._formatTag(
             'define',
@@ -207,7 +206,7 @@ class JADNtoRelaxNG(JADNConverterBase):
             ))
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = itm.opts
 
         return self._formatTag(
             'define',
@@ -223,12 +222,12 @@ class JADNtoRelaxNG(JADNConverterBase):
         :return: formatted array
         """
         type_opts = {'type': itm.type}
-        if len(itm.opts) > 0: type_opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: type_opts['options'] = itm.opts
 
         properties = []
         for prop in itm.fields:
             field_opts = {'type': prop.type, 'field': prop.id}
-            if len(prop.opts) > 0: field_opts['options'] = jadn_utils.fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: field_opts['options'] = prop.opts
 
             ltmp = self._formatTag(
                 'element',
@@ -258,16 +257,15 @@ class JADNtoRelaxNG(JADNConverterBase):
         :param itm: arrayof to format
         :return: formatted arrayof
         """
-        field_opts = jadn_utils.topts_s2d(itm.opts)
 
         opts = {'type': itm.type}
-        if len(field_opts.keys()) > 0: opts['options'] = field_opts
+        if len(itm.opts.keys()) > 0: opts['options'] = itm.opts
 
         return self._formatTag(
             'define',
             self._formatTag(
                 'oneOrMore' if opts['options'] and len(opts['options']) > 0 else 'zeroOrMore',
-                self._fieldType(field_opts.get('rtype', 'string'))
+                self._fieldType(itm.opts.get('rtype', 'string'))
             ),
             com=self._formatComment(itm.desc, jadn_opts=opts),
             name=self.formatStr(itm.name)

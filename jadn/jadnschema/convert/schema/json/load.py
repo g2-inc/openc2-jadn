@@ -22,22 +22,24 @@ class JSONtoJADN(object):
     }
 
     _optKeys = {
+        # (TYPE, TYPE, ...): {
+        #   JSON_OPT: (JADN_TYPE_OPT, JADN_FIELD_OPT)
+        #   JSON_OPT: JADN_OPT
+        # }
         ('array',): {
-            'minItems': 'minc',
-            'maxItems': 'maxc'
+            'minItems': ('maxv', 'maxc'),
+            'maxItems': ('maxv', 'maxc')
         },
         ('integer',): {
-            'minimum': 'minc',
-            'exclusiveMinimum': 'minc',
-            'maximum': 'maxc',
-            'exclusiveMaximum': 'maxc',
+            'minimum': ('maxv', 'maxc'),
+            'exclusiveMinimum': ('maxv', 'maxc'),
             'format': 'format'
         },
         ('object',): {},
         ('string',): {
             'format': 'format',
-            'minLength': 'minc',
-            'maxLength': 'maxc',
+            'minLength': ('maxv', 'maxc'),
+            'maxLength': ('maxv', 'maxc'),
             'pattern': 'pattern'
         }
     }
@@ -169,7 +171,7 @@ class JSONtoJADN(object):
                 desc=v.get('description', '').strip(),
             )
             if k not in itm.get('required', []):
-                field['opts']['min'] = 0
+                field['opts']['minc'] = 0
 
             field['opts'] = jadn_utils.fopts_d2s(field['opts'])
             tmp_def['fields'].append(field)
@@ -238,7 +240,7 @@ class JSONtoJADN(object):
                 )
 
                 if k not in itm.get('required', []):
-                    field['opts']['min'] = 0
+                    field['opts']['minc'] = 0
 
                 field['opts'] = jadn_utils.fopts_d2s(field['opts'])
                 tmp_def['fields'].append(field)
@@ -264,7 +266,7 @@ class JSONtoJADN(object):
 
         i = 1
         if 'options' in itm:
-            if str(itm['options'][0]['value']).isdigit(): tmp_def['opts']['compact'] = True
+            if str(itm['options'][0]['value']).isdigit(): tmp_def['opts']['id'] = True
             for field in itm['options']:
                 tmp_def['fields'].append([utils.safe_cast(field['value'], int, i), field['label'], field['description']])
                 i += 1
@@ -301,7 +303,7 @@ class JSONtoJADN(object):
                 desc=v.get('description', '').strip(),
             )
             if k not in itm.get('items', {}).get('required', []):
-                field['opts']['min'] = 0
+                field['opts']['minc'] = 0
 
             field['opts'] = jadn_utils.fopts_d2s(field['opts'])
             tmp_def['fields'].append(field)
@@ -317,7 +319,7 @@ class JSONtoJADN(object):
         :param itm: arrayof to format
         :return: formatted arrayof
         """
-        rtype = itm.get('items', [])[0]
+        # rtype = itm.get('items', [])[0]
 
         tmp_def = dict(
             name=name,
@@ -340,7 +342,7 @@ class JSONtoJADN(object):
         tmp_def = dict(
             name=name,
             type=def_type,
-            opts=self._optReformat(def_type, itm),
+            opts=self._optReformat(def_type, itm, True),
             desc=itm.get('description', '').strip()
         )
         if 'format' in itm and itm['format'] != 'binary':
@@ -377,14 +379,14 @@ class JSONtoJADN(object):
         :return: dict - reformatted options
         """
         ignoreKeys = ['description', 'items', 'type', '$ref']
-        optType = optType.lower()
+        optKeys = self._getOptKeys(optType.lower())
         r_opts = {}
 
-        optKeys = self._getOptKeys(optType)
         for k, v in opts.items():
             if k not in ignoreKeys:
                 if k in optKeys:
-                    r_opts[optKeys[k]] = v
+                    k = optKeys[k]
+                    r_opts[k[0 if _type else 1] if isinstance(k, tuple) else k] = v
         return r_opts
 
 

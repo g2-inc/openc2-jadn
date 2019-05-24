@@ -78,7 +78,7 @@ class Conversions(object):
 
 
 if __name__ == '__main__':
-    schema = 'oc2ls-wd13'
+    schema = 'oc2ls-wd13_reorg'
     conversions = Conversions(schema)
 
     for conv in dir(conversions):

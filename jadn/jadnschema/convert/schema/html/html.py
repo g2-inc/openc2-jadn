@@ -5,11 +5,7 @@ import os
 
 from datetime import datetime
 
-
 from ..base_dump import JADNConverterBase
-from .... import (
-    jadn_utils
-)
 
 
 class JADNtoHTML(JADNConverterBase):
@@ -64,7 +60,7 @@ class JADNtoHTML(JADNConverterBase):
 
         i = 1
         for t in self._types:
-            df = self._structFun(t.type)
+            df = getattr(self, f"_format{t.type}", None)
 
             if df is not None:
                 structure_html += df(t, i)
@@ -87,7 +83,7 @@ class JADNtoHTML(JADNConverterBase):
 
         body = []
         for row in self._custom:
-            opts = jadn_utils.topts_s2d(row.opts)
+            opts = row.opts
             fmt = f" ({opts['format']})" if 'format' in opts else ''
 
             body.append(dict(
@@ -135,8 +131,7 @@ class JADNtoHTML(JADNConverterBase):
         if itm.desc != '':
             choice_html += f'<h4>{itm.desc}</h4>'
 
-        opts = jadn_utils.topts_s2d(itm.opts)
-        caption = f"{self.formatStr(itm.name)} (Choice{'' if len(opts.keys()) == 0 else f' {json.dumps(opts)}'})"
+        caption = f"{self.formatStr(itm.name)} (Choice{'' if len(itm.opts.keys()) == 0 else f' {json.dumps(itm.opts)}'})"
 
         table_opts = {
             'ID': {'class': 'n'},
@@ -159,8 +154,7 @@ class JADNtoHTML(JADNConverterBase):
         if itm.desc != '':
             map_html += f'<h4>{itm.desc}</h4>'
 
-        opts = jadn_utils.topts_s2d(itm.opts)
-        caption = f"{self.formatStr(itm.name)} (Map{'' if len(opts.keys()) == 0 else f' {json.dumps(opts)}'})"
+        caption = f"{self.formatStr(itm.name)} (Map{'' if len(itm.opts.keys()) == 0 else f' {json.dumps(itm.opts)}'})"
 
         table_opts = {
             'ID': {'class': 'n'},
@@ -184,10 +178,9 @@ class JADNtoHTML(JADNConverterBase):
         if itm.desc != '':
             enumerated_html += f'<h4>{itm.desc}</h4>'
 
-        opts = jadn_utils.topts_s2d(itm.opts)
-        caption = f"{self.formatStr(itm.name)} (Enumerated{'.Tag' if 'compact' in opts else ''})"
+        caption = f"{self.formatStr(itm.name)} (Enumerated{'.ID' if 'id' in itm.opts else ''})"
 
-        if 'compact' in opts:
+        if 'compact' in itm.opts:
             table_opts = dict(
                 Value={'class': 'n'},
                 Description={'class': 's'}
@@ -240,8 +233,7 @@ class JADNtoHTML(JADNConverterBase):
         if itm.desc != '':
             arrayOf_html += f'<h4>{itm.desc}</h4>'
 
-        field_opts = jadn_utils.topts_s2d(itm.opts)
-        options = f"<p>{self.formatStr(itm.name)} (ArrayOf.{self.formatStr(field_opts.get('rtype', 'string'))} [\'{field_opts.get('max', '1')}\', \'{field_opts.get('min', '1')}\'])</p>"
+        options = f"<p>{self.formatStr(itm.name)} (ArrayOf.{self.formatStr(itm.opts.get('rtype', 'string'))} [\'{itm.opts.get('max', '1')}\', \'{itm.opts.get('min', '1')}\'])</p>"
 
         arrayOf_html += options
         return arrayOf_html
@@ -368,7 +360,8 @@ class JADNtoHTML(JADNConverterBase):
                     cell = cell[0] if len(cell) == 1 else ''
 
                 if type(cell) is list:
-                    opts = jadn_utils.fopts_s2d(cell)
+                    opts = cell
+                    # TODO: Validate cardinality
                     tmp_str = str(opts['min']) if 'min' in opts else '1'
                     tmp_str += ('..' + str('n' if opts['max'] == 0 else opts['max'])) if 'max' in opts else ('..1' if 'min' in opts else '')
                     # TODO: More options

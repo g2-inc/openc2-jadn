@@ -62,7 +62,7 @@ class JADNConverterBase(object):
         else:
             raise TypeError('JADN improperly formatted')
 
-        jadn = utils.toFrozen(jadn_utils.jadn_idx2key(jadn))
+        jadn = utils.toFrozen(jadn_utils.jadn_idx2key(jadn, True))
         self.comm = comm if comm in enums.CommentLevels.values() else enums.CommentLevels.ALL
 
         self._meta = jadn.get('meta', {})
@@ -105,25 +105,13 @@ class JADNConverterBase(object):
         else:
             return s
 
-    def _structFun(self, _type: str, default: str = None) -> Union[Callable, None]:
-        """
-        Get the conversion function for the given structure
-        :param _type: type of structure
-        :return: structure conversion function
-        """
-        fun = self._structure_formats.get(_type)
-        if fun:
-            return getattr(self, fun, default)
-
-        return None
-
     def _is_optional(self, opts: dict) -> bool:
         """
         Check if the field is optional
         :param opts: field options
         :return: bool - optional
         """
-        return opts.get('min', 1) == 0
+        return opts.get('minc', 1) == 0
 
     def _is_array(self, opts: dict) -> bool:
         """
@@ -131,4 +119,7 @@ class JADNConverterBase(object):
         :param opts: field options
         :return: bool - optional
         """
-        return opts.get('max', 1) != 1
+        if 'ktype' in opts or 'vtype' in opts:
+            return False
+
+        return opts.get('maxc', 1) != 1

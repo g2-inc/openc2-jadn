@@ -6,7 +6,6 @@ from beautifultable import BeautifulTable
 from ..base_dump import JADNConverterBase
 from .... import (
     enums,
-    jadn_utils,
     utils
 )
 
@@ -70,7 +69,7 @@ class JADNtoThrift(JADNConverterBase):
         properties.set_style(BeautifulTable.STYLE_NONE)
         for prop in itm.fields:
             opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = prop.opts
 
             properties.append_row([
                 f"{prop.id}:",
@@ -81,7 +80,7 @@ class JADNtoThrift(JADNConverterBase):
             ])
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = itm.opts
 
         comment = self._formatComment('' if itm.desc == '' else itm.desc, jadn_opts=opts)
         properties = self._space_start.sub(self._indent, str(properties))
@@ -98,7 +97,7 @@ class JADNtoThrift(JADNConverterBase):
         properties.set_style(BeautifulTable.STYLE_NONE)
         for prop in itm.fields:
             opts = {'type': prop.type}
-            if len(prop.opts) > 0: opts['options'] = jadn_utils.fopts_s2d(prop.opts)
+            if len(prop.opts) > 0: opts['options'] = prop.opts
 
             properties.append_row([
                 f"{prop.id}:",
@@ -109,7 +108,7 @@ class JADNtoThrift(JADNConverterBase):
             ])
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = itm.opts
 
         comment = self._formatComment('' if itm.desc == '' else itm.desc, jadn_opts=opts)
         properties = self._space_start.sub(self._indent, str(properties))
@@ -141,7 +140,7 @@ class JADNtoThrift(JADNConverterBase):
             ])
 
         opts = {'type': itm.type}
-        if len(itm.opts) > 0: opts['options'] = jadn_utils.topts_s2d(itm.opts)
+        if len(itm.opts) > 0: opts['options'] = itm.opts
 
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         properties = self._space_start.sub(self._indent, str(properties))
@@ -165,13 +164,12 @@ class JADNtoThrift(JADNConverterBase):
         :return: formatted arrayof
         """
         # Best method for creating some type of array
-        field_opts = jadn_utils.topts_s2d(itm.opts)
         opts = {
             'type': itm.type,
-            'options': field_opts
+            'options': itm.opts
         }
 
-        nested_type = self.formatStr(field_opts.get('rtype', 'string'))
+        nested_type = self.formatStr(itm.opts.get('rtype', 'string'))
         comment = self._formatComment(itm.desc, jadn_opts=opts)
         nested_def = f'{self._indent}1: optional list<{nested_type}> item; {comment}\n'
         return f'\nstruct {self.formatStr(itm.name)} {{\n{nested_def}}}\n'

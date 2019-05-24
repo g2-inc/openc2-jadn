@@ -3,9 +3,6 @@ import json
 from datetime import datetime
 
 from ..base_dump import JADNConverterBase
-from .... import (
-    jadn_utils
-)
 
 
 class JADNtoMD(JADNConverterBase):
@@ -42,7 +39,7 @@ class JADNtoMD(JADNConverterBase):
 
         i = 1
         for t in self._types:
-            df = self._structFun(t.type)
+            df = getattr(self, f"_format{t.type}", None)
 
             if df is not None:
                 structure += df(t, i)
@@ -65,7 +62,7 @@ class JADNtoMD(JADNConverterBase):
 
         body = []
         for row in self._custom:
-            opts = jadn_utils.topts_s2d(row.opts)
+            opts = row.opts
             fmt = f" ({opts['format']})" if 'format' in opts else ''
 
             body.append(dict(
@@ -108,8 +105,7 @@ class JADNtoMD(JADNConverterBase):
         choice = '###3.2.{idx} {name}\n'.format(idx=idx, name=self.formatStr(itm.name))
         choice += f'{itm.desc}\n' if itm.desc != '' else ''
 
-        opts = jadn_utils.topts_s2d(itm.opts)
-        choice += '\n**{name} (Choice{opts})**\n\n'.format(name=self.formatStr(itm.name), opts=('' if len(opts.keys()) == 0 else ' ' + json.dumps(opts)))
+        choice += '\n**{name} (Choice{opts})**\n\n'.format(name=self.formatStr(itm.name), opts=('' if len(itm.opts.keys()) == 0 else ' ' + json.dumps(itm.opts)))
 
         table_headers = {
             'ID': {'align': 'r'},
@@ -130,8 +126,7 @@ class JADNtoMD(JADNConverterBase):
         map = '###3.2.{idx} {name}\n'.format(idx=idx, name=self.formatStr(itm.name))
         map += f'{itm.desc}\n' if itm.desc != '' else ''
 
-        opts = jadn_utils.topts_s2d(itm.opts)
-        map += '\n**{name} (Map{opts})**\n\n'.format(name=self.formatStr(itm.name), opts=('' if len(opts.keys()) == 0 else ' ' + json.dumps(opts)))
+        map += '\n**{name} (Map{opts})**\n\n'.format(name=self.formatStr(itm.name), opts=('' if len(itm.opts.keys()) == 0 else ' ' + json.dumps(itm.opts)))
 
         table_headers = {
             'ID': {'align': 'r'},
@@ -153,10 +148,9 @@ class JADNtoMD(JADNConverterBase):
         enumerated = '###3.2.{idx} {name}\n'.format(idx=idx, name=self.formatStr(itm.name))
         enumerated += f'{itm.desc}\n' if itm.desc != '' else ''
 
-        opts = jadn_utils.topts_s2d(itm.opts)
-        enumerated += '\n**{name} (Enumerated{compact})**\n\n'.format(name=self.formatStr(itm.name), compact=('.Tag' if 'compact' in opts else ''))
+        enumerated += '\n**{name} (Enumerated{compact})**\n\n'.format(name=self.formatStr(itm.name), compact=('.ID' if 'id' in itm.opts else ''))
 
-        if 'compact' in opts:
+        if 'compact' in itm.opts:
             table_headers = dict(
                 Value={'align': 'r'},
                 Description={}
@@ -202,10 +196,7 @@ class JADNtoMD(JADNConverterBase):
         """
         arrayOf = '###3.2.{idx} {name}\n'.format(idx=idx, name=self.formatStr(itm.name))
         arrayOf += f'{itm.desc}\n' if itm.desc != '' else ''
-
-        field_opts = jadn_utils.topts_s2d(itm.opts)
-        arrayOf += f"\n**{self.formatStr(itm.name)} (ArrayOf.{self.formatStr(field_opts.get('rtype', 'string'))} [\'{field_opts.get('max', '')}\', \'{field_opts.get('min', '')}\'])**\n"
-
+        arrayOf += f"\n**{self.formatStr(itm.name)} (ArrayOf.{self.formatStr(itm.opts.get('rtype', 'string'))} [\'{itm.opts.get('max', '')}\', \'{itm.opts.get('min', '')}\'])**\n"
         return arrayOf + '\n'
 
     # Helper Functions
@@ -241,7 +232,8 @@ class JADNtoMD(JADNConverterBase):
                     cell = cell[0] if len(cell) == 1 else ''
 
                 if type(cell) is list:
-                    opts = jadn_utils.fopts_s2d(cell)
+                    opts = cell
+                    # TODO: Verify cardinality
                     tmp_str = str(opts['min']) if 'min' in opts else '1'
                     tmp_str += ('..' + str('n' if opts['max'] == 0 else opts['max'])) if 'max' in opts else ('..1' if 'min' in opts else '')
                     # TODO: More options

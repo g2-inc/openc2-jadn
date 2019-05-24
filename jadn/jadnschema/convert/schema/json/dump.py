@@ -25,17 +25,20 @@ class JADNtoJSON(JADNConverterBase):
     }
 
     _ignoreOpts = (
-        'rtype'
+        'ktype',
+        'vtype'
     )
 
     _optKeys = {
         ('array',): {
-            'min': 'minItems',
-            'max': 'maxItems'
+            'minv': 'minItems',
+            'maxv': 'maxItems'
         },
         ('integer', 'number'): {
             'minc': 'minimum',
             'maxc': 'maximum',
+            'minv': 'minimum',
+            'maxv': 'maximum',
             'format': 'format'
         },
         ('choice', 'map', 'object'): {
@@ -46,6 +49,8 @@ class JADNtoJSON(JADNConverterBase):
             'format': 'format',
             'minc': 'minLength',
             'maxc': 'maxLength',
+            'minv': 'minLength',
+            'maxv': 'maxLength',
             'pattern': 'pattern'
         }
     }
@@ -112,11 +117,9 @@ class JADNtoJSON(JADNConverterBase):
         """
         defs = {}
         for field in self._custom:
-            field_opts = jadn_utils.topts_s2d(field.opts)
-
-            def_field = self._fieldType(field.type)
+            def_field = self._fieldType(field)
             def_field.update(self._formatComment(field.desc))
-            def_field.update(self._optReformat(field.type, field_opts, True))
+            def_field.update(self._optReformat(field.type, field.opts, True))
             defs[self.formatStr(field.name)] = def_field
 
         return defs
@@ -128,39 +131,35 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: record to format
         :return: formatted record
         """
-        itm_opts = jadn_utils.topts_s2d(itm['opts'])
+        itm_opts = itm['opts']
         properties = {}
         required = []
 
         for prop in itm.fields:
-            prop_opts = jadn_utils.fopts_s2d(prop.opts)
-
-            if not self._is_optional(prop_opts):
+            if not self._is_optional(prop.opts):
                 required.append(prop.name)
 
-            tmp_def = self._fieldType(prop.type)
+            tmp_def = self._fieldType(prop)
 
             field_type = tmp_def.get('type', '')
             field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
             field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            tmp_def.update(self._optReformat(field_type, prop_opts))
+            tmp_def.update(self._optReformat(field_type, prop.opts))
 
             tmp_def.update(self._formatComment(prop.desc))
             properties[prop.name] = tmp_def
 
         type_def = dict(
             type="object",
-            **self._optReformat('object', itm_opts, True),
             **self._formatComment(itm.desc),
-            additionalProperties=False
+            **self._optReformat('object', itm_opts, True),
+            additionalProperties=False,
+            required=required,
+            properties=properties
         )
-        if len(required) > 0:
-            type_def['required'] = required
-
-        type_def['properties'] = properties
 
         return {
-            self.formatStr(itm.name): type_def
+            self.formatStr(itm.name): self._cleanEmpty(type_def)
         }
 
     def _formatChoice(self, itm):
@@ -169,25 +168,23 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: choice to format
         :return: formatted choice
         """
-        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         properties = {}
 
         for prop in itm.fields:
-            prop_opts = jadn_utils.fopts_s2d(prop.opts)
-            tmp_def = self._fieldType(prop.type)
+            tmp_def = self._fieldType(prop)
 
             field_type = tmp_def.get('type', '')
             field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
             field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            tmp_def.update(self._optReformat(field_type, prop_opts))
+            tmp_def.update(self._optReformat(field_type, prop.opts))
 
             tmp_def.update(self._formatComment(prop.desc))
             properties[prop.name] = tmp_def
 
         type_def = dict(
             type='object',
-            **self._optReformat('object', itm_opts, True),
             **self._formatComment(itm.desc),
+            **self._optReformat('object', itm.opts, True),
             minProperties=1,
             maxProperties=1,
             additionalProperties=False,
@@ -201,7 +198,7 @@ class JADNtoJSON(JADNConverterBase):
         )
 
         return {
-            self.formatStr(itm.name): type_def
+            self.formatStr(itm.name): self._cleanEmpty(type_def)
         }
 
     def _formatMap(self, itm):
@@ -210,39 +207,38 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: map to format
         :return: formatted map
         """
-        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         fields = []
         properties = {}
         required = []
 
         for prop in itm.fields:
-            prop_opts = jadn_utils.fopts_s2d(prop.opts)
             fields.append(prop.name)
 
-            if not self._is_optional(prop_opts):
+            if not self._is_optional(prop.opts):
                 required.append(prop.name)
 
-            if self._is_array(prop_opts):
+            if self._is_array(prop.opts):
                 tmp_def = dict(
                     type='array',
-                    items=[self._fieldType(prop.type)]
+                    items=[self._fieldType(prop)]
                 )
             else:
-                tmp_def = self._fieldType(prop.type)
+                tmp_def = self._fieldType(prop)
 
             field_type = tmp_def.get('type', '')
             field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
             field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            tmp_def.update(self._optReformat(field_type, prop_opts))
+            tmp_def.update(self._optReformat(field_type, prop.opts))
 
             tmp_def.update(self._formatComment(prop.desc))
             properties[prop.name] = tmp_def
 
         type_def = dict(
             type='object',
-            **self._optReformat('object', itm_opts, True),
             **self._formatComment(itm.desc),
+            **self._optReformat('object', itm.opts, True),
             additionalProperties=False,
+            required=required,
             properties=properties,
             patternProperties={
                 "^x-[A-Za-z0-9_]*$": {
@@ -252,11 +248,8 @@ class JADNtoJSON(JADNConverterBase):
             }
         )
 
-        if len(required) > 0:
-            type_def['required'] = required
-
         return {
-            self.formatStr(itm.name): type_def
+            self.formatStr(itm.name): self._cleanEmpty(type_def)
         }
 
     def _formatEnumerated(self, itm):
@@ -265,13 +258,12 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: enum to format
         :return: formatted enum
         """
-        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         enum = []
         enum_type = 'string'
         options = []
 
         for prop in itm.fields:
-            if 'compact' in itm_opts:
+            if 'id' in itm.opts:
                 enum_type = 'integer'
                 val = prop.id
             else:
@@ -289,16 +281,16 @@ class JADNtoJSON(JADNConverterBase):
 
         type_def = dict(
             type=enum_type,
-            **self._optReformat(enum_type, itm_opts, True),
             **self._formatComment(itm.desc),
-            enum=enum
+            **self._optReformat(enum_type, itm.opts, True),
+            enum=enum,
         )
 
         if self.comm != enums.CommentLevels.NONE:
-            type_def['options'] = options
+            type_def.update(options=options)
 
         return {
-            self.formatStr(itm.name): type_def
+            self.formatStr(itm.name): self._cleanEmpty(type_def)
         }
 
     def _formatArray(self, itm):
@@ -307,28 +299,25 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: array to format
         :return: formatted array
         """
-        itm_opts = jadn_utils.topts_s2d(itm['opts'])
         properties = {}
         required = []
 
         for prop in itm.fields:
-            prop_opts = jadn_utils.fopts_s2d(prop.opts)
-
-            if not self._is_optional(prop_opts):
+            if not self._is_optional(prop.opts):
                 required.append(prop.name)
 
-            if self._is_array(prop_opts):
+            if self._is_array(prop.opts):
                 tmp_def = dict(
                     type='array',
-                    items=[self._fieldType(prop.type)]
+                    items=[self._fieldType(prop)]
                 )
             else:
-                tmp_def = self._fieldType(prop.type)
+                tmp_def = self._fieldType(prop)
 
             field_type = tmp_def.get('type', '')
             field_type = tmp_def.get('$ref', '') if field_type == '' else field_type
             field_type = self._getType(field_type.split('/')[-1]) if field_type.startswith('#') else field_type
-            tmp_def.update(self._optReformat(field_type, prop_opts))
+            tmp_def.update(self._optReformat(field_type, prop.opts))
 
             tmp_def.update(self._formatComment(prop.desc))
             properties[prop.name] = tmp_def
@@ -336,17 +325,15 @@ class JADNtoJSON(JADNConverterBase):
         type_def = dict(
             type='array',
             **self._formatComment(itm.desc),
-            **self._optReformat('array', itm_opts, True),
+            **self._optReformat('array', itm.opts, True),
+            required=required,
             items=dict(
                 properties=properties
             )
         )
 
-        if len(required) > 0:
-            type_def['items']['required'] = required
-
         return {
-            self.formatStr(itm.name): type_def
+            self.formatStr(itm.name): self._cleanEmpty(type_def)
         }
 
     def _formatArrayOf(self, itm):
@@ -355,21 +342,32 @@ class JADNtoJSON(JADNConverterBase):
         :param itm: arrayof to format
         :return: formatted arrayof
         """
-        itm_opts = jadn_utils.topts_s2d(itm['opts'])
-        rtype = itm_opts.get('rtype', 'String')
+        vtype = itm.opts.get('vtype', 'String')
+        if vtype.startswith("$"):
+            val_def = list(filter(lambda d: d.name == vtype[1:], self._types))
+            val_def = val_def[0] if len(val_def) == 1 else {}
+            id_val = val_def.opts.get('id', None)
+            enum_val = 'id' if id_val else ('value' if val_def.type == 'Enumerated' else 'name')
+
+            items = dict(
+                type='integer' if id_val else 'string',
+                enum=[f[enum_val] for f in val_def.fields]
+            )
+        else:
+            items = self._fieldType(vtype)
 
         type_def = dict(
             type='array',
-            **self._optReformat('array', itm_opts, True),
             **self._formatComment(itm.desc),
+            **self._optReformat('array', itm.opts, True),
             uniqueItems=True,
             items=[
-                self._fieldType(rtype)
+                items
             ]
         )
 
         return {
-            self.formatStr(itm.name): type_def
+            self.formatStr(itm.name): self._cleanEmpty(type_def)
         }
 
     # Helper Functions
@@ -401,6 +399,8 @@ class JADNtoJSON(JADNConverterBase):
                 return False
 
             return any([
+                k == 'minc' and utils.safe_cast(v, int, 1) < 1,
+                k == 'maxc' and utils.safe_cast(v, int, 1) < 1,
                 k == 'minv' and utils.safe_cast(v, int, 1) < 1,
                 k == 'maxv' and utils.safe_cast(v, int, 1) < 1,
             ])
@@ -422,31 +422,71 @@ class JADNtoJSON(JADNConverterBase):
                 print(f'unknown option for type of {optType}: {key} - {val}')
         return r_opts
 
-    def _fieldType(self, f):
+    def _fieldType(self, field):
         """
         Determines the field type for the schema
-        :param f: current type
+        :param field: current type
         :return: type mapped to the schema
         """
-        if f in self._customFields:
-            rtn = {
-                '$ref': f'#/definitions/{self.formatStr(f)}'
+        field_type = getattr(field, 'type', field)
+        field_type = field_type if isinstance(field_type, str) else 'String'
+
+        if isinstance(field, utils.FrozenDict):
+            if field_type == "MapOf":
+                # Key type
+                key_type = field.opts.get('ktype', None)
+                valid_keys = []
+                key_def = list(filter(lambda d: d.name == key_type, self._types))
+                for key_field in getattr(key_def[0] if len(key_def) == 1 else {}, 'fields', []):
+                    valid_keys.append(getattr(key_field, 'value', key_field.name))
+
+                key = f"^({'|'.join(valid_keys)})$" if key_type and key_type != "String" else "^[A-Za-z_][A-Za-z0-9_]*$"
+
+                # Value Type
+                value_type = field.opts.get('vtype', None)
+                val_def = list(filter(lambda d: d.name == value_type, self._types))
+                val_def = val_def[0] if len(val_def) == 1 else {}
+
+                value = dict()
+                if val_def and value_type != 'Any':
+                    # print(f"Value Def: {val_def}")
+                    value.update(dict(
+                        type="array",
+                        uniqueItems=True,
+                        items=[
+                            {
+                                '$ref': f'#/definitions/{self.formatStr(val_def.name)}'
+                            }
+                        ]
+                    ))
+
+                return dict(
+                    type='object',
+                    additionalProperties=False,
+                    patternProperties={
+                        key: value
+                    }
+                )
+            elif field_type == "ArrayOf":
+                return self._formatArrayOf(field)
+
+        if field_type in self._customFields:
+            return {
+                '$ref': f'#/definitions/{self.formatStr(field_type)}'
             }
 
-        elif f in self._fieldMap:
+        elif field_type in self._fieldMap:
             rtn = dict(
-                type=self.formatStr(self._fieldMap.get(f, f))
+                type=self.formatStr(self._fieldMap.get(field_type, field_type))
             )
-            if f.lower() == 'binary':
-                rtn['format'] = 'binary'
+            rtn.update({'format': 'binary'} if field_type.lower() == 'binary' else {})
+            return rtn
 
         else:
-            print(f'unknown type: {f}')
-            rtn = dict(
+            print(f'unknown type: {field_type}')
+            return dict(
                 type='string'
             )
-
-        return rtn
 
     def _formatComment(self, msg, **kargs):
         """
@@ -480,6 +520,12 @@ class JADNtoJSON(JADNConverterBase):
                 return conv
 
         return {}
+
+    def _cleanEmpty(self, itm):
+        if isinstance(itm, dict):
+            return dict((k, self._cleanEmpty(v)) for k, v in itm.items() if v or isinstance(v, bool))
+        else:
+            return itm
 
 
 def json_dumps(jadn, comm=enums.CommentLevels.ALL):
